@@ -116,7 +116,7 @@ See `config/example.toml` for a complete configuration example.
 - `/load <name or index>` - Load a saved session
 - `/sessions` - List all saved sessions
 - `/export [format]` - Export conversation (markdown/json)
-- `/context` - Show context statistics (token usage)
+- `/context` - Show context statistics and estimated cost for next message
 - `/system <prompt>` - Set/clear system prompt
 - `/tokens <number>` - Set max context tokens
 - `/strategy <type>` - Set context strategy (sliding_window/smart)
@@ -133,6 +133,7 @@ MCP Chat includes intelligent context management to handle long conversations:
 - **Automatic Truncation**: Manages context window with configurable strategies
 - **System Prompts**: Persistent system prompts across conversations
 - **Context Statistics**: Real-time visibility into token usage
+- **Cost Estimation**: Shows estimated cost for the next message
 
 ### Context Strategies
 

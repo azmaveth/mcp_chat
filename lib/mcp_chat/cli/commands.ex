@@ -244,11 +244,37 @@ defmodule MCPChat.CLI.Commands do
   
   defp show_context_stats do
     stats = Session.get_context_stats()
+    session = Session.get_current_session()
     
     Renderer.show_info("Context Statistics:")
     Renderer.show_text("  Messages: #{stats.message_count}")
     Renderer.show_text("  Estimated tokens: #{stats.estimated_tokens}/#{stats.max_tokens} (#{stats.tokens_used_percentage}%)")
     Renderer.show_text("  Tokens remaining: #{stats.tokens_remaining}")
+    
+    # Calculate estimated cost for next message
+    # Get prepared messages that would actually be sent
+    prepared_messages = Session.get_messages_for_llm()
+    input_tokens = MCPChat.Context.estimate_tokens(prepared_messages)
+    
+    # Estimate output tokens (assume ~30% of input tokens as a reasonable estimate)
+    estimated_output_tokens = round(input_tokens * 0.3)
+    
+    # Calculate cost
+    # First check context for model override, then use default
+    model = session.context[:model] || get_current_model()
+    pricing = MCPChat.Cost.get_pricing(session.llm_backend, model)
+    
+    if pricing do
+      input_cost = input_tokens / 1_000_000 * pricing.input
+      output_cost = estimated_output_tokens / 1_000_000 * pricing.output
+      total_cost = input_cost + output_cost
+      
+      Renderer.show_text("")
+      Renderer.show_text("  Estimated cost for next message:")
+      Renderer.show_text("    Input: ~#{input_tokens} tokens (#{MCPChat.Cost.format_cost(input_cost)})")
+      Renderer.show_text("    Output: ~#{estimated_output_tokens} tokens (#{MCPChat.Cost.format_cost(output_cost)})")
+      Renderer.show_text("    Total: ~#{MCPChat.Cost.format_cost(total_cost)}")
+    end
     
     # Show warning if approaching limit
     if stats.tokens_used_percentage > 80 do
