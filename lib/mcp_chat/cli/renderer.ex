@@ -105,20 +105,18 @@ defmodule MCPChat.CLI.Renderer do
       Owl.Box.new(output, 
         title: "Output",
         padding: 1,
-        border_style: :rounded,
+        border_style: :solid_rounded,
         border_tag: :light_black
       )
     ])
   end
   
   def show_table(headers, rows) do
-    data = [headers | rows]
-    
     puts([
       "\n",
-      Owl.Table.new(data,
+      Owl.Table.new(rows,
         headers: headers,
-        border_style: :rounded
+        border_style: :solid_rounded
       )
     ])
   end

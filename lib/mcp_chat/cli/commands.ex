@@ -46,9 +46,9 @@ defmodule MCPChat.CLI.Commands do
   defp show_help do
     rows = @commands
     |> Enum.map(fn {cmd, desc} ->
-      ["/#{cmd}", desc]
+      %{"Command" => "/#{cmd}", "Description" => desc}
     end)
-    |> Enum.sort()
+    |> Enum.sort_by(&Map.get(&1, "Command"))
     
     Renderer.show_table(["Command", "Description"], rows)
   end
@@ -94,7 +94,7 @@ defmodule MCPChat.CLI.Commands do
       "Streaming" => Config.get([:ui, :streaming]) != false
     }
     
-    rows = Enum.map(config, fn {k, v} -> [k, to_string(v)] end)
+    rows = Enum.map(config, fn {k, v} -> %{"Setting" => k, "Value" => to_string(v)} end)
     Renderer.show_table(["Setting", "Value"], rows)
   end
   
@@ -105,7 +105,11 @@ defmodule MCPChat.CLI.Commands do
       Renderer.show_info("No MCP servers connected")
     else
       rows = Enum.map(servers, fn server ->
-        [server.name, server.status, server.url || "local"]
+        %{
+          "Name" => server.name,
+          "Status" => server.status,
+          "URL" => server.url || "local"
+        }
       end)
       
       Renderer.show_table(["Name", "Status", "URL"], rows)
