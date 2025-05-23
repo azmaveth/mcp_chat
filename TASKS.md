@@ -80,7 +80,7 @@ mcp_chat/
 - [x] Add conversation persistence (save/load sessions with metadata)
 - [x] Implement multi-turn context handling (token counting, truncation strategies)
 - [x] Add MCP server auto-discovery (quick setup, npm scan, env vars, local dirs)
-- [ ] Create plugin system for custom tools
+- ~~[ ] Create plugin system for custom tools~~ *(MCP servers provide plugin functionality)*
 - [x] Add export functionality (markdown, JSON)
 - [x] Implement MCP server functionality (stdio and SSE transports)
 
