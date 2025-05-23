@@ -98,7 +98,7 @@ mcp_chat/
   - [x] CLI Chat module (basic tests with IO capture)
   - [x] CLI Renderer module
   - [x] MCP client modules (Protocol, Client, ServerManager tests)
-  - [ ] MCP server modules (Handler, SSEServer, StdioServer)
+  - [x] MCP server modules (Handler, SSEServer, StdioServer)
   - [ ] Application supervisor
 - [ ] Add integration tests
 - [x] Create user documentation
