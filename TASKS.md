@@ -85,7 +85,19 @@ mcp_chat/
 - [x] Implement MCP server functionality (stdio and SSE transports)
 
 ### Phase 7: Testing & Documentation
-- [ ] Write unit tests for all modules
+- [ ] Write unit tests for all modules (in progress)
+  - [x] Context module (token estimation, truncation strategies)
+  - [x] Cost module (pricing calculations, usage tracking)
+  - [x] Alias module (command aliases, circular reference detection)
+  - [x] Persistence module (save/load sessions, exports)
+  - [x] Session module (message management, context handling)
+  - [x] Config module (TOML loading, environment variables)
+  - [x] Anthropic LLM adapter (basic tests, needs mocking for full coverage)
+  - [ ] OpenAI LLM adapter
+  - [ ] CLI modules (Chat, Commands, Renderer)
+  - [ ] MCP client modules (Client, Protocol, ServerManager, etc.)
+  - [ ] MCP server modules (Handler, SSEServer, StdioServer)
+  - [ ] Application supervisor
 - [ ] Add integration tests
 - [ ] Create user documentation
 - [ ] Add example configurations
