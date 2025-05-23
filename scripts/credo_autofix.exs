@@ -33,12 +33,15 @@ defmodule CredoAutofix do
   end
   
   defp get_elixir_files do
-    Path.wildcard("lib/**/*.{ex,exs}") ++
+    files = Path.wildcard("lib/**/*.{ex,exs}") ++
     Path.wildcard("test/**/*.{ex,exs}") ++
     Path.wildcard("config/**/*.{ex,exs}")
+    
+    # Don't process backup files
+    files |> Enum.reject(&String.contains?(&1, "_backup"))
   end
   
-  defp apply_fixes(content, file) do
+  defp apply_fixes(content, _file) do
     content
     |> fix_trailing_whitespace()
     |> fix_trailing_blank_line()
@@ -63,14 +66,57 @@ defmodule CredoAutofix do
   end
   
   defp fix_large_numbers(content) do
-    # Replace numbers > 9999 with underscored versions
-    Regex.replace(~r/\b(\d{1,3})(\d{3})\b/, content, fn _, thousands, hundreds ->
-      "#{thousands}_#{hundreds}"
+    # Apply number formatting but preserve model names
+    content
+    |> fix_number_in_content()
+  end
+  
+  defp fix_number_in_content(content) do
+    # Patterns to preserve (model names and dates)
+    preserve_regex = ~r/(claude-[\w-]+-\d{8}|gpt-[\d.]+-\d+k|[\w-]+-\d{8}|\b\d{8}\b)/
+    
+    # Split content by patterns to preserve
+    parts = Regex.split(preserve_regex, content, include_captures: true)
+    
+    parts
+    |> Enum.map(fn part ->
+      # Check if this part should be preserved
+      if Regex.match?(preserve_regex, part) do
+        # Preserve model names and 8-digit dates as-is
+        part
+      else
+        # Apply number formatting to other parts
+        fix_numbers_in_text(part)
+      end
     end)
-    |> then(fn content ->
+    |> Enum.join()
+  end
+  
+  defp fix_numbers_in_text(text) do
+    # Replace numbers > 9999 with underscored versions
+    text
+    |> then(fn text ->
+      # Handle 7+ digit numbers
+      Regex.replace(~r/\b(\d{1,3})(\d{3})(\d{3})(\d+)\b/, text, fn _full, millions, thousands, hundreds, rest ->
+        "#{millions}_#{thousands}_#{hundreds}_#{rest}"
+      end)
+    end)
+    |> then(fn text ->
       # Handle 6-digit numbers
-      Regex.replace(~r/\b(\d{1,3})(\d{3})(\d{3})\b/, content, fn _, millions, thousands, hundreds ->
-        "#{millions}_#{thousands}_#{hundreds}"
+      Regex.replace(~r/\b(\d{3})(\d{3})\b/, text, fn _, thousands, hundreds ->
+        "#{thousands}_#{hundreds}"
+      end)
+    end)
+    |> then(fn text ->
+      # Handle 5-digit numbers
+      Regex.replace(~r/\b(\d{2})(\d{3})\b/, text, fn _, tens, ones ->
+        "#{tens}_#{ones}"
+      end)
+    end)
+    |> then(fn text ->
+      # Handle 4-digit numbers (but not years like 2024, 2025, etc.)
+      Regex.replace(~r/\b(?!20[0-9]{2}\b)(\d)(\d{3})\b/, text, fn _, thousands, hundreds ->
+        "#{thousands}_#{hundreds}"
       end)
     end)
   end

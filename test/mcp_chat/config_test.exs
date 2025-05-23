@@ -8,7 +8,7 @@ defmodule MCPChat.ConfigTest do
     # Stop the Config server if it's running
     case Process.whereis(Config) do
       nil -> :ok
-      pid -> 
+      pid ->
         GenServer.stop(pid)
         Process.sleep(100)
     end
@@ -36,7 +36,7 @@ defmodule MCPChat.ConfigTest do
       # Stop existing Config server if running
       case Process.whereis(Config) do
         nil -> :ok
-        pid -> 
+        pid ->
           GenServer.stop(pid)
           Process.sleep(100)
       end
@@ -49,7 +49,7 @@ defmodule MCPChat.ConfigTest do
 
       # Give it time to create the file
       Process.sleep(100)
-      
+
       # Should create default config
       assert File.exists?(@test_config_path)
     end
@@ -142,7 +142,7 @@ defmodule MCPChat.ConfigTest do
       # Stop existing config
       case Process.whereis(Config) do
         nil -> :ok
-        pid -> 
+        pid ->
           GenServer.stop(pid)
           Process.sleep(100)
       end
@@ -155,7 +155,7 @@ defmodule MCPChat.ConfigTest do
       openai_key = Config.get([:llm, :openai, :api_key])
 
       assert anthropic_key == "test-anthropic-key"
-      
+
       # OpenAI key might only be present if openai config exists
       if Config.get([:llm, :openai]) do
         assert openai_key == "test-openai-key"

@@ -118,6 +118,7 @@ defmodule MCPChat.Config do
         default: "anthropic",
         anthropic: %{
           api_key: System.get_env("ANTHROPIC_API_KEY", ""),
+          # credo:disable-for-next-line Credo.Check.Readability.LargeNumbers
           model: "claude-sonnet-4-20250514",
           max_tokens: 4_096
         },

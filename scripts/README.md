@@ -1,76 +1,53 @@
-# MCP Chat Scripts
+# Credo Auto-fix Scripts
 
-This directory contains utility scripts for maintaining code quality.
+This directory contains scripts to automatically fix common Credo issues.
 
-## Credo Auto-fix Scripts
+## Scripts
 
-### `credo_autofix.exs`
+### credo_autofix.exs
 
-Basic auto-fixes for common Credo issues:
-- Removes trailing whitespace
-- Adds missing trailing blank lines
-- Adds underscores to large numbers (10_000 instead of 10000)
-- Converts `Enum.map |> Enum.join` to `Enum.map_join`
-- Adds parentheses to zero-arity function definitions
+Basic auto-fixes for common issues:
+- Trailing whitespace
+- Missing trailing blank lines
+- Large numbers without underscores (with special handling for model names)
+- `Enum.map |> Enum.join` to `Enum.map_join`
+- Missing parentheses on zero-arity function definitions
 
-Run manually:
+### credo_advanced_autofix.exs
+
+Advanced auto-fixes:
+- Converts `IO.inspect` calls to `Logger.debug`
+- Adds missing `@moduledoc`
+- Fixes `length/1` checks to use `Enum.empty?`
+- Suggests module aliases for frequently used nested modules
+
+## Model Name Handling
+
+The autofix scripts have special logic to preserve model names that contain dates in YYYYMMDD format:
+- `claude-sonnet-4-20250514`
+- `claude-3-5-sonnet-20241022`
+- `gpt-4-turbo-20240409`
+
+These will NOT have underscores added to their numeric parts.
+
+## Usage
+
+The basic autofix script runs automatically as part of the pre-commit hook.
+
+To run manually:
 ```bash
 elixir scripts/credo_autofix.exs
 ```
 
-### `credo_advanced_autofix.exs`
-
-Advanced auto-fixes (use with caution):
-- Converts `IO.inspect` to `Logger.debug`
-- Adds missing `@moduledoc` to modules
-- Converts `length(list) == 0` to `Enum.empty?(list)`
-- Suggests module aliases for frequently used nested modules
-
-Run manually:
+To run advanced fixes:
 ```bash
 elixir scripts/credo_advanced_autofix.exs
 ```
 
-## Pre-commit Hook
+## Adding New Fixes
 
-The pre-commit hook automatically runs:
-1. `credo_autofix.exs` - Auto-fixes basic issues
-2. `mix format` - Formats code according to `.formatter.exs`
-3. `mix credo --strict` - Checks for remaining issues
-
-If Credo finds issues that can't be auto-fixed, the commit will be blocked.
-
-To bypass the pre-commit hook (not recommended):
-```bash
-git commit --no-verify
-```
-
-## Manual Code Quality Checks
-
-Run Credo with explanations:
-```bash
-# Check all files
-mix credo --strict
-
-# Explain a specific issue
-mix credo explain lib/some_file.ex:42
-
-# Show only specific categories
-mix credo --strict --only readability
-```
-
-Run formatter:
-```bash
-# Format all files
-mix format
-
-# Check if files are formatted
-mix format --check-formatted
-```
-
-## Tips
-
-1. Run `mix format` before `mix credo` for best results
-2. Some Credo issues require manual intervention (complexity, naming, etc.)
-3. Use `@moduledoc false` for internal modules that don't need documentation
-4. Use `# credo:disable-for-next-line` to disable specific checks when necessary
+When adding new auto-fix rules:
+1. Add the fix function to the appropriate script
+2. Document the fix in this README
+3. Test thoroughly to ensure it doesn't break existing code
+4. Consider edge cases, especially around string literals and model names

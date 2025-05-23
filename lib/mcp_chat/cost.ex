@@ -6,8 +6,10 @@ defmodule MCPChat.Cost do
   """
 
   # Pricing per 1M tokens (as of January 2_025)
+  # credo:disable-for-next-line Credo.Check.Readability.LargeNumbers
   @pricing %{
     "anthropic" => %{
+      # Model names contain dates in YYYYMMDD format - do not add underscores
       "claude-3-5-sonnet-20241022" => %{input: 3.00, output: 15.00},
       "claude-3-5-haiku-20241022" => %{input: 1.00, output: 5.00},
       "claude-3-opus-20240229" => %{input: 15.00, output: 75.00},

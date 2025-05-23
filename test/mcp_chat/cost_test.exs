@@ -85,9 +85,9 @@ defmodule MCPChat.CostTest do
     end
 
     test "formats small costs with 4 decimals" do
-      assert Cost.format_cost(0.01) == "$0.0100"
-      assert Cost.format_cost(0.1234) == "$0.1234"
-      assert Cost.format_cost(0.9999) == "$0.9999"
+      assert Cost.format_cost(0.01) == "$0.0_100"
+      assert Cost.format_cost(0.1_234) == "$0.1_234"
+      assert Cost.format_cost(0.9_999) == "$0.9_999"
     end
 
     test "formats larger costs with 2 decimals" do
