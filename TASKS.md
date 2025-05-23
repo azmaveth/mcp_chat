@@ -95,7 +95,7 @@ mcp_chat/
   - [x] Anthropic LLM adapter (basic tests, needs mocking for full coverage)
   - [x] OpenAI LLM adapter (basic tests, needs mocking for full coverage)
   - [x] CLI Commands module (command handling, validation)
-  - [ ] CLI Chat module
+  - [x] CLI Chat module (basic tests with IO capture)
   - [ ] CLI Renderer module
   - [ ] MCP client modules (Client, Protocol, ServerManager, etc.)
   - [ ] MCP server modules (Handler, SSEServer, StdioServer)
