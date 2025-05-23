@@ -176,7 +176,8 @@ defmodule MCPChat.Persistence do
       messages: Enum.map(session.messages, &serialize_message/1),
       context: session.context,
       created_at: DateTime.to_iso8601(session.created_at),
-      updated_at: DateTime.to_iso8601(session.updated_at)
+      updated_at: DateTime.to_iso8601(session.updated_at),
+      token_usage: session.token_usage
     }
     
     Jason.encode!(data, pretty: true)
@@ -199,7 +200,8 @@ defmodule MCPChat.Persistence do
           messages: Enum.map(json["messages"] || [], &deserialize_message/1),
           context: json["context"] || %{},
           created_at: parse_datetime(json["created_at"]),
-          updated_at: parse_datetime(json["updated_at"])
+          updated_at: parse_datetime(json["updated_at"]),
+          token_usage: json["token_usage"] || %{input_tokens: 0, output_tokens: 0}
         }
         {:ok, session}
       

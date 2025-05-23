@@ -120,6 +120,7 @@ See `config/example.toml` for a complete configuration example.
 - `/system <prompt>` - Set/clear system prompt
 - `/tokens <number>` - Set max context tokens
 - `/strategy <type>` - Set context strategy (sliding_window/smart)
+- `/cost` - Show session cost based on token usage
 - `/exit` or `/quit` - Exit the application
 
 ## Context Management
@@ -153,6 +154,30 @@ MCP Chat includes intelligent context management to handle long conversations:
 # Check context usage
 /context
 ```
+
+## Cost Tracking
+
+MCP Chat automatically tracks token usage and calculates costs based on current provider pricing:
+
+### Features
+
+- **Automatic Token Tracking**: Counts input and output tokens for each message
+- **Real-time Cost Calculation**: Uses up-to-date pricing for each model
+- **Multiple Model Support**: Pricing for all major Anthropic and OpenAI models
+- **Smart Formatting**: Shows costs in appropriate units (cents for small amounts)
+
+### Usage
+
+```bash
+# Check current session cost
+/cost
+```
+
+The cost display includes:
+- Token counts (input/output/total)
+- Cost breakdown by input and output
+- Total session cost in USD
+- Current model pricing information
 
 ## MCP Server Mode
 

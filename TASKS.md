@@ -140,6 +140,8 @@ history_size = 1000
 - ✅ Added session management with metadata (timestamps, message count, file size)
 - ✅ Implemented multi-turn context handling with token counting and truncation
 - ✅ Added context management commands (/context, /system, /tokens, /strategy)
+- ✅ Implemented cost tracking with real-time token usage and pricing calculation
+- ✅ Added /cost command to display session costs with model-specific pricing
 
 ## Development Notes
 

@@ -28,7 +28,8 @@ defmodule MCPChat.CLI.Commands do
     "context" => "Show context statistics",
     "system" => "Set system prompt (usage: /system <prompt>)",
     "tokens" => "Set max tokens (usage: /tokens <number>)",
-    "strategy" => "Set context strategy (usage: /strategy <sliding_window|smart>)"
+    "strategy" => "Set context strategy (usage: /strategy <sliding_window|smart>)",
+    "cost" => "Show session cost"
   }
   
   def handle_command(command) do
@@ -58,6 +59,7 @@ defmodule MCPChat.CLI.Commands do
       "system" -> set_system_prompt(args)
       "tokens" -> set_max_tokens(args)
       "strategy" -> set_strategy(args)
+      "cost" -> show_session_cost()
       _ -> Renderer.show_error("Unknown command: /#{cmd}")
     end
   end
@@ -288,6 +290,29 @@ defmodule MCPChat.CLI.Commands do
   end
   defp set_strategy(_) do
     Renderer.show_error("Usage: /strategy <sliding_window|smart>")
+  end
+  
+  defp show_session_cost do
+    cost_info = Session.get_session_cost()
+    
+    if cost_info[:error] do
+      Renderer.show_error(cost_info.error)
+    else
+      Renderer.show_info("Session Cost Summary")
+      Renderer.show_text("  Model: #{cost_info.backend}/#{cost_info.model}")
+      Renderer.show_text("  Input tokens: #{cost_info.input_tokens}")
+      Renderer.show_text("  Output tokens: #{cost_info.output_tokens}")
+      Renderer.show_text("  Total tokens: #{cost_info.total_tokens}")
+      Renderer.show_text("")
+      Renderer.show_text("  Input cost: #{MCPChat.Cost.format_cost(cost_info.input_cost)}")
+      Renderer.show_text("  Output cost: #{MCPChat.Cost.format_cost(cost_info.output_cost)}")
+      Renderer.show_text("  Total cost: #{MCPChat.Cost.format_cost(cost_info.total_cost)}")
+      
+      if cost_info.pricing do
+        Renderer.show_text("")
+        Renderer.show_text("  Pricing: $#{cost_info.pricing.input}/1M input, $#{cost_info.pricing.output}/1M output")
+      end
+    end
   end
   
   defp get_current_model do

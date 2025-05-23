@@ -98,10 +98,19 @@ defmodule MCPChat.CLI.Chat do
       {:error, "LLM backend '#{backend_name}' not configured. Please set your API key in ~/.config/mcp_chat/config.toml or set the #{env_var} environment variable"}
     else
       # Check if streaming is enabled
-      if Config.get([:ui, :streaming]) != false do
+      response = if Config.get([:ui, :streaming]) != false do
         stream_response(adapter, messages, options)
       else
         adapter.chat(messages, options)
+      end
+      
+      # Track token usage if we got a successful response
+      case response do
+        {:ok, content} ->
+          Session.track_token_usage(messages, content)
+          {:ok, content}
+        error ->
+          error
       end
     end
   end

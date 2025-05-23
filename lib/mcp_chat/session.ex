@@ -10,7 +10,8 @@ defmodule MCPChat.Session do
     :messages,
     :context,
     :created_at,
-    :updated_at
+    :updated_at,
+    :token_usage
   ]
 
   # Client API
@@ -85,6 +86,20 @@ defmodule MCPChat.Session do
   """
   def get_context_stats do
     GenServer.call(__MODULE__, :get_context_stats)
+  end
+  
+  @doc """
+  Track token usage for a message exchange.
+  """
+  def track_token_usage(input_messages, response_content) do
+    GenServer.cast(__MODULE__, {:track_token_usage, input_messages, response_content})
+  end
+  
+  @doc """
+  Get session cost information.
+  """
+  def get_session_cost do
+    GenServer.call(__MODULE__, :get_session_cost)
   end
 
   # Server Callbacks
@@ -210,6 +225,12 @@ defmodule MCPChat.Session do
     stats = MCPChat.Context.get_context_stats(messages, max_tokens)
     {:reply, stats, state}
   end
+  
+  def handle_call(:get_session_cost, _from, state) do
+    token_usage = state.current_session.token_usage || %{input_tokens: 0, output_tokens: 0}
+    cost_info = MCPChat.Cost.calculate_session_cost(state.current_session, token_usage)
+    {:reply, cost_info, state}
+  end
 
   @impl true
   def handle_cast(:clear_session, state) do
@@ -243,6 +264,25 @@ defmodule MCPChat.Session do
     new_state = %{state | current_session: updated_session}
     {:noreply, new_state}
   end
+  
+  def handle_cast({:track_token_usage, input_messages, response_content}, state) do
+    usage = MCPChat.Cost.track_token_usage(input_messages, response_content)
+    
+    # Update or initialize token usage
+    current_usage = state.current_session.token_usage || %{input_tokens: 0, output_tokens: 0}
+    updated_usage = %{
+      input_tokens: current_usage.input_tokens + usage.input_tokens,
+      output_tokens: current_usage.output_tokens + usage.output_tokens
+    }
+    
+    updated_session = %{state.current_session | 
+      token_usage: updated_usage,
+      updated_at: DateTime.utc_now()
+    }
+    
+    new_state = %{state | current_session: updated_session}
+    {:noreply, new_state}
+  end
 
   # Private Functions
 
@@ -255,7 +295,8 @@ defmodule MCPChat.Session do
       messages: [],
       context: %{},
       created_at: DateTime.utc_now(),
-      updated_at: DateTime.utc_now()
+      updated_at: DateTime.utc_now(),
+      token_usage: %{input_tokens: 0, output_tokens: 0}
     }
   end
 
