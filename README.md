@@ -5,7 +5,8 @@ An Elixir-based CLI chat client with support for the Model Context Protocol (MCP
 ## Features
 
 - 🤖 Multiple LLM backend support (Anthropic Claude 4, OpenAI, Local models via Bumblebee)
-- 🔌 MCP server integration for extensible functionality
+- 🔌 MCP client functionality - connect to local (stdio) and remote (SSE) MCP servers
+- 🛠️ MCP server functionality - expose chat as an MCP server (stdio and SSE transports)
 - 💬 Interactive CLI chat interface with rich formatting
 - 📝 Conversation history and session management
 - 🎨 Beautiful terminal UI with Owl
@@ -59,6 +60,12 @@ max_tokens = 4096
 [[mcp.servers]]
 name = "filesystem"
 command = ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+
+# MCP Server configuration (optional)
+[mcp_server]
+stdio_enabled = false
+sse_enabled = false
+sse_port = 8080
 ```
 
 ### Environment Variables
@@ -94,6 +101,23 @@ See `config/example.toml` for a complete configuration example.
 - `/model <name>` - Switch model
 - `/export [format]` - Export conversation (markdown/json)
 - `/exit` or `/quit` - Exit the application
+
+## MCP Server Mode
+
+MCP Chat can also function as an MCP server, allowing other MCP clients to interact with it. See [MCP_SERVER.md](MCP_SERVER.md) for detailed documentation.
+
+### Quick Start
+
+```bash
+# Run as stdio MCP server
+./mcp_server
+
+# Or enable in config.toml and run normally
+[mcp_server]
+stdio_enabled = true  # For stdio transport
+sse_enabled = true    # For HTTP/SSE transport
+sse_port = 8080
+```
 
 ## Troubleshooting
 

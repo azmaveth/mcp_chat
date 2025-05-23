@@ -1,0 +1,44 @@
+# MCP Chat Configuration
+
+# LLM Provider Configuration
+[llm.anthropic]
+provider = "anthropic"
+model = "claude-sonnet-4-20250514"
+api_key = "" # Can also use ANTHROPIC_API_KEY environment variable
+
+# [llm.openai]
+# provider = "openai"
+# model = "gpt-4"
+# api_key = "" # Can also use OPENAI_API_KEY environment variable
+
+# [llm.local]
+# provider = "local"
+# model = "llama-2-7b-chat"
+
+# MCP Client Configuration - servers to connect to
+
+# Stdio transport example
+[[mcp_servers]]
+name = "filesystem"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+
+# [[mcp_servers]]
+# name = "github"
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-github"]
+# env = { GITHUB_PERSONAL_ACCESS_TOKEN = "your-token-here" }
+
+# SSE transport example - connect to remote MCP servers
+# [[mcp_servers]]
+# name = "remote-server"
+# url = "http://localhost:8080"  # Base URL of the SSE server
+
+# MCP Server Configuration - expose this app as an MCP server
+[mcp_server]
+# Enable stdio server (for use with other MCP clients via stdio)
+stdio_enabled = false
+
+# Enable SSE server (for use with other MCP clients via HTTP/SSE)
+sse_enabled = false
+sse_port = 8080

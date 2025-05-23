@@ -130,6 +130,11 @@ defmodule MCPChat.Config do
       mcp: %{
         servers: []
       },
+      mcp_server: %{
+        stdio_enabled: false,
+        sse_enabled: false,
+        sse_port: 8080
+      },
       ui: %{
         theme: "dark",
         history_size: 1000

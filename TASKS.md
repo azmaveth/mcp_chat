@@ -52,7 +52,8 @@ mcp_chat/
 - [ ] Add tool discovery and execution (partial - UI complete)
 - [ ] Implement resource handling (partial - UI complete)
 - [ ] Add prompt management (partial - UI complete)
-- [x] Implement stdio transport for MCP servers
+- [x] Implement stdio transport for MCP client
+- [x] Implement SSE transport for MCP client
 
 ### Phase 3: LLM Backend Integration
 - [x] Define LLM adapter behaviour
@@ -81,6 +82,7 @@ mcp_chat/
 - [ ] Add MCP server auto-discovery
 - [ ] Create plugin system for custom tools
 - [x] Add export functionality (markdown, JSON)
+- [x] Implement MCP server functionality (stdio and SSE transports)
 
 ### Phase 7: Testing & Documentation
 - [ ] Write unit tests for all modules
@@ -127,6 +129,10 @@ history_size = 1000
 - ✅ Added environment variable support for API keys
 - ✅ Fixed Owl.Table rendering issues
 - ✅ Improved error handling and user feedback
+- ✅ Implemented stdio transport for MCP client connections
+- ✅ Added MCP server functionality with both stdio and SSE transports
+- ✅ Created chat tools, resources, and prompts for MCP server mode
+- ✅ Implemented SSE transport for MCP client to connect to remote servers
 
 ## Development Notes
 

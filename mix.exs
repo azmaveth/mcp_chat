@@ -36,6 +36,10 @@ defmodule McpChat.MixProject do
       # Configuration
       {:toml, "~> 0.7"},
       
+      # HTTP server for SSE support
+      {:plug, "~> 1.15"},
+      {:plug_cowboy, "~> 2.7"},
+      
       # Development dependencies
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}

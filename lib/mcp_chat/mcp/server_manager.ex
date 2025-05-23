@@ -256,30 +256,55 @@ defmodule MCPChat.MCP.ServerManager do
   defp start_server_supervised(config, supervisor) do
     name = config[:name] || config["name"]
     command = config[:command] || config["command"]
+    url = config[:url] || config["url"]
     env = config[:env] || config["env"] || %{}
     
-    if name && command do
-      child_spec = %{
-        id: {Server, name},
-        start: {Server, :start_link, [[
-          name: name,
-          command: command,
-          env: env,
-          auto_connect: true
-        ]]},
-        restart: :temporary
-      }
-      
-      case DynamicSupervisor.start_child(supervisor, child_spec) do
-        {:ok, pid} ->
-          {:ok, {name, pid}}
+    cond do
+      name && command ->
+        # Stdio transport
+        child_spec = %{
+          id: {Server, name},
+          start: {Server, :start_link, [[
+            name: name,
+            command: command,
+            env: env,
+            auto_connect: true
+          ]]},
+          restart: :temporary
+        }
         
-        {:error, reason} ->
-          Logger.error("Failed to start MCP server #{name}: #{inspect(reason)}")
-          {:error, reason}
-      end
-    else
-      {:error, :invalid_config}
+        case DynamicSupervisor.start_child(supervisor, child_spec) do
+          {:ok, pid} ->
+            {:ok, {name, pid}}
+          
+          {:error, reason} ->
+            Logger.error("Failed to start MCP server #{name}: #{inspect(reason)}")
+            {:error, reason}
+        end
+      
+      name && url ->
+        # SSE transport
+        child_spec = %{
+          id: {Server, name},
+          start: {Server, :start_link, [[
+            name: name,
+            url: url,
+            auto_connect: true
+          ]]},
+          restart: :temporary
+        }
+        
+        case DynamicSupervisor.start_child(supervisor, child_spec) do
+          {:ok, pid} ->
+            {:ok, {name, pid}}
+          
+          {:error, reason} ->
+            Logger.error("Failed to start MCP server #{name}: #{inspect(reason)}")
+            {:error, reason}
+        end
+      
+      true ->
+        {:error, :invalid_config}
     end
   end
 end
