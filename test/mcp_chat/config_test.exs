@@ -7,7 +7,9 @@ defmodule MCPChat.ConfigTest do
   setup do
     # Stop the Config server if it's running
     case Process.whereis(Config) do
-      nil -> :ok
+      nil ->
+        :ok
+
       pid ->
         GenServer.stop(pid)
         Process.sleep(100)
@@ -35,7 +37,9 @@ defmodule MCPChat.ConfigTest do
     test "starts with custom config path" do
       # Stop existing Config server if running
       case Process.whereis(Config) do
-        nil -> :ok
+        nil ->
+          :ok
+
         pid ->
           GenServer.stop(pid)
           Process.sleep(100)
@@ -141,7 +145,9 @@ defmodule MCPChat.ConfigTest do
 
       # Stop existing config
       case Process.whereis(Config) do
-        nil -> :ok
+        nil ->
+          :ok
+
         pid ->
           GenServer.stop(pid)
           Process.sleep(100)
@@ -186,7 +192,7 @@ defmodule MCPChat.ConfigTest do
       File.write!(@test_config_path, toml_content)
 
       # Restart config with test file
-      restart_config([config_path: @test_config_path])
+      restart_config(config_path: @test_config_path)
 
       # Verify loaded config
       assert Config.get([:llm, :default]) == "openai"
@@ -200,7 +206,7 @@ defmodule MCPChat.ConfigTest do
       File.write!(@test_config_path, "invalid toml [[ content")
 
       # Should load default config without crashing
-      restart_config([config_path: @test_config_path])
+      restart_config(config_path: @test_config_path)
 
       # Should have default values
       assert Config.get([:llm, :default]) == "anthropic"

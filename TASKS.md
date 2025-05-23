@@ -96,7 +96,7 @@ mcp_chat/
   - [x] OpenAI LLM adapter (basic tests, needs mocking for full coverage)
   - [x] CLI Commands module (command handling, validation)
   - [x] CLI Chat module (basic tests with IO capture)
-  - [ ] CLI Renderer module
+  - [x] CLI Renderer module
   - [ ] MCP client modules (Client, Protocol, ServerManager, etc.)
   - [ ] MCP server modules (Handler, SSEServer, StdioServer)
   - [ ] Application supervisor

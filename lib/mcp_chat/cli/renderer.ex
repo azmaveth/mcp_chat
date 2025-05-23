@@ -153,7 +153,8 @@ defmodule MCPChat.CLI.Renderer do
   defp format_message_content(content) do
     content
     |> String.split("\n")
-    |> Enum.map_join("\n", &format_line/1)
+    |> Enum.map(&format_line/1)
+    |> Enum.intersperse("\n")
   end
 
   defp format_line(line) do
