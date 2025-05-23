@@ -7,7 +7,7 @@ default = "anthropic"
 [llm.anthropic]
 # Get your API key from https://console.anthropic.com/
 api_key = "YOUR_ANTHROPIC_API_KEY"
-model = "claude-3-sonnet-20240229"
+model = "claude-sonnet-4-20250514"
 max_tokens = 4096
 
 [llm.openai]

@@ -5,7 +5,7 @@ defmodule MCPChat.LLM.Anthropic do
   @behaviour MCPChat.LLM.Adapter
 
   @base_url "https://api.anthropic.com/v1"
-  @default_model "claude-3-sonnet-20240229"
+  @default_model "claude-sonnet-4-20250514"
 
   @impl true
   def chat(messages, options \\ []) do
@@ -13,15 +13,18 @@ defmodule MCPChat.LLM.Anthropic do
     model = Keyword.get(options, :model, config.model || @default_model)
     max_tokens = Keyword.get(options, :max_tokens, config.max_tokens || 4096)
     
+    # Convert messages to Anthropic format
+    formatted_messages = format_messages_for_anthropic(messages)
+    
     body = %{
       model: model,
-      messages: messages,
+      messages: formatted_messages,
       max_tokens: max_tokens
     }
     |> maybe_add_system(options)
     
     headers = [
-      {"x-api-key", config.api_key},
+      {"x-api-key", get_api_key()},
       {"anthropic-version", "2023-06-01"},
       {"content-type", "application/json"}
     ]
@@ -44,24 +47,58 @@ defmodule MCPChat.LLM.Anthropic do
     model = Keyword.get(options, :model, config.model || @default_model)
     max_tokens = Keyword.get(options, :max_tokens, config.max_tokens || 4096)
     
+    # Convert messages to Anthropic format
+    formatted_messages = format_messages_for_anthropic(messages)
+    
     body = %{
       model: model,
-      messages: messages,
+      messages: formatted_messages,
       max_tokens: max_tokens,
       stream: true
     }
     |> maybe_add_system(options)
     
     headers = [
-      {"x-api-key", config.api_key},
+      {"x-api-key", get_api_key()},
       {"anthropic-version", "2023-06-01"},
       {"content-type", "application/json"}
     ]
     
+    # Create a simple streaming implementation
+    parent = self()
+    
+    Task.start(fn ->
+      case Req.post("#{@base_url}/messages",
+        json: body,
+        headers: headers,
+        receive_timeout: 60_000,
+        into: :self
+      ) do
+        {:ok, response} ->
+          if response.status == 200 do
+            handle_stream_response(response, parent, "")
+          else
+            send(parent, {:stream_error, "HTTP #{response.status}"})
+          end
+          
+        {:error, reason} ->
+          send(parent, {:stream_error, inspect(reason)})
+      end
+    end)
+    
+    # Create stream that receives messages
     stream = Stream.resource(
-      fn -> start_stream(body, headers) end,
-      &stream_next/1,
-      &close_stream/1
+      fn -> :ok end,
+      fn state ->
+        receive do
+          {:chunk, chunk} -> {[chunk], state}
+          :stream_done -> {:halt, state}
+          {:stream_error, error} -> throw({:error, error})
+        after
+          100 -> {[], state}
+        end
+      end,
+      fn _ -> :ok end
     )
     
     {:ok, stream}
@@ -69,8 +106,8 @@ defmodule MCPChat.LLM.Anthropic do
 
   @impl true
   def configured? do
-    config = get_config()
-    config.api_key != nil and config.api_key != ""
+    api_key = get_api_key()
+    api_key != nil and api_key != ""
   end
 
   @impl true
@@ -82,11 +119,13 @@ defmodule MCPChat.LLM.Anthropic do
   @impl true
   def list_models do
     {:ok, [
+      "claude-sonnet-4-20250514",
+      "claude-opus-4-20250514",
+      "claude-3-5-sonnet-20241022",
+      "claude-3-5-haiku-20241022",
       "claude-3-opus-20240229",
       "claude-3-sonnet-20240229",
-      "claude-3-haiku-20240307",
-      "claude-2.1",
-      "claude-2.0"
+      "claude-3-haiku-20240307"
     ]}
   end
 
@@ -94,6 +133,17 @@ defmodule MCPChat.LLM.Anthropic do
 
   defp get_config do
     MCPChat.Config.get([:llm, :anthropic]) || %{}
+  end
+
+  defp get_api_key do
+    config = get_config()
+    
+    # First try config file
+    case Map.get(config, :api_key) do
+      nil -> System.get_env("ANTHROPIC_API_KEY")
+      "" -> System.get_env("ANTHROPIC_API_KEY")
+      key -> key
+    end
   end
 
   defp maybe_add_system(body, options) do
@@ -111,38 +161,6 @@ defmodule MCPChat.LLM.Anthropic do
     }
   end
 
-  defp start_stream(body, headers) do
-    case Req.post("#{@base_url}/messages", json: body, headers: headers, into: :self) do
-      {:ok, resp} -> {:ok, resp, ""}
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  defp stream_next({:error, _reason} = error), do: {:halt, error}
-  defp stream_next({:ok, %{status: status}, _buffer}) when status != 200 do
-    {:halt, {:error, {:api_error, status}}}
-  end
-  defp stream_next({:ok, resp, buffer}) do
-    receive do
-      {ref, {:data, data}} when ref == resp.async.ref ->
-        lines = (buffer <> data)
-        |> String.split("\n")
-        
-        {complete_lines, [last_line]} = Enum.split(lines, -1)
-        
-        events = complete_lines
-        |> Enum.filter(&String.starts_with?(&1, "data: "))
-        |> Enum.map(&parse_sse_event/1)
-        |> Enum.reject(&is_nil/1)
-        
-        {events, {:ok, resp, last_line}}
-      
-      {ref, :done} when ref == resp.async.ref ->
-        {:halt, {:ok, resp, buffer}}
-    after
-      30_000 -> {:halt, {:error, :timeout}}
-    end
-  end
 
   defp parse_sse_event("data: [DONE]"), do: nil
   defp parse_sse_event("data: " <> json) do
@@ -153,10 +171,60 @@ defmodule MCPChat.LLM.Anthropic do
       {:ok, %{"type" => "message_stop"}} ->
         %{delta: "", finish_reason: "stop"}
       
+      {:ok, %{"type" => "error", "error" => error}} ->
+        # Log error and skip
+        IO.inspect(error, label: "Anthropic API Error")
+        nil
+        
       _ -> nil
     end
   end
 
-  defp close_stream({:ok, _resp, _buffer}), do: :ok
-  defp close_stream(_), do: :ok
+  defp format_messages_for_anthropic(messages) do
+    messages
+    |> Enum.map(fn msg ->
+      # Ensure we have string keys and proper format
+      %{
+        "role" => to_string(msg.role || msg["role"]),
+        "content" => to_string(msg.content || msg["content"])
+      }
+    end)
+  end
+  
+  defp process_sse_chunks(data) do
+    lines = String.split(data, "\n")
+    {complete_lines, rest} = 
+      case List.last(lines) do
+        "" -> {lines, ""}
+        last_line -> {Enum.drop(lines, -1), last_line}
+      end
+    
+    chunks = complete_lines
+    |> Enum.filter(&String.starts_with?(&1, "data: "))
+    |> Enum.map(&parse_sse_event/1)
+    |> Enum.reject(&is_nil/1)
+    
+    {rest, chunks}
+  end
+  
+  defp handle_stream_response(response, parent, buffer) do
+    # The async ref is in the body when using into: :self
+    %Req.Response.Async{ref: ref} = response.body
+    
+    receive do
+      {^ref, {:data, data}} ->
+        {new_buffer, chunks} = process_sse_chunks(buffer <> data)
+        Enum.each(chunks, &send(parent, {:chunk, &1}))
+        handle_stream_response(response, parent, new_buffer)
+      
+      {^ref, :done} ->
+        send(parent, :stream_done)
+        
+      {^ref, {:error, reason}} ->
+        send(parent, {:stream_error, inspect(reason)})
+    after
+      30_000 ->
+        send(parent, {:stream_error, "Stream timeout"})
+    end
+  end
 end

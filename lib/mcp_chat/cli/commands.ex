@@ -221,7 +221,7 @@ defmodule MCPChat.CLI.Commands do
     backend = session.llm_backend
     
     case backend do
-      "anthropic" -> Config.get([:llm, :anthropic, :model]) || "claude-3-sonnet"
+      "anthropic" -> Config.get([:llm, :anthropic, :model]) || "claude-sonnet-4-20250514"
       "openai" -> Config.get([:llm, :openai, :model]) || "gpt-4"
       "local" -> Config.get([:llm, :local, :model_path]) || "none"
       _ -> "unknown"

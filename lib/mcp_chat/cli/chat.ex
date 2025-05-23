@@ -66,6 +66,10 @@ defmodule MCPChat.CLI.Chat do
       
       {:error, reason} ->
         Renderer.show_error("Failed to get response: #{inspect(reason)}")
+      
+      response ->
+        # Handle unexpected response format
+        Renderer.show_error("Unexpected response: #{inspect(response)}")
     end
     
     :continue
@@ -78,11 +82,16 @@ defmodule MCPChat.CLI.Chat do
     # Get the appropriate LLM adapter
     adapter = get_llm_adapter(session.llm_backend)
     
-    # Check if streaming is enabled
-    if Config.get([:ui, :streaming]) != false do
-      stream_response(adapter, messages)
+    # Check if adapter is configured
+    if not adapter.configured?() do
+      {:error, "LLM backend not configured. Please set your API key in ~/.config/mcp_chat/config.toml or set the ANTHROPIC_API_KEY environment variable"}
     else
-      adapter.chat(messages)
+      # Check if streaming is enabled
+      if Config.get([:ui, :streaming]) != false do
+        stream_response(adapter, messages)
+      else
+        adapter.chat(messages)
+      end
     end
   end
   
@@ -95,14 +104,18 @@ defmodule MCPChat.CLI.Chat do
   defp stream_response(adapter, messages) do
     case adapter.stream_chat(messages) do
       {:ok, stream} ->
-        response = stream
-        |> Enum.reduce("", fn chunk, acc ->
-          Renderer.show_stream_chunk(chunk.delta)
-          acc <> chunk.delta
-        end)
-        
-        Renderer.end_stream()
-        {:ok, response}
+        try do
+          response = stream
+          |> Enum.reduce("", fn chunk, acc ->
+            Renderer.show_stream_chunk(chunk.delta)
+            acc <> chunk.delta
+          end)
+          
+          Renderer.end_stream()
+          {:ok, response}
+        rescue
+          e -> {:error, Exception.message(e)}
+        end
       
       error -> error
     end
