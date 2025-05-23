@@ -1,0 +1,37 @@
+# MCP Chat Client Configuration Example
+
+[llm]
+# Default LLM backend to use
+default = "anthropic"
+
+[llm.anthropic]
+# Get your API key from https://console.anthropic.com/
+api_key = "YOUR_ANTHROPIC_API_KEY"
+model = "claude-3-sonnet-20240229"
+max_tokens = 4096
+
+[llm.openai]
+# Get your API key from https://platform.openai.com/api-keys
+api_key = "YOUR_OPENAI_API_KEY"
+model = "gpt-4"
+
+[llm.local]
+# Path to local model (for Bumblebee/Nx)
+model_path = "models/llama-2-7b"
+device = "cpu"  # or "cuda" if you have GPU
+
+[[mcp.servers]]
+# Example MCP server for filesystem access
+name = "filesystem"
+command = ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+
+[[mcp.servers]]
+# Example MCP server for GitHub
+name = "github"
+command = ["npx", "-y", "@modelcontextprotocol/server-github"]
+env = { GITHUB_TOKEN = "YOUR_GITHUB_TOKEN" }
+
+[ui]
+theme = "dark"
+history_size = 1000
+streaming = true
