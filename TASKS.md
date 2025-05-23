@@ -93,8 +93,10 @@ mcp_chat/
   - [x] Session module (message management, context handling)
   - [x] Config module (TOML loading, environment variables)
   - [x] Anthropic LLM adapter (basic tests, needs mocking for full coverage)
-  - [ ] OpenAI LLM adapter
-  - [ ] CLI modules (Chat, Commands, Renderer)
+  - [x] OpenAI LLM adapter (basic tests, needs mocking for full coverage)
+  - [x] CLI Commands module (command handling, validation)
+  - [ ] CLI Chat module
+  - [ ] CLI Renderer module
   - [ ] MCP client modules (Client, Protocol, ServerManager, etc.)
   - [ ] MCP server modules (Handler, SSEServer, StdioServer)
   - [ ] Application supervisor
