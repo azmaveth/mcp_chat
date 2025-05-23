@@ -16,6 +16,9 @@ defmodule MCPChat.CLI.Commands do
     "sessions" => "List saved sessions",
     "config" => "Show current configuration",
     "servers" => "List connected MCP servers",
+    "discover" => "Discover available MCP servers",
+    "connect" => "Connect to an MCP server (usage: /connect <name>)",
+    "disconnect" => "Disconnect from an MCP server (usage: /disconnect <name>)",
     "tools" => "List available MCP tools",
     "tool" => "Call an MCP tool (usage: /tool <server> <tool> [args...])",
     "resources" => "List available MCP resources",
@@ -46,6 +49,9 @@ defmodule MCPChat.CLI.Commands do
       "sessions" -> list_sessions()
       "config" -> show_config()
       "servers" -> list_servers()
+      "discover" -> discover_servers()
+      "connect" -> connect_server(args)
+      "disconnect" -> disconnect_server(args)
       "tools" -> list_tools()
       "tool" -> call_tool(args)
       "resources" -> list_resources()
@@ -135,6 +141,151 @@ defmodule MCPChat.CLI.Commands do
       
       Renderer.show_table(["Name", "Status", "Port"], rows)
     end
+  end
+  
+  defp discover_servers do
+    Renderer.show_thinking()
+    Renderer.show_info("Discovering MCP servers...")
+    
+    discovered = MCPChat.MCP.Discovery.discover_servers()
+    
+    if discovered == [] do
+      Renderer.show_info("No MCP servers discovered")
+      Renderer.show_text("")
+      Renderer.show_text("You can install MCP servers using:")
+      Renderer.show_text("  npm install -g @modelcontextprotocol/server-filesystem")
+      Renderer.show_text("  npm install -g @modelcontextprotocol/server-github")
+      Renderer.show_text("")
+      Renderer.show_text("Or configure servers manually in ~/.config/mcp_chat/config.toml")
+    else
+      # Show discovered servers
+      rows = Enum.map(discovered, fn server ->
+        base = %{
+          "Name" => server.name,
+          "Source" => to_string(server.source),
+          "Type" => if(server[:command], do: "stdio", else: "sse")
+        }
+        
+        # Add status for quick setup servers
+        if server[:status] == :missing_requirements do
+          Map.merge(base, %{
+            "Status" => "Missing: #{Enum.join(server.missing, ", ")}",
+            "Description" => server[:description] || ""
+          })
+        else
+          Map.merge(base, %{
+            "Status" => "Available",
+            "Description" => server[:description] || format_server_location(server)
+          })
+        end
+      end)
+      
+      # Adjust columns based on source type
+      columns = if Enum.any?(discovered, &(&1.source == :quick_setup)) do
+        ["Name", "Source", "Type", "Status", "Description"]
+      else
+        ["Name", "Source", "Type", "Status", "Description"]
+      end
+      
+      Renderer.show_table(columns, rows)
+      
+      # Ask if user wants to connect any
+      Renderer.show_text("")
+      Renderer.show_info("You can:")
+      Renderer.show_text("  1. Connect now: /connect <server-name>")
+      Renderer.show_text("  2. Add to config: Edit ~/.config/mcp_chat/config.toml")
+      
+      # Store discovered servers temporarily for connection
+      Process.put(:discovered_servers, Map.new(discovered, &{&1.name, &1}))
+      
+      # Show example configuration
+      if server = List.first(discovered) do
+        Renderer.show_text("")
+        Renderer.show_text("Example configuration for config.toml:")
+        Renderer.show_code(format_server_config(server))
+      end
+    end
+  end
+  
+  defp format_server_location(%{command: [cmd | args]}) do
+    "#{cmd} #{Enum.join(args, " ")}" |> String.trim()
+  end
+  defp format_server_location(%{url: url}), do: url
+  defp format_server_location(_), do: "unknown"
+  
+  defp format_server_config(%{command: command} = server) do
+    env_part = if server[:env] do
+      server.env
+      |> Enum.map(fn {k, v} -> "#{k} = \"#{v}\"" end)
+      |> Enum.join(", ")
+      |> then(&" { #{&1} }")
+    else
+      ""
+    end
+    
+    """
+    [[mcp.servers]]
+    name = "#{server.name}"
+    command = #{inspect(command)}#{if env_part != "", do: "\nenv =#{env_part}", else: ""}
+    """
+  end
+  defp format_server_config(%{url: url} = server) do
+    """
+    [[mcp.servers]]
+    name = "#{server.name}"
+    url = "#{url}"
+    """
+  end
+  
+  defp connect_server([name]) do
+    # Check if it's a discovered server
+    discovered = Process.get(:discovered_servers, %{})
+    
+    server_config = case Map.get(discovered, name) do
+      nil ->
+        # Try to find in config
+        case MCPChat.Config.get([:mcp, :servers]) do
+          servers when is_list(servers) ->
+            Enum.find(servers, fn s -> s[:name] == name end)
+          _ ->
+            nil
+        end
+      
+      config ->
+        config
+    end
+    
+    if server_config do
+      Renderer.show_info("Connecting to #{name}...")
+      
+      case MCPChat.MCP.ServerManager.start_server(server_config) do
+        {:ok, _pid} ->
+          Renderer.show_info("Successfully connected to #{name}")
+        {:error, {:already_started, _}} ->
+          Renderer.show_info("Server #{name} is already connected")
+        {:error, reason} ->
+          Renderer.show_error("Failed to connect: #{inspect(reason)}")
+      end
+    else
+      Renderer.show_error("Server '#{name}' not found. Run /discover first or check your config.")
+    end
+  end
+  defp connect_server(_) do
+    Renderer.show_error("Usage: /connect <server-name>")
+  end
+  
+  defp disconnect_server([name]) do
+    case MCPChat.MCP.ServerManager.stop_server(name) do
+      :ok ->
+        Renderer.show_info("Disconnected from #{name}")
+      {:error, :not_found} ->
+        Renderer.show_error("Server '#{name}' is not connected")
+      {:error, reason} ->
+        Renderer.show_error("Failed to disconnect: #{inspect(reason)}")
+    end
+  end
+  defp disconnect_server(_) do
+    Renderer.show_error("Usage: /disconnect <server-name>")
   end
   
   defp list_tools do

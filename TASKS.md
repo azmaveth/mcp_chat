@@ -79,7 +79,7 @@ mcp_chat/
 ### Phase 6: Advanced Features
 - [x] Add conversation persistence (save/load sessions with metadata)
 - [x] Implement multi-turn context handling (token counting, truncation strategies)
-- [ ] Add MCP server auto-discovery
+- [x] Add MCP server auto-discovery (quick setup, npm scan, env vars, local dirs)
 - [ ] Create plugin system for custom tools
 - [x] Add export functionality (markdown, JSON)
 - [x] Implement MCP server functionality (stdio and SSE transports)
@@ -142,6 +142,9 @@ history_size = 1000
 - ✅ Added context management commands (/context, /system, /tokens, /strategy)
 - ✅ Implemented cost tracking with real-time token usage and pricing calculation
 - ✅ Added /cost command to display session costs with model-specific pricing
+- ✅ Implemented MCP server auto-discovery with multiple discovery methods
+- ✅ Added /discover, /connect, /disconnect commands for dynamic server management
+- ✅ Created quick setup configurations for popular MCP servers
 
 ## Development Notes
 

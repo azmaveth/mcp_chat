@@ -104,6 +104,9 @@ See `config/example.toml` for a complete configuration example.
 - `/new` - Start a new conversation
 - `/config` - Show current configuration
 - `/servers` - List connected MCP servers
+- `/discover` - Discover available MCP servers
+- `/connect <name>` - Connect to a discovered server
+- `/disconnect <name>` - Disconnect from a server
 - `/tools` - List available MCP tools
 - `/tool <server> <tool> [args]` - Execute an MCP tool
 - `/resources` - List available MCP resources  
@@ -179,6 +182,40 @@ The cost display includes:
 - Cost breakdown by input and output
 - Total session cost in USD
 - Current model pricing information
+
+## MCP Server Discovery
+
+MCP Chat can automatically discover available MCP servers:
+
+### Auto-Discovery Methods
+
+1. **Quick Setup**: Pre-configured popular MCP servers
+2. **NPM Packages**: Scans globally installed npm packages
+3. **Environment Variables**: Detects MCP-related environment variables
+4. **Local Directories**: Searches known locations for MCP servers
+
+### Usage
+
+```bash
+# Discover available servers
+/discover
+
+# Connect to a discovered server
+/connect filesystem
+
+# Disconnect from a server
+/disconnect filesystem
+```
+
+### Quick Setup Servers
+
+- `filesystem` - Local file access
+- `github` - GitHub integration (requires GITHUB_TOKEN)
+- `postgres` - PostgreSQL access (requires DATABASE_URL)
+- `sqlite` - SQLite database access
+- `memory` - Persistent memory storage
+- `puppeteer` - Browser automation
+- And more...
 
 ## MCP Server Mode
 
