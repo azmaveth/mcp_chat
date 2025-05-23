@@ -100,7 +100,7 @@ mcp_chat/
   - [x] MCP client modules (Protocol, Client, ServerManager tests)
   - [x] MCP server modules (Handler, SSEServer, StdioServer)
   - [x] Application supervisor
-- [ ] Add integration tests
+- [x] Add integration tests (basic_integration_test.exs)
 - [x] Create user documentation
   - [x] Quick Start Guide
   - [x] Installation Guide (all platforms)
