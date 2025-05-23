@@ -72,8 +72,8 @@ defmodule CredoAutofix do
   end
   
   defp fix_number_in_content(content) do
-    # Patterns to preserve (model names and dates)
-    preserve_regex = ~r/(claude-[\w-]+-\d{8}|gpt-[\d.]+-\d+k|[\w-]+-\d{8}|\b\d{8}\b)/
+    # Patterns to preserve (model names, dates, and protocol versions)
+    preserve_regex = ~r/(claude-[\w-]+-\d{8}|gpt-[\d.]+-\d+k|[\w-]+-\d{8}|\b\d{8}\b|\d{4}-\d{2}-\d{2})/
     
     # Split content by patterns to preserve
     parts = Regex.split(preserve_regex, content, include_captures: true)
@@ -82,7 +82,7 @@ defmodule CredoAutofix do
     |> Enum.map(fn part ->
       # Check if this part should be preserved
       if Regex.match?(preserve_regex, part) do
-        # Preserve model names and 8-digit dates as-is
+        # Preserve model names, 8-digit dates, and protocol versions as-is
         part
       else
         # Apply number formatting to other parts

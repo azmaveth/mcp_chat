@@ -4,7 +4,7 @@ defmodule MCPChat.MCP.Protocol do
   Implements the Model Context Protocol specification.
   """
 
-  @protocol_version "2_024-11-05"
+  @protocol_version "2024-11-05"
 
   # Message Types
   def encode_initialize(client_info) do

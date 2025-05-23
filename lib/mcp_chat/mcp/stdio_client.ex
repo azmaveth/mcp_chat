@@ -93,7 +93,7 @@ defmodule MCPChat.MCP.StdioClient do
         jsonrpc: "2.0",
         method: "initialize",
         params: %{
-          protocolVersion: "2_024-11-05",
+          protocolVersion: "2024-11-05",
           capabilities: client_info[:capabilities] || %{},
           clientInfo: client_info
         },
@@ -106,6 +106,7 @@ defmodule MCPChat.MCP.StdioClient do
           request_id: request_id + 1
       }
 
+      Logger.debug("Sending initialize request: #{inspect(message)}")
       send_json_rpc(new_state.port, message)
       {:noreply, new_state}
     else
@@ -271,11 +272,16 @@ defmodule MCPChat.MCP.StdioClient do
 
   @impl true
   def handle_info({port, {:data, data}}, %{port: port} = state) do
+    Logger.debug("Received raw data from port: #{inspect(data)}")
+
     # Accumulate data in buffer
     buffer = state.buffer <> data
 
     # Split by newlines and process complete messages
     {lines, remaining} = split_lines(buffer)
+
+    Logger.debug("Buffer lines: #{inspect(lines)}")
+    Logger.debug("Remaining buffer: #{inspect(remaining)}")
 
     new_state = Enum.reduce(lines, state, &process_line/2)
 
@@ -304,10 +310,17 @@ defmodule MCPChat.MCP.StdioClient do
     {:noreply, %{state | port: nil}}
   end
 
+  @impl true
+  def handle_info(msg, state) do
+    Logger.debug("StdioClient received unexpected message: #{inspect(msg)}")
+    {:noreply, state}
+  end
+
   # Private Functions
 
   defp send_json_rpc(port, message) do
     json = Jason.encode!(message)
+    Logger.debug("Sending to port: #{json}")
     Port.command(port, json <> "\n")
   end
 
@@ -328,36 +341,47 @@ defmodule MCPChat.MCP.StdioClient do
   defp process_line("", state), do: state
 
   defp process_line(line, state) do
-    case Jason.decode(line) do
-      {:ok, message} ->
-        handle_json_rpc_message(message, state)
+    # Skip non-JSON lines (server startup messages)
+    if String.starts_with?(line, "{") do
+      case Jason.decode(line) do
+        {:ok, message} ->
+          Logger.debug("Successfully parsed JSON: #{inspect(message)}")
+          handle_json_rpc_message(message, state)
 
-      {:error, reason} ->
-        Logger.error("Failed to decode JSON-RPC message: #{inspect(reason)}")
-        Logger.error("Raw line: #{inspect(line)}")
-        state
+        {:error, reason} ->
+          Logger.error("Failed to decode JSON-RPC message: #{inspect(reason)}")
+          Logger.error("Raw line: #{inspect(line)}")
+          state
+      end
+    else
+      # Log non-JSON output but don't fail
+      Logger.debug("MCP server output: #{line}")
+      state
     end
   end
 
   defp handle_json_rpc_message(%{"id" => id} = message, state) when not is_nil(id) do
     # This is a response to one of our requests
+    Logger.debug("Received response: #{inspect(message)}")
+
     case Map.pop(state.pending_requests, id) do
       {nil, _} ->
         Logger.warning("Received response for unknown request ID: #{id}")
         state
 
       {{request_type, from}, pending} ->
-        result =
+        {result, new_state} =
           case message do
             %{"result" => result} ->
-              process_result(request_type, result, state)
+              {res, updated_state} = process_result(request_type, result, state)
+              {res, updated_state}
 
             %{"error" => error} ->
-              {:error, error}
+              {{:error, error}, state}
           end
 
         GenServer.reply(from, result)
-        %{state | pending_requests: pending}
+        %{new_state | pending_requests: pending}
     end
   end
 
@@ -379,49 +403,61 @@ defmodule MCPChat.MCP.StdioClient do
     server_info = Map.get(result, "serverInfo", %{})
     capabilities = Map.get(result, "capabilities", %{})
 
-    _new_state = %{state | server_info: server_info, capabilities: capabilities}
+    new_state = %{state | server_info: server_info, capabilities: capabilities}
 
-    # Send initialization complete notification
+    # Send the initialized notification to the server (required by MCP protocol)
+    initialized_message = %{
+      jsonrpc: "2.0",
+      method: "notifications/initialized",
+      params: %{}
+    }
+
+    send_json_rpc(state.port, initialized_message)
+
+    # Send initialization complete notification to callback
     if state.callback_pid do
       send(state.callback_pid, {:mcp_initialized, self()})
     end
 
-    {:ok, %{server_info: server_info, capabilities: capabilities}}
+    {{:ok, %{server_info: server_info, capabilities: capabilities}}, new_state}
   end
 
   defp process_result(:list_tools, %{"tools" => tools}, state) do
-    _new_state = %{state | tools: tools}
-    {:ok, tools}
+    new_state = %{state | tools: tools}
+    {{:ok, tools}, new_state}
   end
 
-  defp process_result(:call_tool, result, _state) do
+  defp process_result(:call_tool, result, state) do
     # Tool call results can have various formats
-    case result do
-      %{"content" => content} -> {:ok, content}
-      %{"text" => text} -> {:ok, text}
-      _ -> {:ok, result}
-    end
+    res =
+      case result do
+        %{"content" => content} -> {:ok, content}
+        %{"text" => text} -> {:ok, text}
+        _ -> {:ok, result}
+      end
+
+    {res, state}
   end
 
   defp process_result(:list_resources, %{"resources" => resources}, state) do
-    _new_state = %{state | resources: resources}
-    {:ok, resources}
+    new_state = %{state | resources: resources}
+    {{:ok, resources}, new_state}
   end
 
-  defp process_result(:read_resource, %{"contents" => contents}, _state) do
-    {:ok, contents}
+  defp process_result(:read_resource, %{"contents" => contents}, state) do
+    {{:ok, contents}, state}
   end
 
   defp process_result(:list_prompts, %{"prompts" => prompts}, state) do
-    _new_state = %{state | prompts: prompts}
-    {:ok, prompts}
+    new_state = %{state | prompts: prompts}
+    {{:ok, prompts}, new_state}
   end
 
-  defp process_result(:get_prompt, %{"messages" => messages}, _state) do
-    {:ok, messages}
+  defp process_result(:get_prompt, %{"messages" => messages}, state) do
+    {{:ok, messages}, state}
   end
 
-  defp process_result(_, result, _state) do
-    {:ok, result}
+  defp process_result(_, result, state) do
+    {{:ok, result}, state}
   end
 end

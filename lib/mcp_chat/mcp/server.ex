@@ -326,8 +326,7 @@ defmodule MCPChat.MCP.Server do
         # Start the server process
         case start_server_command(state.command, state.env) do
           {:ok, port} ->
-            # Monitor the port
-            Process.monitor(port)
+            # Ports don't need explicit monitoring - they send exit_status messages
 
             # Connect the port to the client
             StdioClient.set_port(client_pid, port)
@@ -423,8 +422,9 @@ defmodule MCPChat.MCP.Server do
         port_opts = [
           :binary,
           :exit_status,
-          # Important for stdio communication
-          :use_stdio,
+          :stream,
+          # Capture stderr as well
+          :stderr_to_stdout,
           {:env, env_list},
           {:args, args}
         ]
