@@ -11,6 +11,9 @@ defmodule MCPChat.CLI.Commands do
     "clear" => "Clear the screen",
     "history" => "Show conversation history",
     "new" => "Start a new conversation",
+    "save" => "Save current session (usage: /save [name])",
+    "load" => "Load a saved session (usage: /load <name|id>)",
+    "sessions" => "List saved sessions",
     "config" => "Show current configuration",
     "servers" => "List connected MCP servers",
     "tools" => "List available MCP tools",
@@ -21,7 +24,7 @@ defmodule MCPChat.CLI.Commands do
     "prompt" => "Get an MCP prompt (usage: /prompt <server> <name>)",
     "backend" => "Switch LLM backend (usage: /backend <name>)",
     "model" => "Switch model (usage: /model <name>)",
-    "export" => "Export conversation (usage: /export [format])"
+    "export" => "Export conversation (usage: /export [format] [path])"
   }
   
   def handle_command(command) do
@@ -33,6 +36,9 @@ defmodule MCPChat.CLI.Commands do
       "clear" -> clear_screen()
       "history" -> show_history()
       "new" -> new_conversation()
+      "save" -> save_session(args)
+      "load" -> load_session(args)
+      "sessions" -> list_sessions()
       "config" -> show_config()
       "servers" -> list_servers()
       "tools" -> list_tools()
@@ -206,59 +212,25 @@ defmodule MCPChat.CLI.Commands do
   end
   
   defp export_conversation_with_format(format) do
-    messages = Session.get_messages()
-    session = Session.get_current_session()
-    
     timestamp = DateTime.utc_now() |> DateTime.to_iso8601(:basic)
     filename = "chat_export_#{timestamp}.#{format}"
     
-    content = case format do
-      "markdown" -> format_as_markdown(messages, session)
-      "json" -> format_as_json(messages, session)
+    format_atom = case format do
+      "markdown" -> :markdown
+      "json" -> :json
       _ -> 
         Renderer.show_error("Unknown format. Available: markdown, json")
         nil
     end
     
-    if content do
-      case File.write(filename, content) do
-        :ok -> Renderer.show_info("Exported to #{filename}")
+    if format_atom do
+      case Session.export_session(format_atom, filename) do
+        {:ok, path} -> Renderer.show_info("Exported to #{path}")
         {:error, reason} -> Renderer.show_error("Export failed: #{inspect(reason)}")
       end
     end
   end
   
-  defp format_as_markdown(messages, session) do
-    header = """
-    # Chat Export
-    
-    **Session ID**: #{session.id}
-    **Created**: #{session.created_at}
-    **Backend**: #{session.llm_backend}
-    
-    ---
-    
-    """
-    
-    body = messages
-    |> Enum.map(fn msg ->
-      "### #{String.capitalize(msg.role)}\n\n#{msg.content}\n"
-    end)
-    |> Enum.join("\n")
-    
-    header <> body
-  end
-  
-  defp format_as_json(messages, session) do
-    data = %{
-      session_id: session.id,
-      created_at: session.created_at,
-      backend: session.llm_backend,
-      messages: messages
-    }
-    
-    Jason.encode!(data, pretty: true)
-  end
   
   defp get_current_model do
     session = Session.get_current_session()
@@ -383,5 +355,78 @@ defmodule MCPChat.CLI.Commands do
     end
   end
   defp get_prompt(_), do: Renderer.show_error("Usage: /prompt <server> <name> [arguments]")
+  
+  defp save_session([]) do
+    save_session_with_name(nil)
+  end
+  defp save_session([name]) do
+    save_session_with_name(name)
+  end
+  
+  defp save_session_with_name(name) do
+    case Session.save_session(name) do
+      {:ok, path} ->
+        Renderer.show_info("Session saved to: #{path}")
+      {:error, reason} ->
+        Renderer.show_error("Failed to save session: #{inspect(reason)}")
+    end
+  end
+  
+  defp load_session([identifier]) do
+    case Session.load_session(identifier) do
+      {:ok, session} ->
+        Renderer.show_info("Loaded session: #{session.id}")
+        Renderer.show_info("Created: #{format_datetime(session.created_at)}")
+        Renderer.show_info("Messages: #{length(session.messages)}")
+      {:error, :not_found} ->
+        Renderer.show_error("Session not found: #{identifier}")
+      {:error, reason} ->
+        Renderer.show_error("Failed to load session: #{inspect(reason)}")
+    end
+  end
+  defp load_session(_) do
+    Renderer.show_error("Usage: /load <name|id>")
+  end
+  
+  defp list_sessions do
+    case Session.list_saved_sessions() do
+      {:ok, sessions} ->
+        if Enum.empty?(sessions) do
+          Renderer.show_info("No saved sessions found")
+        else
+          rows = Enum.map(sessions, fn session ->
+            %{
+              "Name/ID" => String.slice(session.filename || session.id, 0, 30),
+              "Backend" => session.llm_backend,
+              "Messages" => to_string(session.message_count),
+              "Updated" => format_relative_time(session.updated_at)
+            }
+          end)
+          
+          Renderer.show_table(["Name/ID", "Backend", "Messages", "Updated"], rows)
+        end
+      {:error, reason} ->
+        Renderer.show_error("Failed to list sessions: #{inspect(reason)}")
+    end
+  end
+  
+  defp format_datetime(datetime) do
+    datetime
+    |> DateTime.to_naive()
+    |> NaiveDateTime.to_string()
+  end
+  
+  defp format_relative_time(datetime) do
+    now = DateTime.utc_now()
+    diff = DateTime.diff(now, datetime, :second)
+    
+    cond do
+      diff < 60 -> "just now"
+      diff < 3600 -> "#{div(diff, 60)} min ago"
+      diff < 86400 -> "#{div(diff, 3600)} hours ago"
+      diff < 604800 -> "#{div(diff, 86400)} days ago"
+      true -> DateTime.to_date(datetime) |> Date.to_string()
+    end
+  end
   
 end

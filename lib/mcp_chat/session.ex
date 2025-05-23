@@ -43,6 +43,29 @@ defmodule MCPChat.Session do
     GenServer.cast(__MODULE__, {:set_context, context})
   end
 
+  def save_session(name \\ nil) do
+    GenServer.call(__MODULE__, {:save_session, name})
+  end
+
+  def load_session(identifier) do
+    GenServer.call(__MODULE__, {:load_session, identifier})
+  end
+
+  def list_saved_sessions do
+    GenServer.call(__MODULE__, :list_saved_sessions)
+  end
+  
+  @doc """
+  Export the current session in the specified format.
+  """
+  def export_session(format \\ :json, path \\ nil) do
+    GenServer.call(__MODULE__, {:export_session, format, path})
+  end
+
+  def restore_session(session) do
+    GenServer.call(__MODULE__, {:restore_session, session})
+  end
+
   # Server Callbacks
 
   @impl true
@@ -90,9 +113,55 @@ defmodule MCPChat.Session do
     {:reply, messages, state}
   end
 
-  @impl true
   def handle_call(:get_current_session, _from, state) do
     {:reply, state.current_session, state}
+  end
+
+  def handle_call({:save_session, name}, _from, state) do
+    result = MCPChat.Persistence.save_session(state.current_session, name)
+    {:reply, result, state}
+  end
+
+  def handle_call({:load_session, identifier}, _from, state) do
+    case MCPChat.Persistence.load_session(identifier) do
+      {:ok, session} ->
+        # Save current session to history
+        new_state = %{state | 
+          current_session: session,
+          sessions: [state.current_session | state.sessions]
+        }
+        {:reply, {:ok, session}, new_state}
+      
+      error ->
+        {:reply, error, state}
+    end
+  end
+
+  def handle_call(:list_saved_sessions, _from, state) do
+    result = MCPChat.Persistence.list_sessions()
+    {:reply, result, state}
+  end
+
+  def handle_call({:restore_session, session}, _from, state) do
+    # Save current session to history
+    new_state = %{state | 
+      current_session: session,
+      sessions: [state.current_session | state.sessions]
+    }
+    {:reply, :ok, new_state}
+  end
+  
+  def handle_call({:export_session, format, path}, _from, state) do
+    result = if path do
+      MCPChat.Persistence.export_session(state.current_session, format, path)
+    else
+      # Generate a default path
+      timestamp = DateTime.utc_now() |> DateTime.to_iso8601(:basic)
+      ext = if format == :json, do: "json", else: "md"
+      default_path = "chat_export_#{timestamp}.#{ext}"
+      MCPChat.Persistence.export_session(state.current_session, format, default_path)
+    end
+    {:reply, result, state}
   end
 
   @impl true
@@ -107,7 +176,6 @@ defmodule MCPChat.Session do
     {:noreply, new_state}
   end
 
-  @impl true
   def handle_cast({:set_context, context}, state) do
     updated_session = %{state.current_session | 
       context: context,

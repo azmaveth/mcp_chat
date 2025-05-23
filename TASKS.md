@@ -77,7 +77,7 @@ mcp_chat/
 - [ ] Optimize for CPU/GPU inference with EXLA
 
 ### Phase 6: Advanced Features
-- [ ] Add conversation persistence
+- [x] Add conversation persistence (save/load sessions with metadata)
 - [ ] Implement multi-turn context handling
 - [ ] Add MCP server auto-discovery
 - [ ] Create plugin system for custom tools
@@ -136,6 +136,8 @@ history_size = 1000
 - ✅ Implemented OpenAI adapter with GPT-4 and GPT-3.5 support
 - ✅ Completed MCP tool discovery and execution with synchronous request/response
 - ✅ Added CLI commands for tool execution, resource reading, and prompt retrieval
+- ✅ Implemented conversation persistence with save/load functionality
+- ✅ Added session management with metadata (timestamps, message count, file size)
 
 ## Development Notes
 

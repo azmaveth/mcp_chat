@@ -112,6 +112,9 @@ See `config/example.toml` for a complete configuration example.
 - `/prompt <server> <name> [args]` - Get an MCP prompt
 - `/backend <name>` - Switch LLM backend
 - `/model <name>` - Switch model
+- `/save [name]` - Save the current session
+- `/load <name or index>` - Load a saved session
+- `/sessions` - List all saved sessions
 - `/export [format]` - Export conversation (markdown/json)
 - `/exit` or `/quit` - Exit the application
 
