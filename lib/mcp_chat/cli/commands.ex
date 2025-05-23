@@ -5,7 +5,6 @@ defmodule MCPChat.CLI.Commands do
   
   alias MCPChat.{Session, Config}
   alias MCPChat.CLI.Renderer
-  alias MCPChat.MCP
   
   @commands %{
     "help" => "Show available commands",
@@ -90,7 +89,7 @@ defmodule MCPChat.CLI.Commands do
     config = %{
       "LLM Backend" => Session.get_current_session().llm_backend,
       "Model" => get_current_model(),
-      "MCP Servers" => length(list_mcp_servers()),
+      "MCP Servers" => length(MCPChat.MCP.ServerManager.list_servers()),
       "Streaming" => Config.get([:ui, :streaming]) != false
     }
     
@@ -99,7 +98,7 @@ defmodule MCPChat.CLI.Commands do
   end
   
   defp list_servers do
-    servers = list_mcp_servers()
+    servers = MCPChat.MCP.ServerManager.list_servers()
     
     if Enum.empty?(servers) do
       Renderer.show_info("No MCP servers connected")
@@ -107,28 +106,67 @@ defmodule MCPChat.CLI.Commands do
       rows = Enum.map(servers, fn server ->
         %{
           "Name" => server.name,
-          "Status" => server.status,
-          "URL" => server.url || "local"
+          "Status" => to_string(server.status),
+          "Port" => to_string(server.port || "stdio")
         }
       end)
       
-      Renderer.show_table(["Name", "Status", "URL"], rows)
+      Renderer.show_table(["Name", "Status", "Port"], rows)
     end
   end
   
   defp list_tools do
-    # TODO: Aggregate tools from all connected MCP servers
-    Renderer.show_info("MCP tools listing not yet implemented")
+    tools = MCPChat.MCP.ServerManager.list_all_tools()
+    
+    if Enum.empty?(tools) do
+      Renderer.show_info("No MCP tools available")
+    else
+      rows = Enum.map(tools, fn tool ->
+        %{
+          "Server" => Map.get(tool, :server, "unknown"),
+          "Tool" => Map.get(tool, "name", "unnamed"),
+          "Description" => Map.get(tool, "description", "")
+        }
+      end)
+      
+      Renderer.show_table(["Server", "Tool", "Description"], rows)
+    end
   end
   
   defp list_resources do
-    # TODO: Aggregate resources from all connected MCP servers
-    Renderer.show_info("MCP resources listing not yet implemented")
+    resources = MCPChat.MCP.ServerManager.list_all_resources()
+    
+    if Enum.empty?(resources) do
+      Renderer.show_info("No MCP resources available")
+    else
+      rows = Enum.map(resources, fn resource ->
+        %{
+          "Server" => Map.get(resource, :server, "unknown"),
+          "URI" => Map.get(resource, "uri", ""),
+          "Name" => Map.get(resource, "name", "unnamed")
+        }
+      end)
+      
+      Renderer.show_table(["Server", "URI", "Name"], rows)
+    end
   end
   
   defp list_prompts do
-    # TODO: Aggregate prompts from all connected MCP servers
-    Renderer.show_info("MCP prompts listing not yet implemented")
+    prompts = MCPChat.MCP.ServerManager.list_all_prompts()
+    
+    if Enum.empty?(prompts) do
+      Renderer.show_info("No MCP prompts available")
+    else
+      rows = Enum.map(prompts, fn prompt ->
+        %{
+          "Server" => Map.get(prompt, :server, "unknown"),
+          "Name" => Map.get(prompt, "name", "unnamed"),
+          "Description" => Map.get(prompt, "description", "")
+        }
+      end)
+      
+      Renderer.show_table(["Server", "Name", "Description"], rows)
+    end
   end
   
   defp switch_backend([backend]) do
@@ -228,8 +266,4 @@ defmodule MCPChat.CLI.Commands do
     end
   end
   
-  defp list_mcp_servers do
-    # TODO: Get actual MCP server list from supervisor
-    []
-  end
 end

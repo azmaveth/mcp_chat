@@ -11,8 +11,8 @@ defmodule MCPChat.Application do
       MCPChat.Config,
       # Session manager
       MCPChat.Session,
-      # MCP server connection supervisor
-      {DynamicSupervisor, name: MCPChat.MCP.ServerSupervisor, strategy: :one_for_one}
+      # MCP server manager (handles the dynamic supervisor internally)
+      MCPChat.MCP.ServerManager
     ]
 
     opts = [strategy: :one_for_one, name: MCPChat.Supervisor]

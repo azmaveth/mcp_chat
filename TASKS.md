@@ -48,10 +48,11 @@ mcp_chat/
 ### Phase 2: MCP Protocol Implementation
 - [x] Implement MCP client WebSocket connection
 - [x] Create protocol message encoding/decoding
-- [ ] Build server connection manager
-- [ ] Add tool discovery and execution
-- [ ] Implement resource handling
-- [ ] Add prompt management
+- [x] Build server connection manager
+- [ ] Add tool discovery and execution (partial - UI complete)
+- [ ] Implement resource handling (partial - UI complete)
+- [ ] Add prompt management (partial - UI complete)
+- [ ] Implement stdio transport for MCP servers
 
 ### Phase 3: LLM Backend Integration
 - [x] Define LLM adapter behaviour
