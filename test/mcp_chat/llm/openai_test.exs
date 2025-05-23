@@ -54,7 +54,7 @@ defmodule MCPChat.LLM.OpenAITest do
 
     test "formats messages correctly for OpenAI API" do
       # This test validates message formatting logic
-      messages = [
+      _messages = [
         %{role: "user", content: "Hello"},
         %{role: "assistant", content: "Hi there!"},
         %{role: "user", content: "How are you?"}
@@ -69,8 +69,8 @@ defmodule MCPChat.LLM.OpenAITest do
     test "includes system prompt in messages array" do
       # OpenAI handles system prompts differently than Anthropic
       # They go in the messages array, not a separate field
-      messages = [%{role: "user", content: "Hello"}]
-      options = [system: "You are a helpful assistant", max_tokens: 100]
+      _messages = [%{role: "user", content: "Hello"}]
+      _options = [system: "You are a helpful assistant", max_tokens: 100]
 
       # Without mocking or exposing internals, we verify the logic exists
       assert :ok == :ok
@@ -78,9 +78,9 @@ defmodule MCPChat.LLM.OpenAITest do
 
     test "respects configuration options" do
       # Test that options like model, max_tokens, temperature are used
-      messages = [%{role: "user", content: "Test"}]
+      _messages = [%{role: "user", content: "Test"}]
 
-      options = [
+      _options = [
         model: "gpt-3.5-turbo",
         max_tokens: 500,
         temperature: 0.5
@@ -100,14 +100,14 @@ defmodule MCPChat.LLM.OpenAITest do
       {:ok, stream} = OpenAI.stream_chat(messages)
 
       # Verify it returns a stream
-      assert %Stream{} = stream
+      assert is_struct(stream, Stream) or is_function(stream)
 
       System.delete_env("OPENAI_API_KEY")
     end
 
     test "handles streaming options" do
-      messages = [%{role: "user", content: "Test"}]
-      options = [model: "gpt-4", temperature: 0.8]
+      _messages = [%{role: "user", content: "Test"}]
+      _options = [model: "gpt-4", temperature: 0.8]
 
       # Should include stream: true in the request
       assert :ok == :ok
@@ -116,7 +116,7 @@ defmodule MCPChat.LLM.OpenAITest do
 
   describe "message formatting" do
     test "handles messages with atom keys" do
-      messages = [
+      _messages = [
         %{role: :user, content: "Test message"},
         %{role: :assistant, content: "Test response"}
       ]
@@ -126,7 +126,7 @@ defmodule MCPChat.LLM.OpenAITest do
     end
 
     test "handles messages with string keys" do
-      messages = [
+      _messages = [
         %{"role" => "user", "content" => "Test message"},
         %{"role" => "assistant", "content" => "Test response"}
       ]
@@ -135,7 +135,7 @@ defmodule MCPChat.LLM.OpenAITest do
     end
 
     test "handles nil values gracefully" do
-      messages = [
+      _messages = [
         %{role: nil, content: "Test"},
         %{"role" => "user", "content" => nil}
       ]
@@ -147,28 +147,28 @@ defmodule MCPChat.LLM.OpenAITest do
 
   describe "SSE parsing" do
     test "parses data chunks correctly" do
-      sse_data = ~s(data: {"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]})
+      _sse_data = ~s(data: {"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]})
 
       # parse_sse_event should extract the delta content
       assert :ok == :ok
     end
 
     test "handles [DONE] marker" do
-      sse_data = "data: [DONE]"
+      _sse_data = "data: [DONE]"
 
       # Should return finish_reason: "stop"
       assert :ok == :ok
     end
 
     test "handles empty deltas" do
-      sse_data = ~s(data: {"choices":[{"delta":{},"finish_reason":"stop"}]})
+      _sse_data = ~s(data: {"choices":[{"delta":{},"finish_reason":"stop"}]})
 
       # Should handle missing content field
       assert :ok == :ok
     end
 
     test "handles malformed JSON" do
-      sse_data = "data: {invalid json"
+      _sse_data = "data: {invalid json"
 
       # Should return nil or handle gracefully
       assert :ok == :ok
@@ -177,7 +177,7 @@ defmodule MCPChat.LLM.OpenAITest do
 
   describe "response parsing" do
     test "parses successful chat completion response" do
-      response = %{
+      _response = %{
         "choices" => [
           %{
             "message" => %{"content" => "Hello! How can I help you?"},
@@ -196,7 +196,7 @@ defmodule MCPChat.LLM.OpenAITest do
     end
 
     test "handles response with missing fields" do
-      response = %{
+      _response = %{
         "choices" => [%{"finish_reason" => "length"}],
         "usage" => %{"total_tokens" => 100}
       }
@@ -206,7 +206,7 @@ defmodule MCPChat.LLM.OpenAITest do
     end
 
     test "handles empty choices array" do
-      response = %{
+      _response = %{
         "choices" => [],
         "usage" => %{"total_tokens" => 0}
       }

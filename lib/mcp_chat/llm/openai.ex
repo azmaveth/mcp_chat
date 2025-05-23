@@ -10,9 +10,9 @@ defmodule MCPChat.LLM.OpenAI do
   @impl true
   def chat(messages, options \\ []) do
     config = get_config()
-    model = Keyword.get(options, :model, config.model || @default_model)
-    max_tokens = Keyword.get(options, :max_tokens, config.max_tokens || 4_096)
-    temperature = Keyword.get(options, :temperature, config.temperature || 0.7)
+    model = Keyword.get(options, :model, Map.get(config, :model, @default_model))
+    max_tokens = Keyword.get(options, :max_tokens, Map.get(config, :max_tokens, 4_096))
+    temperature = Keyword.get(options, :temperature, Map.get(config, :temperature, 0.7))
 
     body =
       %{
@@ -43,9 +43,9 @@ defmodule MCPChat.LLM.OpenAI do
   @impl true
   def stream_chat(messages, options \\ []) do
     config = get_config()
-    model = Keyword.get(options, :model, config.model || @default_model)
-    max_tokens = Keyword.get(options, :max_tokens, config.max_tokens || 4_096)
-    temperature = Keyword.get(options, :temperature, config.temperature || 0.7)
+    model = Keyword.get(options, :model, Map.get(config, :model, @default_model))
+    max_tokens = Keyword.get(options, :max_tokens, Map.get(config, :max_tokens, 4_096))
+    temperature = Keyword.get(options, :temperature, Map.get(config, :temperature, 0.7))
 
     body =
       %{
@@ -112,7 +112,7 @@ defmodule MCPChat.LLM.OpenAI do
   @impl true
   def default_model() do
     config = get_config()
-    config.model || @default_model
+    Map.get(config, :model, @default_model)
   end
 
   @impl true

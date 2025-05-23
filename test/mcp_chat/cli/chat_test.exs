@@ -84,8 +84,10 @@ defmodule MCPChat.CLI.ChatTest do
     end
 
     test "processes regular messages" do
-      # Since we can't easily mock private functions, we'll test with a real adapter
-      # but ensure it's not configured to avoid API calls
+      # Ensure no API key is set to avoid actual API calls
+      System.delete_env("ANTHROPIC_API_KEY")
+      System.delete_env("OPENAI_API_KEY")
+      
       output =
         capture_io([input: "Hello\n/exit\n", capture_prompt: false], fn ->
           assert Chat.start() == :ok

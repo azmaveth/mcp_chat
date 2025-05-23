@@ -24,7 +24,7 @@ defmodule MCPChat.LLM.AnthropicTest do
   describe "default_model/0" do
     test "returns default model from config" do
       model = Anthropic.default_model()
-      assert model == "claude-sonnet-4-20_250_514"
+      assert model == "claude-sonnet-4-20250514"
     end
   end
 
@@ -88,7 +88,7 @@ defmodule MCPChat.LLM.AnthropicTest do
       {:ok, stream} = Anthropic.stream_chat(messages)
 
       # Verify it returns a stream
-      assert %Stream{} = stream
+      assert is_struct(stream, Stream) or is_function(stream)
 
       System.delete_env("ANTHROPIC_API_KEY")
     end

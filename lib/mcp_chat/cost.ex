@@ -8,13 +8,13 @@ defmodule MCPChat.Cost do
   # Pricing per 1M tokens (as of January 2_025)
   @pricing %{
     "anthropic" => %{
-      "claude-3-5-sonnet-20_241_022" => %{input: 3.00, output: 15.00},
-      "claude-3-5-haiku-20_241_022" => %{input: 1.00, output: 5.00},
-      "claude-3-opus-20_240_229" => %{input: 15.00, output: 75.00},
-      "claude-3-sonnet-20_240_229" => %{input: 3.00, output: 15.00},
-      "claude-3-haiku-20_240_307" => %{input: 0.25, output: 1.25},
+      "claude-3-5-sonnet-20241022" => %{input: 3.00, output: 15.00},
+      "claude-3-5-haiku-20241022" => %{input: 1.00, output: 5.00},
+      "claude-3-opus-20240229" => %{input: 15.00, output: 75.00},
+      "claude-3-sonnet-20240229" => %{input: 3.00, output: 15.00},
+      "claude-3-haiku-20240307" => %{input: 0.25, output: 1.25},
       # Claude 4 models
-      "claude-sonnet-4-20_250_514" => %{input: 3.00, output: 15.00},
+      "claude-sonnet-4-20250514" => %{input: 3.00, output: 15.00},
       "claude-4" => %{input: 3.00, output: 15.00}
     },
     "openai" => %{

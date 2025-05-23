@@ -6,7 +6,7 @@ defmodule MCPChat.CostTest do
     test "calculates cost for Anthropic Claude model" do
       session = %Session{
         llm_backend: "anthropic",
-        context: %{model: "claude-3-haiku-20_240_307"}
+        context: %{model: "claude-3-haiku-20240307"}
       }
 
       token_usage = %{input_tokens: 1_000, output_tokens: 500}
@@ -14,7 +14,7 @@ defmodule MCPChat.CostTest do
       cost_info = Cost.calculate_session_cost(session, token_usage)
 
       assert cost_info.backend == "anthropic"
-      assert cost_info.model == "claude-3-haiku-20_240_307"
+      assert cost_info.model == "claude-3-haiku-20240307"
       assert cost_info.input_tokens == 1_000
       assert cost_info.output_tokens == 500
       assert cost_info.total_tokens == 1_500
@@ -85,9 +85,9 @@ defmodule MCPChat.CostTest do
     end
 
     test "formats small costs with 4 decimals" do
-      assert Cost.format_cost(0.01) == "$0.0_100"
-      assert Cost.format_cost(0.1_234) == "$0.1_234"
-      assert Cost.format_cost(0.9_999) == "$0.9_999"
+      assert Cost.format_cost(0.01) == "$0.0100"
+      assert Cost.format_cost(0.1234) == "$0.1234"
+      assert Cost.format_cost(0.9999) == "$0.9999"
     end
 
     test "formats larger costs with 2 decimals" do
@@ -99,7 +99,7 @@ defmodule MCPChat.CostTest do
 
   describe "get_pricing/2" do
     test "returns pricing for known models" do
-      pricing = Cost.get_pricing("anthropic", "claude-3-haiku-20_240_307")
+      pricing = Cost.get_pricing("anthropic", "claude-3-haiku-20240307")
       assert pricing.input == 0.25
       assert pricing.output == 1.25
     end

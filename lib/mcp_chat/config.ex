@@ -118,7 +118,7 @@ defmodule MCPChat.Config do
         default: "anthropic",
         anthropic: %{
           api_key: System.get_env("ANTHROPIC_API_KEY", ""),
-          model: "claude-sonnet-4-20_250_514",
+          model: "claude-sonnet-4-20250514",
           max_tokens: 4_096
         },
         openai: %{
