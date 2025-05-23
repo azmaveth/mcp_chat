@@ -42,7 +42,8 @@ defmodule McpChat.MixProject do
 
       # Development dependencies
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:meck, "~> 0.9", only: :test}
     ]
   end
 end
