@@ -32,14 +32,19 @@ defmodule MCPChat.CLI.Commands do
     "system" => "Set system prompt (usage: /system <prompt>)",
     "tokens" => "Set max tokens (usage: /tokens <number>)",
     "strategy" => "Set context strategy (usage: /strategy <sliding_window|smart>)",
-    "cost" => "Show session cost"
+    "cost" => "Show session cost",
+    "alias" => "Manage command aliases (usage: /alias [add|remove|list] ...)"
   }
   
   def handle_command(command) do
     [cmd | args] = String.split(command, " ", parts: 2)
     args = List.wrap(args)
     
-    case cmd do
+    # Check if it's an alias first
+    if MCPChat.Alias.is_alias?(cmd) do
+      handle_alias(cmd, args)
+    else
+      case cmd do
       "help" -> show_help()
       "clear" -> clear_screen()
       "history" -> show_history()
@@ -66,7 +71,11 @@ defmodule MCPChat.CLI.Commands do
       "tokens" -> set_max_tokens(args)
       "strategy" -> set_strategy(args)
       "cost" -> show_session_cost()
+      "alias" -> handle_alias_command(args)
+      "exit" -> :exit
+      "quit" -> :exit
       _ -> Renderer.show_error("Unknown command: /#{cmd}")
+      end
     end
   end
   
@@ -490,6 +499,142 @@ defmodule MCPChat.CLI.Commands do
         Renderer.show_text("  Pricing: $#{cost_info.pricing.input}/1M input, $#{cost_info.pricing.output}/1M output")
       end
     end
+  end
+  
+  defp handle_alias_command([]) do
+    # Default to list if no subcommand
+    handle_alias_command(["list"])
+  end
+  
+  defp handle_alias_command([subcommand | rest]) do
+    case subcommand do
+      "add" -> add_alias(rest)
+      "remove" -> remove_alias(rest)
+      "list" -> list_aliases()
+      _ -> Renderer.show_error("Unknown alias subcommand. Use: add, remove, or list")
+    end
+  end
+  
+  defp add_alias([definition]) do
+    # Parse alias definition: name=command1;command2;command3
+    case String.split(definition, "=", parts: 2) do
+      [name, commands_str] ->
+        commands = commands_str
+        |> String.split(";")
+        |> Enum.map(&String.trim/1)
+        |> Enum.reject(&(&1 == ""))
+        
+        case MCPChat.Alias.define_alias(name, commands) do
+          :ok ->
+            Renderer.show_info("Alias '#{name}' created with #{length(commands)} command(s)")
+          {:error, reason} ->
+            Renderer.show_error("Failed to create alias: #{reason}")
+        end
+      
+      _ ->
+        Renderer.show_error("Invalid alias format. Use: /alias add name=command1;command2")
+    end
+  end
+  defp add_alias(_) do
+    Renderer.show_error("Usage: /alias add name=command1;command2;...")
+  end
+  
+  defp remove_alias([name]) do
+    case MCPChat.Alias.remove_alias(name) do
+      :ok ->
+        Renderer.show_info("Alias '#{name}' removed")
+      {:error, reason} ->
+        Renderer.show_error("Failed to remove alias: #{reason}")
+    end
+  end
+  defp remove_alias(_) do
+    Renderer.show_error("Usage: /alias remove <name>")
+  end
+  
+  defp list_aliases do
+    aliases = MCPChat.Alias.list_aliases()
+    
+    if aliases == [] do
+      Renderer.show_info("No aliases defined")
+      Renderer.show_text("")
+      Renderer.show_text("Create an alias with: /alias add name=command1;command2")
+    else
+      Renderer.show_info("Defined aliases:")
+      
+      aliases
+      |> Enum.each(fn %{name: name, commands: commands} ->
+        Renderer.show_text("")
+        Renderer.show_text("  /#{name}")
+        commands
+        |> Enum.each(fn cmd ->
+          Renderer.show_text("    → #{cmd}")
+        end)
+      end)
+      
+      Renderer.show_text("")
+      Renderer.show_text("Total: #{length(aliases)} alias(es)")
+    end
+  end
+  
+  defp handle_alias(alias_name, args) do
+    case MCPChat.Alias.expand_alias(alias_name) do
+      {:ok, commands} ->
+        # Execute each command in sequence
+        Renderer.show_info("Executing alias '#{alias_name}'...")
+        
+        results = commands
+        |> Enum.map(fn cmd ->
+          # Substitute arguments if command contains $1, $2, etc.
+          expanded_cmd = expand_alias_arguments(cmd, args)
+          
+          # Show the command being executed
+          Renderer.show_text("  → #{expanded_cmd}")
+          
+          # Execute the command
+          if String.starts_with?(expanded_cmd, "/") do
+            # Remove leading slash and execute
+            handle_command(String.slice(expanded_cmd, 1..-1//1))
+          else
+            # It's a regular message
+            {:message, expanded_cmd}
+          end
+        end)
+        
+        # Return any messages that should be sent to the LLM
+        messages = results
+        |> Enum.filter(fn
+          {:message, _} -> true
+          _ -> false
+        end)
+        |> Enum.map(fn {:message, text} -> text end)
+        
+        case messages do
+          [] -> :ok
+          [msg] -> {:message, msg}
+          msgs -> {:message, Enum.join(msgs, "\n")}
+        end
+      
+      {:error, reason} ->
+        Renderer.show_error(reason)
+    end
+  end
+  
+  defp expand_alias_arguments(command, args) do
+    # Replace $1, $2, etc. with actual arguments
+    # Also support $* for all arguments
+    arg_list = case args do
+      [] -> []
+      [arg_string] -> String.split(arg_string, " ")
+    end
+    
+    command
+    |> String.replace("$*", Enum.join(arg_list, " "))
+    |> then(fn cmd ->
+      Enum.with_index(arg_list, 1)
+      |> Enum.reduce(cmd, fn {arg, index}, acc ->
+        String.replace(acc, "$#{index}", arg)
+      end)
+    end)
   end
   
   defp get_current_model do

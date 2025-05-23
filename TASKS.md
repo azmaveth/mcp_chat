@@ -145,6 +145,8 @@ history_size = 1000
 - ✅ Implemented MCP server auto-discovery with multiple discovery methods
 - ✅ Added /discover, /connect, /disconnect commands for dynamic server management
 - ✅ Created quick setup configurations for popular MCP servers
+- ✅ Implemented custom command aliases with parameter substitution
+- ✅ Added /alias command for creating shortcuts and command sequences
 
 ## Development Notes
 

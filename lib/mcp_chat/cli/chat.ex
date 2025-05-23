@@ -47,8 +47,17 @@ defmodule MCPChat.CLI.Chat do
   defp process_input("/q"), do: :exit
   
   defp process_input("/" <> command) do
-    Commands.handle_command(command)
-    :continue
+    case Commands.handle_command(command) do
+      {:message, text} ->
+        # Alias returned a message to send
+        process_input(text)
+      
+      :exit ->
+        :exit
+      
+      _ ->
+        :continue
+    end
   end
   
   defp process_input(message) do

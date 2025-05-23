@@ -124,6 +124,7 @@ See `config/example.toml` for a complete configuration example.
 - `/tokens <number>` - Set max context tokens
 - `/strategy <type>` - Set context strategy (sliding_window/smart)
 - `/cost` - Show session cost based on token usage
+- `/alias` - Manage custom command shortcuts
 - `/exit` or `/quit` - Exit the application
 
 ## Context Management
@@ -216,6 +217,53 @@ MCP Chat can automatically discover available MCP servers:
 - `memory` - Persistent memory storage
 - `puppeteer` - Browser automation
 - And more...
+
+## Command Aliases
+
+Create custom shortcuts for frequently used command sequences:
+
+### Creating Aliases
+
+```bash
+# Simple alias for multiple commands
+/alias add status=/context;/cost
+
+# Alias with parameters ($1, $2, etc.)
+/alias add check=/tool $1 $2;/resource $1 $3
+
+# Complex setup alias
+/alias add setup=/system You are a helpful assistant;/tokens 8192;/strategy smart
+
+# Alias that includes a message
+/alias add greet=/clear;Hello! How can I help you today?
+```
+
+### Using Aliases
+
+```bash
+# Execute an alias
+/status
+
+# Pass arguments to parameterized aliases
+/check filesystem read_file /etc/hosts
+
+# Use $* for all arguments
+/alias add say=I want to say: $*
+/say hello world
+```
+
+### Managing Aliases
+
+```bash
+# List all aliases
+/alias list
+/alias
+
+# Remove an alias
+/alias remove status
+```
+
+Aliases are saved to `~/.config/mcp_chat/aliases.json` and persist between sessions.
 
 ## MCP Server Mode
 

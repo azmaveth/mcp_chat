@@ -11,6 +11,8 @@ defmodule MCPChat.Application do
       MCPChat.Config,
       # Session manager
       MCPChat.Session,
+      # Alias manager
+      MCPChat.Alias,
       # MCP server manager (handles the dynamic supervisor internally)
       MCPChat.MCP.ServerManager
     ] ++ mcp_server_children()
