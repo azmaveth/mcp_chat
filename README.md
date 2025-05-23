@@ -4,7 +4,7 @@ An Elixir-based CLI chat client with support for the Model Context Protocol (MCP
 
 ## Features
 
-- 🤖 Multiple LLM backend support (Anthropic Claude 4, OpenAI, Local models via Bumblebee)
+- 🤖 Multiple LLM backend support (Anthropic Claude 4, OpenAI GPT-4, Local models via Bumblebee)
 - 🔌 MCP client functionality - connect to local (stdio) and remote (SSE) MCP servers
 - 🛠️ MCP server functionality - expose chat as an MCP server (stdio and SSE transports)
 - 💬 Interactive CLI chat interface with rich formatting
@@ -71,18 +71,26 @@ sse_port = 8080
 ### Environment Variables
 
 - `ANTHROPIC_API_KEY` - Your Anthropic API key (takes precedence if config file key is empty)
-- `OPENAI_API_KEY` - Your OpenAI API key (when OpenAI adapter is implemented)
+- `OPENAI_API_KEY` - Your OpenAI API key (takes precedence if config file key is empty)
 
 See `config/example.toml` for a complete configuration example.
 
 ## Usage
 
 ```bash
-# Start the chat client
+# Start the chat client (uses default backend from config)
 ./mcp_chat
 
 # Start with a specific backend
 ./mcp_chat --backend openai
+
+# Switch backends during chat
+/backend openai
+/backend anthropic
+
+# Switch models during chat
+/model gpt-4-turbo-preview
+/model claude-sonnet-4-20250514
 
 # Use a custom config file
 ./mcp_chat --config /path/to/config.toml

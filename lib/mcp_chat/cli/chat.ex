@@ -5,7 +5,7 @@ defmodule MCPChat.CLI.Chat do
   
   alias MCPChat.{Session, Config}
   alias MCPChat.CLI.{Commands, Renderer}
-  alias MCPChat.LLM
+  # alias MCPChat.LLM
   
   def start do
     Renderer.clear_screen()
@@ -82,27 +82,36 @@ defmodule MCPChat.CLI.Chat do
     # Get the appropriate LLM adapter
     adapter = get_llm_adapter(session.llm_backend)
     
+    # Build options from session context
+    options = []
+    options = if session.context[:model], do: [{:model, session.context[:model]} | options], else: options
+    
     # Check if adapter is configured
     if not adapter.configured?() do
-      {:error, "LLM backend not configured. Please set your API key in ~/.config/mcp_chat/config.toml or set the ANTHROPIC_API_KEY environment variable"}
+      backend_name = session.llm_backend
+      env_var = case backend_name do
+        "openai" -> "OPENAI_API_KEY"
+        _ -> "ANTHROPIC_API_KEY"
+      end
+      {:error, "LLM backend '#{backend_name}' not configured. Please set your API key in ~/.config/mcp_chat/config.toml or set the #{env_var} environment variable"}
     else
       # Check if streaming is enabled
       if Config.get([:ui, :streaming]) != false do
-        stream_response(adapter, messages)
+        stream_response(adapter, messages, options)
       else
-        adapter.chat(messages)
+        adapter.chat(messages, options)
       end
     end
   end
   
   defp get_llm_adapter("anthropic"), do: MCPChat.LLM.Anthropic
-  # TODO: Implement these adapters
-  # defp get_llm_adapter("openai"), do: MCPChat.LLM.OpenAI
+  defp get_llm_adapter("openai"), do: MCPChat.LLM.OpenAI
+  # TODO: Implement local adapter
   # defp get_llm_adapter("local"), do: MCPChat.LLM.Local
   defp get_llm_adapter(_), do: MCPChat.LLM.Anthropic
   
-  defp stream_response(adapter, messages) do
-    case adapter.stream_chat(messages) do
+  defp stream_response(adapter, messages, options) do
+    case adapter.stream_chat(messages, options) do
       {:ok, stream} ->
         try do
           response = stream

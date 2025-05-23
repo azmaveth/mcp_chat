@@ -57,7 +57,7 @@ mcp_chat/
 
 ### Phase 3: LLM Backend Integration
 - [x] Define LLM adapter behaviour
-- [ ] Implement OpenAI adapter
+- [x] Implement OpenAI adapter (GPT-4 and GPT-3.5 support)
 - [x] Implement Anthropic adapter (with Claude 4 support)
 - [x] Add streaming response support
 - [x] Create backend configuration system
@@ -133,6 +133,7 @@ history_size = 1000
 - ✅ Added MCP server functionality with both stdio and SSE transports
 - ✅ Created chat tools, resources, and prompts for MCP server mode
 - ✅ Implemented SSE transport for MCP client to connect to remote servers
+- ✅ Implemented OpenAI adapter with GPT-4 and GPT-3.5 support
 
 ## Development Notes
 
