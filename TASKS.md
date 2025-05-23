@@ -100,7 +100,12 @@ mcp_chat/
   - [x] MCP client modules (Protocol, Client, ServerManager tests)
   - [x] MCP server modules (Handler, SSEServer, StdioServer)
   - [x] Application supervisor
-- [x] Add integration tests (basic_integration_test.exs)
+- [x] Add integration tests
+  - [x] Basic integration tests (basic_integration_test.exs)
+  - [x] MCP client integration tests (mcp_client_integration_test.exs)
+  - [x] LLM backend integration tests (llm_backend_integration_test.exs)
+  - [x] CLI chat integration tests (cli_chat_integration_test.exs)
+  - [x] Session persistence integration tests (session_persistence_integration_test.exs)
 - [x] Create user documentation
   - [x] Quick Start Guide
   - [x] Installation Guide (all platforms)

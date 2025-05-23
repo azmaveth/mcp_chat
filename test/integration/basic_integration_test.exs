@@ -1,6 +1,5 @@
 defmodule MCPChat.BasicIntegrationTest do
   use ExUnit.Case, async: false
-  import ExUnit.CaptureIO
 
   @moduledoc """
   Basic integration tests for MCP Chat application.
@@ -153,16 +152,17 @@ defmodule MCPChat.BasicIntegrationTest do
 
   describe "Persistence integration" do
     test "session save and load cycle" do
+      # Clean up any existing test files first
+      test_name = "integration_test_#{System.unique_integer([:positive])}"
+
       # Create a test session with proper structure
-      test_session = %{
+      test_session = %MCPChat.Session{
         id: "test_#{System.unique_integer([:positive])}",
         messages: [
           %{role: :user, content: "Test message", timestamp: DateTime.utc_now()},
           %{role: :assistant, content: "Test response", timestamp: DateTime.utc_now()}
         ],
-        context_strategy: :truncate_old,
         context: %{"system_message" => "Test system"},
-        system_message: "Test system",
         token_usage: %{
           total_input: 10,
           total_output: 20
@@ -173,15 +173,18 @@ defmodule MCPChat.BasicIntegrationTest do
       }
 
       # Save session with a name
-      result = MCPChat.Persistence.save_session(test_session, "integration_test")
+      result = MCPChat.Persistence.save_session(test_session, test_name)
       assert {:ok, path} = result
       assert File.exists?(path)
 
       # Load session by name
-      {:ok, loaded_session} = MCPChat.Persistence.load_session("integration_test")
+      {:ok, loaded_session} = MCPChat.Persistence.load_session(test_name)
       assert length(loaded_session.messages) == 2
-      # The system message is stored in the context
-      assert Map.get(loaded_session.context, "system_message") == "Test system"
+
+      # The context field should exist and contain system_message
+      assert loaded_session.context != nil
+      assert is_map(loaded_session.context)
+      assert loaded_session.context["system_message"] == "Test system"
       assert loaded_session.token_usage["total_input"] == 10
 
       # Clean up
