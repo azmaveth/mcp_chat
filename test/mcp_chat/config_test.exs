@@ -1,23 +1,23 @@
 defmodule MCPChat.ConfigTest do
   use ExUnit.Case
   alias MCPChat.Config
-  
+
   @test_config_path "test/fixtures/test_config.toml"
-  
+
   setup do
     # Create test config directory
     File.mkdir_p!("test/fixtures")
-    
+
     # Clean up any existing test config
     File.rm(@test_config_path)
-    
+
     on_exit(fn ->
       File.rm(@test_config_path)
     end)
-    
+
     :ok
   end
-  
+
   describe "start_link/1" do
     test "starts with custom config path" do
       # Stop existing Config server if running
@@ -25,201 +25,210 @@ defmodule MCPChat.ConfigTest do
         nil -> :ok
         pid -> GenServer.stop(pid)
       end
-      
+
       {:ok, pid} = Config.start_link(config_path: @test_config_path)
       assert Process.alive?(pid)
-      
+
       # Should create default config
       assert File.exists?(@test_config_path)
     end
   end
-  
+
   describe "get/1" do
     test "returns config value by atom key" do
       # Ensure Config is running
       ensure_config_started()
-      
+
       # Get a known default value
       llm_config = Config.get(:llm)
       assert is_map(llm_config)
       assert llm_config.default == "anthropic"
     end
-    
+
     test "returns config value by path" do
       ensure_config_started()
-      
+
       # Get nested value
       model = Config.get([:llm, :anthropic, :model])
-      assert model == "claude-sonnet-4-20250514"
-      
+      assert model == "claude-sonnet-4-20_250_514"
+
       # Get UI theme
       theme = Config.get([:ui, :theme])
       assert theme == "dark"
     end
-    
+
     test "returns nil for non-existent key" do
       ensure_config_started()
-      
+
       assert Config.get(:nonexistent) == nil
       assert Config.get([:foo, :bar, :baz]) == nil
     end
   end
-  
+
   describe "default_config/0" do
     test "includes LLM configuration" do
       ensure_config_started()
-      
+
       llm_config = Config.get(:llm)
-      
+
       # Check structure
       assert Map.has_key?(llm_config, :default)
       assert Map.has_key?(llm_config, :anthropic)
       assert Map.has_key?(llm_config, :openai)
       assert Map.has_key?(llm_config, :local)
-      
+
       # Check Anthropic config
       anthropic = llm_config.anthropic
-      assert anthropic.model == "claude-sonnet-4-20250514"
-      assert anthropic.max_tokens == 4096
-      
+      assert anthropic.model == "claude-sonnet-4-20_250_514"
+      assert anthropic.max_tokens == 4_096
+
       # Check OpenAI config
       openai = llm_config.openai
       assert openai.model == "gpt-4"
     end
-    
+
     test "includes MCP configuration" do
       ensure_config_started()
-      
+
       mcp_config = Config.get(:mcp)
       assert Map.has_key?(mcp_config, :servers)
       assert is_list(mcp_config.servers)
     end
-    
+
     test "includes UI configuration" do
       ensure_config_started()
-      
+
       ui_config = Config.get(:ui)
       assert ui_config.theme == "dark"
-      assert ui_config.history_size == 1000
+      assert ui_config.history_size == 1_000
     end
-    
+
     test "reads API keys from environment" do
       # Set test env vars
       System.put_env("ANTHROPIC_API_KEY", "test-anthropic-key")
       System.put_env("OPENAI_API_KEY", "test-openai-key")
-      
+
       # Restart config to pick up env vars
       restart_config()
-      
+
       anthropic_key = Config.get([:llm, :anthropic, :api_key])
       openai_key = Config.get([:llm, :openai, :api_key])
-      
+
       assert anthropic_key == "test-anthropic-key"
       assert openai_key == "test-openai-key"
-      
+
       # Clean up
       System.delete_env("ANTHROPIC_API_KEY")
       System.delete_env("OPENAI_API_KEY")
     end
   end
-  
+
   describe "load from TOML file" do
     test "loads configuration from TOML file" do
       # Create a test TOML file
       toml_content = """
       [llm]
       default = "openai"
-      
+
       [llm.openai]
       api_key = "test-key"
       model = "gpt-4-turbo"
-      
+
       [ui]
       theme = "light"
       history_size = 500
       """
-      
+
       File.write!(@test_config_path, toml_content)
-      
+
       # Restart config with test file
       restart_config(config_path: @test_config_path)
-      
+
       # Verify loaded config
       assert Config.get([:llm, :default]) == "openai"
       assert Config.get([:llm, :openai, :model]) == "gpt-4-turbo"
       assert Config.get([:ui, :theme]) == "light"
       assert Config.get([:ui, :history_size]) == 500
     end
-    
+
     test "handles invalid TOML gracefully" do
       # Create invalid TOML
       File.write!(@test_config_path, "invalid toml [[ content")
-      
+
       # Should load default config without crashing
       restart_config(config_path: @test_config_path)
-      
+
       # Should have default values
       assert Config.get([:llm, :default]) == "anthropic"
     end
   end
-  
+
   describe "reload/0" do
     test "reloads configuration from file" do
       ensure_config_started()
-      
+
       # Get initial value
       initial_theme = Config.get([:ui, :theme])
       assert initial_theme == "dark"
-      
+
       # Modify the config file
       config_path = get_config_path()
+
       if File.exists?(config_path) do
         content = File.read!(config_path)
         new_content = String.replace(content, "theme = \"dark\"", "theme = \"light\"")
         File.write!(config_path, new_content)
-        
+
         # Reload config
         Config.reload()
-        Process.sleep(50)  # Give time for async reload
-        
+        # Give time for async reload
+        Process.sleep(50)
+
         # Check if reloaded
         new_theme = Config.get([:ui, :theme])
         assert new_theme == "light"
       end
     end
   end
-  
+
   # Helper functions
-  
-  defp ensure_config_started do
+
+  defp ensure_config_started() do
     case Process.whereis(Config) do
-      nil -> 
+      nil ->
         {:ok, _} = Config.start_link()
-      _pid -> 
+
+      _pid ->
         :ok
     end
   end
-  
+
   defp restart_config(opts \\ []) do
     case Process.whereis(Config) do
-      nil -> :ok
-      pid -> 
+      nil ->
+        :ok
+
+      pid ->
         GenServer.stop(pid)
-        Process.sleep(10)  # Wait for process to fully stop
+        # Wait for process to fully stop
+        Process.sleep(10)
     end
-    
+
     # Clear any environment variables that might interfere
     System.delete_env("ANTHROPIC_API_KEY")
     System.delete_env("OPENAI_API_KEY")
-    
+
     {:ok, _} = Config.start_link(opts)
-    Process.sleep(50)  # Give time to initialize
+    # Give time to initialize
+    Process.sleep(50)
   end
-  
-  defp get_config_path do
+
+  defp get_config_path() do
     case Process.whereis(Config) do
-      nil -> nil
-      _pid -> 
+      nil ->
+        nil
+
+      _pid ->
         # This is a bit hacky, but for testing purposes
         Path.expand("~/.config/mcp_chat/config.toml")
     end

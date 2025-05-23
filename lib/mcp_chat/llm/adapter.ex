@@ -4,35 +4,35 @@ defmodule MCPChat.LLM.Adapter do
   """
 
   @type message :: %{
-    role: String.t(),
-    content: String.t()
-  }
+          role: String.t(),
+          content: String.t()
+        }
 
   @type options :: keyword()
 
   @type response :: %{
-    content: String.t(),
-    finish_reason: String.t() | nil,
-    usage: map() | nil
-  }
+          content: String.t(),
+          finish_reason: String.t() | nil,
+          usage: map() | nil
+        }
 
   @type stream_chunk :: %{
-    delta: String.t(),
-    finish_reason: String.t() | nil
-  }
+          delta: String.t(),
+          finish_reason: String.t() | nil
+        }
 
   @doc """
   Send a chat completion request to the LLM.
   """
-  @callback chat(messages :: [message()], options :: options()) :: 
-    {:ok, response()} | {:error, term()}
+  @callback chat(messages :: [message()], options :: options()) ::
+              {:ok, response()} | {:error, term()}
 
   @doc """
   Send a streaming chat completion request to the LLM.
   Returns a stream of chunks.
   """
-  @callback stream_chat(messages :: [message()], options :: options()) :: 
-    {:ok, Enumerable.t()} | {:error, term()}
+  @callback stream_chat(messages :: [message()], options :: options()) ::
+              {:ok, Enumerable.t()} | {:error, term()}
 
   @doc """
   Check if the adapter is properly configured and ready to use.

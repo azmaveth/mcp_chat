@@ -30,7 +30,7 @@ defmodule MCPChat.MCP.Client do
       pending_requests: %{},
       callback_pid: Keyword.get(opts, :callback_pid, self())
     }
-    
+
     WebSockex.start_link(url, __MODULE__, state, opts)
   end
 
@@ -76,13 +76,13 @@ defmodule MCPChat.MCP.Client do
     case Protocol.parse_response(data) do
       {:notification, method, params} ->
         handle_notification(method, params, state)
-      
+
       {:result, result, id} ->
         handle_result(result, id, state)
-      
+
       {:error, error, id} ->
         handle_error(error, id, state)
-      
+
       {:error, reason} ->
         Logger.error("Failed to parse MCP response: #{inspect(reason)}")
         {:ok, state}
@@ -98,15 +98,17 @@ defmodule MCPChat.MCP.Client do
   @impl true
   def handle_cast({:send, message}, state) do
     frame = {:text, Protocol.encode_message(message)}
-    
+
     # Track request if it has an ID
-    state = case message do
-      %{id: id} -> 
-        %{state | pending_requests: Map.put(state.pending_requests, id, message)}
-      _ -> 
-        state
-    end
-    
+    state =
+      case message do
+        %{id: id} ->
+          %{state | pending_requests: Map.put(state.pending_requests, id, message)}
+
+        _ ->
+          state
+      end
+
     {:reply, frame, state}
   end
 
@@ -142,29 +144,27 @@ defmodule MCPChat.MCP.Client do
 
   defp handle_result(result, id, state) do
     {request, pending} = Map.pop(state.pending_requests, id)
-    
+
     state = %{state | pending_requests: pending}
-    
-    state = case request do
-      %{method: "initialize"} ->
-        %{state | 
-          server_info: result["serverInfo"],
-          capabilities: result["capabilities"] || %{}
-        }
-      
-      %{method: "tools/list"} ->
-        %{state | tools: result["tools"] || []}
-      
-      %{method: "resources/list"} ->
-        %{state | resources: result["resources"] || []}
-      
-      %{method: "prompts/list"} ->
-        %{state | prompts: result["prompts"] || []}
-      
-      _ ->
-        state
-    end
-    
+
+    state =
+      case request do
+        %{method: "initialize"} ->
+          %{state | server_info: result["serverInfo"], capabilities: result["capabilities"] || %{}}
+
+        %{method: "tools/list"} ->
+          %{state | tools: result["tools"] || []}
+
+        %{method: "resources/list"} ->
+          %{state | resources: result["resources"] || []}
+
+        %{method: "prompts/list"} ->
+          %{state | prompts: result["prompts"] || []}
+
+        _ ->
+          state
+      end
+
     send(state.callback_pid, {:mcp_result, self(), result, id})
     {:ok, state}
   end
@@ -172,10 +172,10 @@ defmodule MCPChat.MCP.Client do
   defp handle_error(error, id, state) do
     {_request, pending} = Map.pop(state.pending_requests, id)
     state = %{state | pending_requests: pending}
-    
+
     Logger.error("MCP error response: #{inspect(error)}")
     send(state.callback_pid, {:mcp_error, self(), error, id})
-    
+
     {:ok, state}
   end
 end

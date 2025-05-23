@@ -2,11 +2,11 @@ defmodule MCPChat.MCPServer.Handler do
   @moduledoc """
   Handles MCP protocol requests and provides chat functionality as MCP tools.
   """
-  
+
   # alias MCPChat.MCP.Protocol
   alias MCPChat.Session
   # alias MCPChat.LLM
-  
+
   require Logger
 
   @server_info %{
@@ -31,13 +31,13 @@ defmodule MCPChat.MCPServer.Handler do
 
   def handle_request("initialize", params, _state) do
     Logger.info("MCP client initializing: #{inspect(params["clientInfo"])}")
-    
+
     result = %{
-      protocolVersion: "2024-11-05",
+      protocolVersion: "2_024-11-05",
       serverInfo: @server_info,
       capabilities: @capabilities
     }
-    
+
     {:ok, result, :initialized}
   end
 
@@ -98,18 +98,19 @@ defmodule MCPChat.MCPServer.Handler do
         }
       }
     ]
-    
+
     {:ok, %{tools: tools}, state}
   end
 
   def handle_request("tools/call", %{"name" => tool_name, "arguments" => args}, state) do
     Logger.info("MCP tool call: #{tool_name} with args: #{inspect(args)}")
-    
+
     case call_tool(tool_name, args) do
       {:ok, result} ->
         {:ok, result, state}
+
       {:error, reason} ->
-        {:error, %{code: -32603, message: "Tool execution failed: #{inspect(reason)}"}, state}
+        {:error, %{code: -32_603, message: "Tool execution failed: #{inspect(reason)}"}, state}
     end
   end
 
@@ -128,7 +129,7 @@ defmodule MCPChat.MCPServer.Handler do
         mimeType: "application/json"
       }
     ]
-    
+
     {:ok, %{resources: resources}, state}
   end
 
@@ -144,9 +145,11 @@ defmodule MCPChat.MCPServer.Handler do
             }
           ]
         }
+
         {:ok, result, state}
+
       {:error, reason} ->
-        {:error, %{code: -32602, message: "Invalid resource: #{reason}"}, state}
+        {:error, %{code: -32_602, message: "Invalid resource: #{reason}"}, state}
     end
   end
 
@@ -185,7 +188,7 @@ defmodule MCPChat.MCPServer.Handler do
         ]
       }
     ]
-    
+
     {:ok, %{prompts: prompts}, state}
   end
 
@@ -193,18 +196,19 @@ defmodule MCPChat.MCPServer.Handler do
     case get_prompt(name, args) do
       {:ok, messages} ->
         {:ok, %{messages: messages}, state}
+
       {:error, reason} ->
-        {:error, %{code: -32602, message: "Invalid prompt: #{reason}"}, state}
+        {:error, %{code: -32_602, message: "Invalid prompt: #{reason}"}, state}
     end
   end
 
   def handle_request("completion/complete", _params, state) do
     # Handle completion requests
-    {:error, %{code: -32601, message: "Completion not implemented"}, state}
+    {:error, %{code: -32_601, message: "Completion not implemented"}, state}
   end
 
   def handle_request(method, _params, state) do
-    {:error, %{code: -32601, message: "Method not found: #{method}"}, state}
+    {:error, %{code: -32_601, message: "Method not found: #{method}"}, state}
   end
 
   def handle_notification("notifications/initialized", _params, state) do
@@ -221,26 +225,26 @@ defmodule MCPChat.MCPServer.Handler do
 
   defp call_tool("chat", %{"message" => message} = args) do
     backend = Map.get(args, "backend")
-    
+
     # Switch backend if specified
     if backend do
       Session.new_session(backend)
     end
-    
+
     # Add user message
     Session.add_message("user", message)
-    
+
     # Get LLM response
     session = Session.get_current_session()
     messages = Session.get_messages()
-    
+
     adapter = get_llm_adapter(session.llm_backend)
-    
+
     case adapter.chat(messages) do
       {:ok, response} ->
         Session.add_message("assistant", response)
         {:ok, %{content: [%{type: "text", text: response}]}}
-      
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -276,13 +280,15 @@ defmodule MCPChat.MCPServer.Handler do
 
   defp read_resource("chat://session") do
     session = Session.get_current_session()
-    {:ok, %{
-      id: session.id,
-      backend: session.llm_backend,
-      created_at: session.created_at,
-      updated_at: session.updated_at,
-      message_count: length(session.messages)
-    }}
+
+    {:ok,
+     %{
+       id: session.id,
+       backend: session.llm_backend,
+       created_at: session.created_at,
+       updated_at: session.updated_at,
+       message_count: length(session.messages)
+     }}
   end
 
   defp read_resource(_uri) do
@@ -293,7 +299,7 @@ defmodule MCPChat.MCPServer.Handler do
 
   defp get_prompt("code_review", %{"code" => code} = args) do
     language = Map.get(args, "language", "unknown")
-    
+
     messages = [
       %{
         role: "user",
@@ -309,13 +315,13 @@ defmodule MCPChat.MCPServer.Handler do
         }
       }
     ]
-    
+
     {:ok, messages}
   end
 
   defp get_prompt("explain", %{"topic" => topic} = args) do
     level = Map.get(args, "level", "intermediate")
-    
+
     messages = [
       %{
         role: "user",
@@ -325,7 +331,7 @@ defmodule MCPChat.MCPServer.Handler do
         }
       }
     ]
-    
+
     {:ok, messages}
   end
 

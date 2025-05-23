@@ -33,6 +33,7 @@ defmodule MCPChat.ContextTest do
         %{role: "user", content: "Hello"},
         %{role: "assistant", content: "Hi there"}
       ]
+
       # "Hello" = 1 word * 1.3 = 1.3 ≈ 1 + 3 = 4
       # "Hi there" = 2 words * 1.3 = 2.6 ≈ 3 + 3 = 6
       # Total: 4 + 6 = 10
@@ -46,23 +47,25 @@ defmodule MCPChat.ContextTest do
         %{role: "user", content: "Hello"},
         %{role: "assistant", content: "Hi there"}
       ]
-      
-      stats = Context.get_context_stats(messages, 1000)
-      
+
+      stats = Context.get_context_stats(messages, 1_000)
+
       assert stats.message_count == 2
       # Same calculation as above
       assert stats.estimated_tokens == 10
-      assert stats.max_tokens == 1000
+      assert stats.max_tokens == 1_000
       assert stats.tokens_used_percentage == 1.0
-      assert stats.tokens_remaining == 490  # 1000 - 10 - 500 reserve
+      # 1_000 - 10 - 500 reserve
+      assert stats.tokens_remaining == 490
     end
 
     test "handles empty messages" do
-      stats = Context.get_context_stats([], 4096)
-      
+      stats = Context.get_context_stats([], 4_096)
+
       assert stats.message_count == 0
       assert stats.estimated_tokens == 0
-      assert stats.tokens_remaining == 3596  # 4096 - 500 reserve
+      # 4_096 - 500 reserve
+      assert stats.tokens_remaining == 3_596
     end
   end
 
@@ -72,8 +75,8 @@ defmodule MCPChat.ContextTest do
         %{role: "user", content: "Hello"},
         %{role: "assistant", content: "Hi"}
       ]
-      
-      result = Context.prepare_messages(messages, max_tokens: 1000)
+
+      result = Context.prepare_messages(messages, max_tokens: 1_000)
       assert result == messages
     end
 
@@ -81,12 +84,13 @@ defmodule MCPChat.ContextTest do
       messages = [
         %{role: "user", content: "Hello"}
       ]
-      
-      result = Context.prepare_messages(messages, 
-        system_prompt: "You are helpful",
-        max_tokens: 1000
-      )
-      
+
+      result =
+        Context.prepare_messages(messages,
+          system_prompt: "You are helpful",
+          max_tokens: 1_000
+        )
+
       assert length(result) == 2
       assert hd(result).role == "system"
       assert hd(result).content == "You are helpful"
@@ -94,15 +98,18 @@ defmodule MCPChat.ContextTest do
 
     test "truncates messages with sliding window strategy" do
       # Create many messages that exceed token limit
-      messages = for i <- 1..50 do
-        %{role: "user", content: "This is message number #{i} with some additional content to make it longer"}
-      end
-      
-      result = Context.prepare_messages(messages, 
-        max_tokens: 1000,  # Need to be larger than reserve tokens (500)
-        strategy: :sliding_window
-      )
-      
+      messages =
+        for i <- 1..50 do
+          %{role: "user", content: "This is message number #{i} with some additional content to make it longer"}
+        end
+
+      result =
+        Context.prepare_messages(messages,
+          # Need to be larger than reserve tokens (500)
+          max_tokens: 1_000,
+          strategy: :sliding_window
+        )
+
       # Should have fewer messages
       assert length(result) < length(messages)
       # Should keep the most recent messages
@@ -111,44 +118,48 @@ defmodule MCPChat.ContextTest do
     end
 
     test "applies smart truncation strategy" do
-      messages = for i <- 1..20 do
-        role = if rem(i, 2) == 1, do: "user", else: "assistant"
-        %{role: role, content: "Message #{i}"}
-      end
-      
-      result = Context.prepare_messages(messages,
-        max_tokens: 800,  # Need to be large enough to trigger smart truncation
-        strategy: :smart
-      )
-      
+      messages =
+        for i <- 1..20 do
+          role = if rem(i, 2) == 1, do: "user", else: "assistant"
+          %{role: role, content: "Message #{i}"}
+        end
+
+      result =
+        Context.prepare_messages(messages,
+          # Need to be large enough to trigger smart truncation
+          max_tokens: 800,
+          strategy: :smart
+        )
+
       # Should keep first few and recent messages
       assert length(result) < length(messages)
       # Should have a truncation notice
       assert Enum.any?(result, fn msg ->
-        msg.role == "system" && String.contains?(msg.content, "omitted")
-      end)
+               msg.role == "system" && String.contains?(msg.content, "omitted")
+             end)
     end
   end
 
   describe "build_context_config/1" do
     test "builds default config" do
       config = Context.build_context_config()
-      
-      assert config.max_tokens == 4096
+
+      assert config.max_tokens == 4_096
       assert config.strategy == :sliding_window
       assert config.temperature == 0.7
       assert is_nil(config.system_prompt)
     end
 
     test "builds config with custom options" do
-      config = Context.build_context_config(
-        max_tokens: 8192,
-        system_prompt: "Be concise",
-        strategy: :smart,
-        temperature: 0.5
-      )
-      
-      assert config.max_tokens == 8192
+      config =
+        Context.build_context_config(
+          max_tokens: 8_192,
+          system_prompt: "Be concise",
+          strategy: :smart,
+          temperature: 0.5
+        )
+
+      assert config.max_tokens == 8_192
       assert config.system_prompt == "Be concise"
       assert config.strategy == :smart
       assert config.temperature == 0.5

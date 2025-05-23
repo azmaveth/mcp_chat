@@ -21,7 +21,7 @@ defmodule MCPChat.Config do
     GenServer.call(__MODULE__, {:get_path, path})
   end
 
-  def reload do
+  def reload() do
     GenServer.cast(__MODULE__, :reload)
   end
 
@@ -29,14 +29,15 @@ defmodule MCPChat.Config do
 
   @impl true
   def init(opts) do
-    config_path = Keyword.get(opts, :config_path, @default_config_path)
-    |> Path.expand()
-    
+    config_path =
+      Keyword.get(opts, :config_path, @default_config_path)
+      |> Path.expand()
+
     state = %{
       config_path: config_path,
       config: %{}
     }
-    
+
     {:ok, state, {:continue, :load_config}}
   end
 
@@ -69,8 +70,9 @@ defmodule MCPChat.Config do
   defp load_config(path) do
     if File.exists?(path) do
       case Toml.decode_file(path) do
-        {:ok, config} -> 
+        {:ok, config} ->
           atomize_keys(config)
+
         {:error, reason} ->
           IO.warn("Failed to load config from #{path}: #{inspect(reason)}")
           default_config()
@@ -93,30 +95,31 @@ defmodule MCPChat.Config do
     content = """
     # MCP Chat Configuration
     # Generated automatically
-    
+
     [llm]
     default = "#{config.llm.default}"
-    
+
     [llm.anthropic]
     api_key = "#{config.llm.anthropic.api_key}"
     model = "#{config.llm.anthropic.model}"
     max_tokens = #{config.llm.anthropic.max_tokens}
-    
+
     [ui]
     theme = "#{config.ui.theme}"
     history_size = #{config.ui.history_size}
     """
+
     File.write!(path, content)
   end
 
-  defp default_config do
+  defp default_config() do
     %{
       llm: %{
         default: "anthropic",
         anthropic: %{
           api_key: System.get_env("ANTHROPIC_API_KEY", ""),
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4096
+          model: "claude-sonnet-4-20_250_514",
+          max_tokens: 4_096
         },
         openai: %{
           api_key: System.get_env("OPENAI_API_KEY", ""),
@@ -133,11 +136,11 @@ defmodule MCPChat.Config do
       mcp_server: %{
         stdio_enabled: false,
         sse_enabled: false,
-        sse_port: 8080
+        sse_port: 8_080
       },
       ui: %{
         theme: "dark",
-        history_size: 1000
+        history_size: 1_000
       }
     }
   end
@@ -147,9 +150,11 @@ defmodule MCPChat.Config do
       {String.to_atom(k), atomize_keys(v)}
     end)
   end
+
   defp atomize_keys(list) when is_list(list) do
     Enum.map(list, &atomize_keys/1)
   end
+
   defp atomize_keys(value), do: value
 
   defp stringify_keys(map) when is_map(map) do
@@ -157,8 +162,10 @@ defmodule MCPChat.Config do
       {to_string(k), stringify_keys(v)}
     end)
   end
+
   defp stringify_keys(list) when is_list(list) do
     Enum.map(list, &stringify_keys/1)
   end
+
   defp stringify_keys(value), do: value
 end

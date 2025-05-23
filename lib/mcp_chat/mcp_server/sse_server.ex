@@ -3,20 +3,22 @@ defmodule MCPChat.MCPServer.SSEServer do
   MCP server that communicates via Server-Sent Events (SSE) over HTTP.
   """
   use GenServer
-  
+
   alias MCPChat.MCPServer.Handler
-  
+
   require Logger
 
   defmodule Router do
     use Plug.Router
-    
+
     plug Plug.Logger
     plug :match
+
     plug Plug.Parsers,
       parsers: [:json],
       pass: ["application/json"],
       json_decoder: Jason
+
     plug :dispatch
 
     # SSE endpoint for receiving messages
@@ -43,12 +45,12 @@ defmodule MCPChat.MCPServer.SSEServer do
           error_response = %{
             jsonrpc: "2.0",
             error: %{
-              code: -32700,
+              code: -32_700,
               message: "Parse error: #{inspect(reason)}"
             },
             id: nil
           }
-          
+
           conn
           |> put_resp_content_type("application/json")
           |> put_resp_header("access-control-allow-origin", "*")
@@ -75,24 +77,25 @@ defmodule MCPChat.MCPServer.SSEServer do
     defp handle_sse_connection(conn) do
       # Register this connection with the SSE server
       {:ok, connection_id} = MCPChat.MCPServer.SSEServer.register_connection(conn)
-      
+
       # Send initial connection event
       send_sse_event(conn, "connected", %{status: "ready", connection_id: connection_id})
-      
+
       # Keep connection alive with a monitoring process
       Task.start_link(fn ->
         monitor_connection(conn, connection_id)
       end)
-      
+
       conn
     end
 
     defp monitor_connection(conn, connection_id) do
       Process.sleep(30_000)
-      
+
       case send_sse_event(conn, "ping", %{timestamp: DateTime.utc_now()}) do
         {:ok, conn} ->
           monitor_connection(conn, connection_id)
+
         {:error, _} ->
           MCPChat.MCPServer.SSEServer.unregister_connection(connection_id)
       end
@@ -100,7 +103,7 @@ defmodule MCPChat.MCPServer.SSEServer do
 
     defp send_sse_event(conn, event, data) do
       chunk = "event: #{event}\ndata: #{Jason.encode!(data)}\n\n"
-      
+
       case chunk(conn, chunk) do
         {:ok, conn} -> {:ok, conn}
         {:error, reason} -> {:error, reason}
@@ -111,6 +114,7 @@ defmodule MCPChat.MCPServer.SSEServer do
       case params do
         %{"jsonrpc" => "2.0", "method" => _method} = request ->
           {:ok, request}
+
         _ ->
           {:error, :invalid_request}
       end
@@ -157,16 +161,16 @@ defmodule MCPChat.MCPServer.SSEServer do
 
   @impl true
   def init(opts) do
-    port = Keyword.get(opts, :port, 8080)
-    
+    port = Keyword.get(opts, :port, 8_080)
+
     Logger.info("Starting MCP SSE server on port #{port}")
-    
+
     # Start the Plug router
     {:ok, _} = Plug.Cowboy.http(Router, [], port: port)
-    
+
     # Initialize handler state
     {:ok, handler_state} = Handler.init(:sse)
-    
+
     {:ok, %__MODULE__{handler_state: handler_state}}
   end
 
@@ -174,50 +178,55 @@ defmodule MCPChat.MCPServer.SSEServer do
   def handle_call({:register_connection, conn}, _from, state) do
     connection_id = generate_connection_id()
     connections = Map.put(state.connections, connection_id, conn)
-    
+
     {:reply, {:ok, connection_id}, %{state | connections: connections}}
   end
 
   @impl true
   def handle_call({:process_message, request}, _from, state) do
-    response = case request do
-      %{"method" => method, "params" => params, "id" => id} ->
-        # Request with ID
-        case Handler.handle_request(method, params || %{}, state.handler_state) do
-          {:ok, result, new_handler_state} ->
-            response = %{
-              jsonrpc: "2.0",
-              result: result,
-              id: id
-            }
-            {:ok, response, %{state | handler_state: new_handler_state}}
-          
-          {:error, error, new_handler_state} ->
-            response = %{
-              jsonrpc: "2.0",
-              error: error,
-              id: id
-            }
-            {:ok, response, %{state | handler_state: new_handler_state}}
-        end
-      
-      %{"method" => method, "params" => params} ->
-        # Notification (no ID)
-        case Handler.handle_notification(method, params || %{}, state.handler_state) do
-          {:ok, new_handler_state} ->
-            {:ok, %{jsonrpc: "2.0", result: "ok"}, %{state | handler_state: new_handler_state}}
-          _ ->
-            {:ok, %{jsonrpc: "2.0", result: "ok"}, state}
-        end
-      
-      %{"method" => _method, "id" => _id} ->
-        # Request with no params
-        handle_call({:process_message, Map.put(request, "params", %{})}, nil, state)
-    end
-    
+    response =
+      case request do
+        %{"method" => method, "params" => params, "id" => id} ->
+          # Request with ID
+          case Handler.handle_request(method, params || %{}, state.handler_state) do
+            {:ok, result, new_handler_state} ->
+              response = %{
+                jsonrpc: "2.0",
+                result: result,
+                id: id
+              }
+
+              {:ok, response, %{state | handler_state: new_handler_state}}
+
+            {:error, error, new_handler_state} ->
+              response = %{
+                jsonrpc: "2.0",
+                error: error,
+                id: id
+              }
+
+              {:ok, response, %{state | handler_state: new_handler_state}}
+          end
+
+        %{"method" => method, "params" => params} ->
+          # Notification (no ID)
+          case Handler.handle_notification(method, params || %{}, state.handler_state) do
+            {:ok, new_handler_state} ->
+              {:ok, %{jsonrpc: "2.0", result: "ok"}, %{state | handler_state: new_handler_state}}
+
+            _ ->
+              {:ok, %{jsonrpc: "2.0", result: "ok"}, state}
+          end
+
+        %{"method" => _method, "id" => _id} ->
+          # Request with no params
+          handle_call({:process_message, Map.put(request, "params", %{})}, nil, state)
+      end
+
     case response do
       {:ok, resp, new_state} ->
         {:reply, {:ok, resp}, new_state}
+
       _ ->
         {:reply, {:error, :processing_failed}, state}
     end
@@ -234,24 +243,27 @@ defmodule MCPChat.MCPServer.SSEServer do
     case Map.get(state.connections, connection_id) do
       nil ->
         Logger.warning("Connection #{connection_id} not found")
-      
+
       conn ->
         chunk = "event: #{event}\ndata: #{Jason.encode!(data)}\n\n"
+
         case Plug.Conn.chunk(conn, chunk) do
-          {:ok, _} -> :ok
-          {:error, _} -> 
+          {:ok, _} ->
+            :ok
+
+          {:error, _} ->
             # Connection is dead, remove it
             connections = Map.delete(state.connections, connection_id)
             {:noreply, %{state | connections: connections}}
         end
     end
-    
+
     {:noreply, state}
   end
 
   # Private functions
 
-  defp generate_connection_id do
+  defp generate_connection_id() do
     :crypto.strong_rand_bytes(16)
     |> Base.encode16(case: :lower)
   end

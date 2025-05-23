@@ -26,20 +26,20 @@ defmodule McpChat.MixProject do
       # MCP and WebSocket support
       {:websockex, "~> 0.4.3"},
       {:jason, "~> 1.4"},
-      
+
       # CLI interface
       {:owl, "~> 0.12"},
-      
+
       # HTTP client for LLM APIs
       {:req, "~> 0.5"},
-      
+
       # Configuration
       {:toml, "~> 0.7"},
-      
+
       # HTTP server for SSE support
       {:plug, "~> 1.15"},
       {:plug_cowboy, "~> 2.7"},
-      
+
       # Development dependencies
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}

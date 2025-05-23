@@ -3,9 +3,9 @@ defmodule MCPChat.MCP.StdioClient do
   MCP client that communicates via stdio (stdin/stdout) with a server process.
   """
   use GenServer
-  
+
   # alias MCPChat.MCP.Protocol
-  
+
   require Logger
 
   defstruct [
@@ -75,7 +75,7 @@ defmodule MCPChat.MCP.StdioClient do
       buffer: "",
       request_id: 1
     }
-    
+
     {:ok, state}
   end
 
@@ -88,22 +88,24 @@ defmodule MCPChat.MCP.StdioClient do
   def handle_call({:initialize, client_info}, from, state) do
     if state.port do
       request_id = state.request_id
+
       message = %{
         jsonrpc: "2.0",
         method: "initialize",
         params: %{
-          protocolVersion: "2024-11-05",
+          protocolVersion: "2_024-11-05",
           capabilities: client_info[:capabilities] || %{},
           clientInfo: client_info
         },
         id: request_id
       }
-      
-      new_state = %{state | 
-        pending_requests: Map.put(state.pending_requests, request_id, {:initialize, from}),
-        request_id: request_id + 1
+
+      new_state = %{
+        state
+        | pending_requests: Map.put(state.pending_requests, request_id, {:initialize, from}),
+          request_id: request_id + 1
       }
-      
+
       send_json_rpc(new_state.port, message)
       {:noreply, new_state}
     else
@@ -115,18 +117,20 @@ defmodule MCPChat.MCP.StdioClient do
   def handle_call(:list_tools, from, state) do
     if state.port do
       request_id = state.request_id
+
       message = %{
         jsonrpc: "2.0",
         method: "tools/list",
         params: %{},
         id: request_id
       }
-      
-      new_state = %{state | 
-        pending_requests: Map.put(state.pending_requests, request_id, {:list_tools, from}),
-        request_id: request_id + 1
+
+      new_state = %{
+        state
+        | pending_requests: Map.put(state.pending_requests, request_id, {:list_tools, from}),
+          request_id: request_id + 1
       }
-      
+
       send_json_rpc(new_state.port, message)
       {:noreply, new_state}
     else
@@ -138,6 +142,7 @@ defmodule MCPChat.MCP.StdioClient do
   def handle_call({:call_tool, name, arguments}, from, state) do
     if state.port do
       request_id = state.request_id
+
       message = %{
         jsonrpc: "2.0",
         method: "tools/call",
@@ -147,12 +152,13 @@ defmodule MCPChat.MCP.StdioClient do
         },
         id: request_id
       }
-      
-      new_state = %{state | 
-        pending_requests: Map.put(state.pending_requests, request_id, {:call_tool, from}),
-        request_id: request_id + 1
+
+      new_state = %{
+        state
+        | pending_requests: Map.put(state.pending_requests, request_id, {:call_tool, from}),
+          request_id: request_id + 1
       }
-      
+
       send_json_rpc(new_state.port, message)
       {:noreply, new_state}
     else
@@ -164,18 +170,20 @@ defmodule MCPChat.MCP.StdioClient do
   def handle_call(:list_resources, from, state) do
     if state.port do
       request_id = state.request_id
+
       message = %{
         jsonrpc: "2.0",
         method: "resources/list",
         params: %{},
         id: request_id
       }
-      
-      new_state = %{state | 
-        pending_requests: Map.put(state.pending_requests, request_id, {:list_resources, from}),
-        request_id: request_id + 1
+
+      new_state = %{
+        state
+        | pending_requests: Map.put(state.pending_requests, request_id, {:list_resources, from}),
+          request_id: request_id + 1
       }
-      
+
       send_json_rpc(new_state.port, message)
       {:noreply, new_state}
     else
@@ -187,18 +195,20 @@ defmodule MCPChat.MCP.StdioClient do
   def handle_call({:read_resource, uri}, from, state) do
     if state.port do
       request_id = state.request_id
+
       message = %{
         jsonrpc: "2.0",
         method: "resources/read",
         params: %{uri: uri},
         id: request_id
       }
-      
-      new_state = %{state | 
-        pending_requests: Map.put(state.pending_requests, request_id, {:read_resource, from}),
-        request_id: request_id + 1
+
+      new_state = %{
+        state
+        | pending_requests: Map.put(state.pending_requests, request_id, {:read_resource, from}),
+          request_id: request_id + 1
       }
-      
+
       send_json_rpc(new_state.port, message)
       {:noreply, new_state}
     else
@@ -210,18 +220,20 @@ defmodule MCPChat.MCP.StdioClient do
   def handle_call(:list_prompts, from, state) do
     if state.port do
       request_id = state.request_id
+
       message = %{
         jsonrpc: "2.0",
         method: "prompts/list",
         params: %{},
         id: request_id
       }
-      
-      new_state = %{state | 
-        pending_requests: Map.put(state.pending_requests, request_id, {:list_prompts, from}),
-        request_id: request_id + 1
+
+      new_state = %{
+        state
+        | pending_requests: Map.put(state.pending_requests, request_id, {:list_prompts, from}),
+          request_id: request_id + 1
       }
-      
+
       send_json_rpc(new_state.port, message)
       {:noreply, new_state}
     else
@@ -233,6 +245,7 @@ defmodule MCPChat.MCP.StdioClient do
   def handle_call({:get_prompt, name, arguments}, from, state) do
     if state.port do
       request_id = state.request_id
+
       message = %{
         jsonrpc: "2.0",
         method: "prompts/get",
@@ -242,12 +255,13 @@ defmodule MCPChat.MCP.StdioClient do
         },
         id: request_id
       }
-      
-      new_state = %{state | 
-        pending_requests: Map.put(state.pending_requests, request_id, {:get_prompt, from}),
-        request_id: request_id + 1
+
+      new_state = %{
+        state
+        | pending_requests: Map.put(state.pending_requests, request_id, {:get_prompt, from}),
+          request_id: request_id + 1
       }
-      
+
       send_json_rpc(new_state.port, message)
       {:noreply, new_state}
     else
@@ -259,30 +273,34 @@ defmodule MCPChat.MCP.StdioClient do
   def handle_info({port, {:data, data}}, %{port: port} = state) do
     # Accumulate data in buffer
     buffer = state.buffer <> data
-    
+
     # Split by newlines and process complete messages
     {lines, remaining} = split_lines(buffer)
-    
+
     new_state = Enum.reduce(lines, state, &process_line/2)
-    
+
     {:noreply, %{new_state | buffer: remaining}}
   end
 
   @impl true
   def handle_info({port, {:exit_status, status}}, %{port: port} = state) do
     Logger.warning("Port exited with status: #{status}")
+
     if state.callback_pid do
       send(state.callback_pid, {:mcp_disconnected, self(), {:exit_status, status}})
     end
+
     {:noreply, %{state | port: nil}}
   end
 
   @impl true
   def handle_info({:DOWN, _ref, :port, port, reason}, %{port: port} = state) do
     Logger.warning("Port died: #{inspect(reason)}")
+
     if state.callback_pid do
       send(state.callback_pid, {:mcp_disconnected, self(), reason})
     end
+
     {:noreply, %{state | port: nil}}
   end
 
@@ -295,12 +313,12 @@ defmodule MCPChat.MCP.StdioClient do
 
   defp split_lines(data) do
     lines = String.split(data, "\n")
-    
+
     case List.last(lines) do
       "" ->
         # Data ended with newline, all lines are complete
         {Enum.drop(lines, -1), ""}
-      
+
       partial ->
         # Last line is incomplete
         {Enum.drop(lines, -1), partial}
@@ -308,11 +326,12 @@ defmodule MCPChat.MCP.StdioClient do
   end
 
   defp process_line("", state), do: state
+
   defp process_line(line, state) do
     case Jason.decode(line) do
       {:ok, message} ->
         handle_json_rpc_message(message, state)
-      
+
       {:error, reason} ->
         Logger.error("Failed to decode JSON-RPC message: #{inspect(reason)}")
         Logger.error("Raw line: #{inspect(line)}")
@@ -326,16 +345,17 @@ defmodule MCPChat.MCP.StdioClient do
       {nil, _} ->
         Logger.warning("Received response for unknown request ID: #{id}")
         state
-      
+
       {{request_type, from}, pending} ->
-        result = case message do
-          %{"result" => result} ->
-            process_result(request_type, result, state)
-          
-          %{"error" => error} ->
-            {:error, error}
-        end
-        
+        result =
+          case message do
+            %{"result" => result} ->
+              process_result(request_type, result, state)
+
+            %{"error" => error} ->
+              {:error, error}
+          end
+
         GenServer.reply(from, result)
         %{state | pending_requests: pending}
     end
@@ -346,6 +366,7 @@ defmodule MCPChat.MCP.StdioClient do
     if state.callback_pid do
       send(state.callback_pid, {:mcp_notification, self(), method, params})
     end
+
     state
   end
 
@@ -357,17 +378,14 @@ defmodule MCPChat.MCP.StdioClient do
   defp process_result(:initialize, result, state) do
     server_info = Map.get(result, "serverInfo", %{})
     capabilities = Map.get(result, "capabilities", %{})
-    
-    _new_state = %{state | 
-      server_info: server_info,
-      capabilities: capabilities
-    }
-    
+
+    _new_state = %{state | server_info: server_info, capabilities: capabilities}
+
     # Send initialization complete notification
     if state.callback_pid do
       send(state.callback_pid, {:mcp_initialized, self()})
     end
-    
+
     {:ok, %{server_info: server_info, capabilities: capabilities}}
   end
 

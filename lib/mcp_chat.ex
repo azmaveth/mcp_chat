@@ -10,6 +10,7 @@ defmodule MCPChat do
     case parse_args(args) do
       {:ok, opts} ->
         start_app(opts)
+
       {:error, message} ->
         IO.puts(:stderr, message)
         System.halt(1)
@@ -17,18 +18,18 @@ defmodule MCPChat do
   end
 
   defp parse_args(args) do
-    case OptionParser.parse(args, 
-      switches: [
-        config: :string,
-        backend: :string,
-        help: :boolean
-      ],
-      aliases: [
-        c: :config,
-        b: :backend,
-        h: :help
-      ]
-    ) do
+    case OptionParser.parse(args,
+           switches: [
+             config: :string,
+             backend: :string,
+             help: :boolean
+           ],
+           aliases: [
+             c: :config,
+             b: :backend,
+             h: :help
+           ]
+         ) do
       {opts, [], []} ->
         if opts[:help] do
           show_help()
@@ -36,13 +37,13 @@ defmodule MCPChat do
         else
           {:ok, opts}
         end
-      
+
       {_, _, invalid} ->
         {:error, "Invalid arguments: #{inspect(invalid)}"}
     end
   end
 
-  defp show_help do
+  defp show_help() do
     IO.puts("""
     MCP Chat Client
 
@@ -58,12 +59,12 @@ defmodule MCPChat do
   defp start_app(opts) do
     # Start the application
     {:ok, _} = Application.ensure_all_started(:mcp_chat)
-    
+
     # Apply CLI options
     if opts[:backend] do
       MCPChat.Session.new_session(opts[:backend])
     end
-    
+
     # Start the chat interface
     MCPChat.CLI.Chat.start()
   end

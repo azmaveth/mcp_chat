@@ -4,7 +4,7 @@ defmodule MCPChat.MCP.Protocol do
   Implements the Model Context Protocol specification.
   """
 
-  @protocol_version "2024-11-05"
+  @protocol_version "2_024-11-05"
 
   # Message Types
   def encode_initialize(client_info) do
@@ -23,7 +23,7 @@ defmodule MCPChat.MCP.Protocol do
     }
   end
 
-  def encode_initialized do
+  def encode_initialized() do
     %{
       jsonrpc: "2.0",
       method: "notifications/initialized",
@@ -31,7 +31,7 @@ defmodule MCPChat.MCP.Protocol do
     }
   end
 
-  def encode_list_tools do
+  def encode_list_tools() do
     %{
       jsonrpc: "2.0",
       method: "tools/list",
@@ -52,7 +52,7 @@ defmodule MCPChat.MCP.Protocol do
     }
   end
 
-  def encode_list_resources do
+  def encode_list_resources() do
     %{
       jsonrpc: "2.0",
       method: "resources/list",
@@ -72,7 +72,7 @@ defmodule MCPChat.MCP.Protocol do
     }
   end
 
-  def encode_list_prompts do
+  def encode_list_prompts() do
     %{
       jsonrpc: "2.0",
       method: "prompts/list",
@@ -125,7 +125,7 @@ defmodule MCPChat.MCP.Protocol do
   def parse_response(_), do: {:error, :invalid_response}
 
   # Helpers
-  defp generate_id do
+  defp generate_id() do
     System.unique_integer([:positive, :monotonic])
   end
 

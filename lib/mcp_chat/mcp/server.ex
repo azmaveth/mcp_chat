@@ -3,10 +3,10 @@ defmodule MCPChat.MCP.Server do
   Manages MCP server connections, supporting both stdio and SSE transports.
   """
   use GenServer
-  
+
   alias MCPChat.MCP.StdioClient
   alias MCPChat.MCP.SSEClient
-  
+
   require Logger
 
   defstruct [:name, :transport, :command, :url, :env, :port, :pid, :client_pid, :status, :capabilities]
@@ -59,7 +59,7 @@ defmodule MCPChat.MCP.Server do
   @impl true
   def init(opts) do
     transport = determine_transport(opts)
-    
+
     state = %__MODULE__{
       name: Keyword.fetch!(opts, :name),
       transport: transport,
@@ -72,12 +72,12 @@ defmodule MCPChat.MCP.Server do
       status: :disconnected,
       capabilities: %{}
     }
-    
+
     # Auto-connect if requested
     if Keyword.get(opts, :auto_connect, true) do
       send(self(), :connect)
     end
-    
+
     {:ok, state}
   end
 
@@ -91,6 +91,7 @@ defmodule MCPChat.MCP.Server do
     case start_server_process(state) do
       {:ok, new_state} ->
         {:reply, :ok, new_state}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -110,17 +111,21 @@ defmodule MCPChat.MCP.Server do
       status: state.status,
       capabilities: state.capabilities
     }
+
     {:reply, status, state}
   end
 
   @impl true
   def handle_call(:get_tools, _from, %{status: :connected, client_pid: client, transport: transport} = state) do
-    result = case transport do
-      :stdio -> 
-        StdioClient.list_tools(client)
-      :sse ->
-        SSEClient.list_tools(client)
-    end
+    result =
+      case transport do
+        :stdio ->
+          StdioClient.list_tools(client)
+
+        :sse ->
+          SSEClient.list_tools(client)
+      end
+
     {:reply, result, state}
   end
 
@@ -130,13 +135,20 @@ defmodule MCPChat.MCP.Server do
   end
 
   @impl true
-  def handle_call({:call_tool, tool_name, arguments}, _from, %{status: :connected, client_pid: client, transport: transport} = state) do
-    result = case transport do
-      :stdio ->
-        StdioClient.call_tool(client, tool_name, arguments)
-      :sse ->
-        SSEClient.call_tool(client, tool_name, arguments)
-    end
+  def handle_call(
+        {:call_tool, tool_name, arguments},
+        _from,
+        %{status: :connected, client_pid: client, transport: transport} = state
+      ) do
+    result =
+      case transport do
+        :stdio ->
+          StdioClient.call_tool(client, tool_name, arguments)
+
+        :sse ->
+          SSEClient.call_tool(client, tool_name, arguments)
+      end
+
     {:reply, result, state}
   end
 
@@ -147,12 +159,15 @@ defmodule MCPChat.MCP.Server do
 
   @impl true
   def handle_call(:get_resources, _from, %{status: :connected, client_pid: client, transport: transport} = state) do
-    result = case transport do
-      :stdio ->
-        StdioClient.list_resources(client)
-      :sse ->
-        SSEClient.list_resources(client)
-    end
+    result =
+      case transport do
+        :stdio ->
+          StdioClient.list_resources(client)
+
+        :sse ->
+          SSEClient.list_resources(client)
+      end
+
     {:reply, result, state}
   end
 
@@ -163,12 +178,15 @@ defmodule MCPChat.MCP.Server do
 
   @impl true
   def handle_call({:read_resource, uri}, _from, %{status: :connected, client_pid: client, transport: transport} = state) do
-    result = case transport do
-      :stdio ->
-        StdioClient.read_resource(client, uri)
-      :sse ->
-        SSEClient.read_resource(client, uri)
-    end
+    result =
+      case transport do
+        :stdio ->
+          StdioClient.read_resource(client, uri)
+
+        :sse ->
+          SSEClient.read_resource(client, uri)
+      end
+
     {:reply, result, state}
   end
 
@@ -179,12 +197,15 @@ defmodule MCPChat.MCP.Server do
 
   @impl true
   def handle_call(:get_prompts, _from, %{status: :connected, client_pid: client, transport: transport} = state) do
-    result = case transport do
-      :stdio ->
-        StdioClient.list_prompts(client)
-      :sse ->
-        SSEClient.list_prompts(client)
-    end
+    result =
+      case transport do
+        :stdio ->
+          StdioClient.list_prompts(client)
+
+        :sse ->
+          SSEClient.list_prompts(client)
+      end
+
     {:reply, result, state}
   end
 
@@ -194,13 +215,20 @@ defmodule MCPChat.MCP.Server do
   end
 
   @impl true
-  def handle_call({:get_prompt, prompt_name, arguments}, _from, %{status: :connected, client_pid: client, transport: transport} = state) do
-    result = case transport do
-      :stdio ->
-        StdioClient.get_prompt(client, prompt_name, arguments)
-      :sse ->
-        SSEClient.get_prompt(client, prompt_name, arguments)
-    end
+  def handle_call(
+        {:get_prompt, prompt_name, arguments},
+        _from,
+        %{status: :connected, client_pid: client, transport: transport} = state
+      ) do
+    result =
+      case transport do
+        :stdio ->
+          StdioClient.get_prompt(client, prompt_name, arguments)
+
+        :sse ->
+          SSEClient.get_prompt(client, prompt_name, arguments)
+      end
+
     {:reply, result, state}
   end
 
@@ -214,6 +242,7 @@ defmodule MCPChat.MCP.Server do
     case start_server_process(state) do
       {:ok, new_state} ->
         {:noreply, new_state}
+
       {:error, reason} ->
         Logger.error("Failed to auto-connect MCP server #{state.name}: #{inspect(reason)}")
         {:noreply, state}
@@ -293,49 +322,51 @@ defmodule MCPChat.MCP.Server do
     case StdioClient.start_link(callback_pid: self()) do
       {:ok, client_pid} ->
         Process.monitor(client_pid)
-        
+
         # Start the server process
         case start_server_command(state.command, state.env) do
           {:ok, port} ->
             # Monitor the port
             Process.monitor(port)
-            
+
             # Connect the port to the client
             StdioClient.set_port(client_pid, port)
-            
+
             # Initialize the connection
             client_info = %{
               name: "mcp_chat",
               version: "0.1.0"
             }
-            
+
             # Initialize will be handled synchronously now
             case StdioClient.initialize(client_pid, client_info) do
               {:ok, init_result} ->
-                new_state = %{state |
-                  port: port,
-                  pid: nil,  # We don't have OS PID easily
-                  client_pid: client_pid,
-                  status: :connected,
-                  server_info: init_result.server_info,
-                  capabilities: init_result.capabilities
+                new_state = %{
+                  state
+                  | port: port,
+                    # We don't have OS PID easily
+                    pid: nil,
+                    client_pid: client_pid,
+                    status: :connected,
+                    server_info: init_result.server_info,
+                    capabilities: init_result.capabilities
                 }
-                
+
                 {:ok, new_state}
-              
+
               {:error, reason} ->
                 # Clean up
                 Port.close(port)
                 Process.exit(client_pid, :shutdown)
                 {:error, {:initialization_failed, reason}}
             end
-            
+
           {:error, reason} ->
             # Clean up the client
             Process.exit(client_pid, :shutdown)
             {:error, {:server_start_failed, reason}}
         end
-        
+
       {:error, reason} ->
         {:error, {:client_start_failed, reason}}
     end
@@ -346,22 +377,19 @@ defmodule MCPChat.MCP.Server do
     case SSEClient.start_link(name: state.name, url: state.url) do
       {:ok, client_pid} ->
         Process.monitor(client_pid)
-        
+
         # Initialize the connection
         case SSEClient.initialize(client_pid) do
           {:ok, _} ->
-            new_state = %{state |
-              client_pid: client_pid,
-              status: :connected
-            }
-            
+            new_state = %{state | client_pid: client_pid, status: :connected}
+
             {:ok, new_state}
-          
+
           {:error, reason} ->
             Process.exit(client_pid, :shutdown)
             {:error, {:initialization_failed, reason}}
         end
-        
+
       {:error, reason} ->
         {:error, {:client_start_failed, reason}}
     end
@@ -372,40 +400,35 @@ defmodule MCPChat.MCP.Server do
     if state.client_pid do
       Process.exit(state.client_pid, :shutdown)
     end
-    
+
     # Stop the server process (stdio only)
     if state.port do
       Port.close(state.port)
     end
-    
-    %{state |
-      port: nil,
-      pid: nil,
-      client_pid: nil,
-      status: :disconnected,
-      capabilities: %{}
-    }
+
+    %{state | port: nil, pid: nil, client_pid: nil, status: :disconnected, capabilities: %{}}
   end
 
   defp start_server_command([cmd | args], env) do
     # Convert env map to list of {"KEY", "VALUE"} tuples
     env_list = Enum.map(env, fn {k, v} -> {to_string(k), to_string(v)} end)
-    
+
     # Find the executable
     case System.find_executable(cmd) do
       nil ->
         {:error, {:executable_not_found, cmd}}
-      
+
       executable ->
         # Start the port
         port_opts = [
           :binary,
           :exit_status,
-          :use_stdio,  # Important for stdio communication
+          # Important for stdio communication
+          :use_stdio,
           {:env, env_list},
           {:args, args}
         ]
-        
+
         try do
           port = Port.open({:spawn_executable, executable}, port_opts)
           {:ok, port}
@@ -415,5 +438,4 @@ defmodule MCPChat.MCP.Server do
         end
     end
   end
-
 end
