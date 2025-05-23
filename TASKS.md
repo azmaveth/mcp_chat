@@ -99,7 +99,7 @@ mcp_chat/
   - [x] CLI Renderer module
   - [x] MCP client modules (Protocol, Client, ServerManager tests)
   - [x] MCP server modules (Handler, SSEServer, StdioServer)
-  - [ ] Application supervisor
+  - [x] Application supervisor
 - [ ] Add integration tests
 - [x] Create user documentation
   - [x] Quick Start Guide
