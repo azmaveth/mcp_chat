@@ -56,15 +56,20 @@ defmodule MCPChat.Context do
   This is a rough estimate that works reasonably well for English text.
   """
   def estimate_tokens(text) when is_binary(text) do
-    # More accurate estimation based on common patterns
-    words = String.split(text, ~r/\s+/)
-    word_tokens = length(words) * 1.3  # Average 1.3 tokens per word
-    
-    # Add extra for punctuation and special characters
-    special_chars = String.replace(text, ~r/[a-zA-Z0-9\s]/, "") |> String.length()
-    special_tokens = special_chars * 0.5
-    
-    round(word_tokens + special_tokens)
+    # Handle empty string
+    if text == "" do
+      0
+    else
+      # More accurate estimation based on common patterns
+      words = String.split(text, ~r/\s+/)
+      word_tokens = length(words) * 1.3  # Average 1.3 tokens per word
+      
+      # Add extra for punctuation and special characters
+      special_chars = String.replace(text, ~r/[a-zA-Z0-9\s]/, "") |> String.length()
+      special_tokens = special_chars * 0.5
+      
+      round(word_tokens + special_tokens)
+    end
   end
   
   def estimate_tokens(%{content: content}) do
