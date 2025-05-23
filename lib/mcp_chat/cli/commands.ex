@@ -14,8 +14,11 @@ defmodule MCPChat.CLI.Commands do
     "config" => "Show current configuration",
     "servers" => "List connected MCP servers",
     "tools" => "List available MCP tools",
+    "tool" => "Call an MCP tool (usage: /tool <server> <tool> [args...])",
     "resources" => "List available MCP resources",
+    "resource" => "Read an MCP resource (usage: /resource <server> <uri>)",
     "prompts" => "List available MCP prompts",
+    "prompt" => "Get an MCP prompt (usage: /prompt <server> <name>)",
     "backend" => "Switch LLM backend (usage: /backend <name>)",
     "model" => "Switch model (usage: /model <name>)",
     "export" => "Export conversation (usage: /export [format])"
@@ -33,8 +36,11 @@ defmodule MCPChat.CLI.Commands do
       "config" -> show_config()
       "servers" -> list_servers()
       "tools" -> list_tools()
+      "tool" -> call_tool(args)
       "resources" -> list_resources()
+      "resource" -> read_resource(args)
       "prompts" -> list_prompts()
+      "prompt" -> get_prompt(args)
       "backend" -> switch_backend(args)
       "model" -> switch_model(args)
       "export" -> export_conversation(args)
@@ -265,5 +271,117 @@ defmodule MCPChat.CLI.Commands do
       _ -> "unknown"
     end
   end
+  
+  defp call_tool([args_string]) do
+    case String.split(args_string, " ", parts: 3) do
+      [server_name, tool_name | rest] ->
+        # Parse arguments - try JSON first, then treat as string
+        arguments = case rest do
+          [] -> %{}
+          [json_args] ->
+            case Jason.decode(json_args) do
+              {:ok, args} -> args
+              {:error, _} -> %{"input" => json_args}  # Wrap string as input
+            end
+        end
+        
+        Renderer.show_thinking()
+        
+        case MCPChat.MCP.ServerManager.call_tool(server_name, tool_name, arguments) do
+          {:ok, result} ->
+            Renderer.show_info("Tool result:")
+            case result do
+              %{"content" => content} when is_list(content) ->
+                Enum.each(content, &display_content_item/1)
+              %{"content" => content} ->
+                Renderer.show_code(inspect(content, pretty: true))
+              %{"text" => text} ->
+                Renderer.show_text(text)
+              _ ->
+                Renderer.show_code(inspect(result, pretty: true))
+            end
+          
+          {:error, reason} ->
+            Renderer.show_error("Failed to call tool: #{inspect(reason)}")
+        end
+      
+      _ ->
+        Renderer.show_error("Usage: /tool <server> <tool> [arguments]")
+        Renderer.show_info("Arguments can be JSON object or plain text")
+    end
+  end
+  defp call_tool(_), do: Renderer.show_error("Usage: /tool <server> <tool> [arguments]")
+  
+  defp display_content_item(%{"type" => "text", "text" => text}) do
+    Renderer.show_text(text)
+  end
+  defp display_content_item(%{"type" => "image", "data" => data, "mimeType" => mime}) do
+    Renderer.show_info("Image (#{mime}): #{String.slice(data, 0, 50)}...")
+  end
+  defp display_content_item(item) do
+    Renderer.show_code(inspect(item, pretty: true))
+  end
+  
+  defp read_resource([args_string]) do
+    case String.split(args_string, " ", parts: 2) do
+      [server_name, uri] ->
+        Renderer.show_thinking()
+        
+        case MCPChat.MCP.ServerManager.read_resource(server_name, uri) do
+          {:ok, contents} when is_list(contents) ->
+            Renderer.show_info("Resource contents:")
+            Enum.each(contents, &display_content_item/1)
+          
+          {:ok, result} ->
+            Renderer.show_info("Resource contents:")
+            Renderer.show_code(inspect(result, pretty: true))
+          
+          {:error, reason} ->
+            Renderer.show_error("Failed to read resource: #{inspect(reason)}")
+        end
+      
+      _ ->
+        Renderer.show_error("Usage: /resource <server> <uri>")
+    end
+  end
+  defp read_resource(_), do: Renderer.show_error("Usage: /resource <server> <uri>")
+  
+  defp get_prompt([args_string]) do
+    case String.split(args_string, " ", parts: 3) do
+      [server_name, prompt_name | rest] ->
+        # Parse arguments
+        arguments = case rest do
+          [] -> %{}
+          [json_args] ->
+            case Jason.decode(json_args) do
+              {:ok, args} -> args
+              {:error, _} -> %{}
+            end
+        end
+        
+        Renderer.show_thinking()
+        
+        case MCPChat.MCP.ServerManager.get_prompt(server_name, prompt_name, arguments) do
+          {:ok, messages} when is_list(messages) ->
+            Renderer.show_info("Prompt messages:")
+            Enum.each(messages, fn msg ->
+              role = Map.get(msg, "role", "unknown")
+              content = Map.get(msg, "content", "")
+              Renderer.show_text("#{String.upcase(role)}: #{content}")
+            end)
+          
+          {:ok, result} ->
+            Renderer.show_info("Prompt result:")
+            Renderer.show_code(inspect(result, pretty: true))
+          
+          {:error, reason} ->
+            Renderer.show_error("Failed to get prompt: #{inspect(reason)}")
+        end
+      
+      _ ->
+        Renderer.show_error("Usage: /prompt <server> <name> [arguments]")
+    end
+  end
+  defp get_prompt(_), do: Renderer.show_error("Usage: /prompt <server> <name> [arguments]")
   
 end

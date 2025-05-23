@@ -49,9 +49,9 @@ mcp_chat/
 - [x] Implement MCP client WebSocket connection
 - [x] Create protocol message encoding/decoding
 - [x] Build server connection manager
-- [ ] Add tool discovery and execution (partial - UI complete)
-- [ ] Implement resource handling (partial - UI complete)
-- [ ] Add prompt management (partial - UI complete)
+- [x] Add tool discovery and execution with request/response correlation
+- [x] Implement resource handling with CLI commands
+- [x] Add prompt management with CLI commands
 - [x] Implement stdio transport for MCP client
 - [x] Implement SSE transport for MCP client
 
@@ -134,6 +134,8 @@ history_size = 1000
 - ✅ Created chat tools, resources, and prompts for MCP server mode
 - ✅ Implemented SSE transport for MCP client to connect to remote servers
 - ✅ Implemented OpenAI adapter with GPT-4 and GPT-3.5 support
+- ✅ Completed MCP tool discovery and execution with synchronous request/response
+- ✅ Added CLI commands for tool execution, resource reading, and prompt retrieval
 
 ## Development Notes
 

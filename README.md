@@ -105,6 +105,11 @@ See `config/example.toml` for a complete configuration example.
 - `/config` - Show current configuration
 - `/servers` - List connected MCP servers
 - `/tools` - List available MCP tools
+- `/tool <server> <tool> [args]` - Execute an MCP tool
+- `/resources` - List available MCP resources  
+- `/resource <server> <uri>` - Read an MCP resource
+- `/prompts` - List available MCP prompts
+- `/prompt <server> <name> [args]` - Get an MCP prompt
 - `/backend <name>` - Switch LLM backend
 - `/model <name>` - Switch model
 - `/export [format]` - Export conversation (markdown/json)

@@ -121,6 +121,24 @@ defmodule MCPChat.CLI.Renderer do
     ])
   end
   
+  def show_code(code) do
+    puts([
+      "\n",
+      Owl.Box.new(code,
+        padding: 1,
+        border_style: :solid_rounded,
+        border_tag: :light_black
+      )
+    ])
+  end
+  
+  def show_text(text) do
+    puts([
+      "\n",
+      format_message_content(text)
+    ])
+  end
+  
   # Private Functions
   
   defp format_message_content(content) do

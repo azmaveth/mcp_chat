@@ -118,8 +118,6 @@ defmodule MCPChat.MCP.Server do
     result = case transport do
       :stdio -> 
         StdioClient.list_tools(client)
-        # TODO: Wait for response
-        {:ok, []}
       :sse ->
         SSEClient.list_tools(client)
     end
@@ -136,8 +134,6 @@ defmodule MCPChat.MCP.Server do
     result = case transport do
       :stdio ->
         StdioClient.call_tool(client, tool_name, arguments)
-        # TODO: Wait for response
-        {:ok, %{}}
       :sse ->
         SSEClient.call_tool(client, tool_name, arguments)
     end
@@ -154,8 +150,6 @@ defmodule MCPChat.MCP.Server do
     result = case transport do
       :stdio ->
         StdioClient.list_resources(client)
-        # TODO: Wait for response
-        {:ok, []}
       :sse ->
         SSEClient.list_resources(client)
     end
@@ -172,8 +166,6 @@ defmodule MCPChat.MCP.Server do
     result = case transport do
       :stdio ->
         StdioClient.read_resource(client, uri)
-        # TODO: Wait for response
-        {:ok, %{}}
       :sse ->
         SSEClient.read_resource(client, uri)
     end
@@ -190,8 +182,6 @@ defmodule MCPChat.MCP.Server do
     result = case transport do
       :stdio ->
         StdioClient.list_prompts(client)
-        # TODO: Wait for response
-        {:ok, []}
       :sse ->
         SSEClient.list_prompts(client)
     end
@@ -208,8 +198,6 @@ defmodule MCPChat.MCP.Server do
     result = case transport do
       :stdio ->
         StdioClient.get_prompt(client, prompt_name, arguments)
-        # TODO: Wait for response
-        {:ok, %{}}
       :sse ->
         SSEClient.get_prompt(client, prompt_name, arguments)
     end
@@ -233,18 +221,6 @@ defmodule MCPChat.MCP.Server do
   end
 
   @impl true
-  def handle_info({:mcp_initialized, client}, %{client_pid: client, transport: :stdio} = state) do
-    Logger.info("MCP server #{state.name} initialized (stdio)")
-    
-    # Request initial data
-    StdioClient.list_tools(client)
-    StdioClient.list_resources(client)
-    StdioClient.list_prompts(client)
-    
-    {:noreply, %{state | status: :connected}}
-  end
-
-  @impl true
   def handle_info({:mcp_disconnected, client, reason}, %{client_pid: client} = state) do
     Logger.warning("MCP server #{state.name} disconnected: #{inspect(reason)}")
     new_state = stop_server_process(state)
@@ -253,8 +229,8 @@ defmodule MCPChat.MCP.Server do
 
   @impl true
   def handle_info({:mcp_result, client, result, _id}, %{client_pid: client} = state) do
-    # TODO: Handle results based on request type
-    Logger.debug("MCP result from #{state.name}: #{inspect(result)}")
+    # Results are now handled synchronously in the StdioClient
+    Logger.debug("Unexpected MCP result from #{state.name}: #{inspect(result)}")
     {:noreply, state}
   end
 
@@ -333,16 +309,26 @@ defmodule MCPChat.MCP.Server do
               version: "0.1.0"
             }
             
-            StdioClient.initialize(client_pid, client_info)
-            
-            new_state = %{state |
-              port: port,
-              pid: nil,  # We don't have OS PID easily
-              client_pid: client_pid,
-              status: :connecting
-            }
-            
-            {:ok, new_state}
+            # Initialize will be handled synchronously now
+            case StdioClient.initialize(client_pid, client_info) do
+              {:ok, init_result} ->
+                new_state = %{state |
+                  port: port,
+                  pid: nil,  # We don't have OS PID easily
+                  client_pid: client_pid,
+                  status: :connected,
+                  server_info: init_result.server_info,
+                  capabilities: init_result.capabilities
+                }
+                
+                {:ok, new_state}
+              
+              {:error, reason} ->
+                # Clean up
+                Port.close(port)
+                Process.exit(client_pid, :shutdown)
+                {:error, {:initialization_failed, reason}}
+            end
             
           {:error, reason} ->
             # Clean up the client
