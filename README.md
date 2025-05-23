@@ -2,6 +2,13 @@
 
 An Elixir-based CLI chat client with support for the Model Context Protocol (MCP) and multiple LLM backends.
 
+## 📚 Documentation
+
+- **[Quick Start Guide](docs/QUICK_START.md)** - Get running in 5 minutes
+- **[Installation Guide](docs/INSTALLATION.md)** - Detailed setup instructions
+- **[User Guide](docs/USER_GUIDE.md)** - Complete feature documentation
+- **[MCP Servers Guide](docs/MCP_SERVERS.md)** - Extend functionality with MCP
+
 ## Features
 
 - 🤖 Multiple LLM backend support (Anthropic Claude 4, OpenAI GPT-4, Local models via Bumblebee)
