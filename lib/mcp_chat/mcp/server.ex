@@ -4,7 +4,7 @@ defmodule MCPChat.MCP.Server do
   """
   use GenServer
   
-  alias MCPChat.MCP.Client
+  alias MCPChat.MCP.StdioClient
   
   require Logger
 
@@ -110,7 +110,7 @@ defmodule MCPChat.MCP.Server do
 
   @impl true
   def handle_call(:get_tools, _from, %{status: :connected, client_pid: client} = state) do
-    Client.list_tools(client)
+    StdioClient.list_tools(client)
     # TODO: Wait for response
     {:reply, {:ok, []}, state}
   end
@@ -122,7 +122,7 @@ defmodule MCPChat.MCP.Server do
 
   @impl true
   def handle_call({:call_tool, tool_name, arguments}, _from, %{status: :connected, client_pid: client} = state) do
-    Client.call_tool(client, tool_name, arguments)
+    StdioClient.call_tool(client, tool_name, arguments)
     # TODO: Wait for response
     {:reply, {:ok, %{}}, state}
   end
@@ -134,7 +134,7 @@ defmodule MCPChat.MCP.Server do
 
   @impl true
   def handle_call(:get_resources, _from, %{status: :connected, client_pid: client} = state) do
-    Client.list_resources(client)
+    StdioClient.list_resources(client)
     # TODO: Wait for response
     {:reply, {:ok, []}, state}
   end
@@ -146,7 +146,7 @@ defmodule MCPChat.MCP.Server do
 
   @impl true
   def handle_call({:read_resource, uri}, _from, %{status: :connected, client_pid: client} = state) do
-    Client.read_resource(client, uri)
+    StdioClient.read_resource(client, uri)
     # TODO: Wait for response
     {:reply, {:ok, %{}}, state}
   end
@@ -158,7 +158,7 @@ defmodule MCPChat.MCP.Server do
 
   @impl true
   def handle_call(:get_prompts, _from, %{status: :connected, client_pid: client} = state) do
-    Client.list_prompts(client)
+    StdioClient.list_prompts(client)
     # TODO: Wait for response
     {:reply, {:ok, []}, state}
   end
@@ -170,7 +170,7 @@ defmodule MCPChat.MCP.Server do
 
   @impl true
   def handle_call({:get_prompt, prompt_name, arguments}, _from, %{status: :connected, client_pid: client} = state) do
-    Client.get_prompt(client, prompt_name, arguments)
+    StdioClient.get_prompt(client, prompt_name, arguments)
     # TODO: Wait for response
     {:reply, {:ok, %{}}, state}
   end
@@ -196,9 +196,9 @@ defmodule MCPChat.MCP.Server do
     Logger.info("MCP server #{state.name} initialized")
     
     # Request initial data
-    Client.list_tools(client)
-    Client.list_resources(client)
-    Client.list_prompts(client)
+    StdioClient.list_tools(client)
+    StdioClient.list_resources(client)
+    StdioClient.list_prompts(client)
     
     {:noreply, %{state | status: :connected}}
   end
@@ -243,6 +243,20 @@ defmodule MCPChat.MCP.Server do
     {:noreply, new_state}
   end
 
+  @impl true
+  def handle_info({port, {:data, data}}, %{port: port, client_pid: client} = state) when is_port(port) do
+    # Forward data from server to client
+    send(client, {port, {:data, data}})
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info({port, {:exit_status, status}}, %{port: port} = state) when is_port(port) do
+    Logger.warning("MCP server #{state.name} exited with status: #{status}")
+    new_state = stop_server_process(state)
+    {:noreply, new_state}
+  end
+
   # Private Functions
 
   defp via_tuple(name) do
@@ -250,26 +264,46 @@ defmodule MCPChat.MCP.Server do
   end
 
   defp start_server_process(state) do
-    # For now, we'll simulate the connection since stdio transport
-    # requires a different approach than WebSocket
-    # TODO: Implement stdio transport for MCP client
-    
-    Logger.info("MCP server connections not yet implemented for stdio transport")
-    
-    # Return a simulated connected state
-    new_state = %{state |
-      port: nil,
-      pid: nil,
-      client_pid: nil,
-      status: :simulated,
-      capabilities: %{
-        tools: true,
-        resources: true,
-        prompts: true
-      }
-    }
-    
-    {:ok, new_state}
+    # Start the stdio client first
+    case StdioClient.start_link(callback_pid: self()) do
+      {:ok, client_pid} ->
+        Process.monitor(client_pid)
+        
+        # Start the server process
+        case start_server_command(state.command, state.env) do
+          {:ok, port} ->
+            # Monitor the port
+            Process.monitor(port)
+            
+            # Connect the port to the client
+            StdioClient.set_port(client_pid, port)
+            
+            # Initialize the connection
+            client_info = %{
+              name: "mcp_chat",
+              version: "0.1.0"
+            }
+            
+            StdioClient.initialize(client_pid, client_info)
+            
+            new_state = %{state |
+              port: port,
+              pid: nil,  # We don't have OS PID easily
+              client_pid: client_pid,
+              status: :connecting
+            }
+            
+            {:ok, new_state}
+            
+          {:error, reason} ->
+            # Clean up the client
+            Process.exit(client_pid, :shutdown)
+            {:error, {:server_start_failed, reason}}
+        end
+        
+      {:error, reason} ->
+        {:error, {:client_start_failed, reason}}
+    end
   end
 
   defp stop_server_process(state) do
@@ -296,26 +330,29 @@ defmodule MCPChat.MCP.Server do
     # Convert env map to list of {"KEY", "VALUE"} tuples
     env_list = Enum.map(env, fn {k, v} -> {to_string(k), to_string(v)} end)
     
-    # Start the port
-    port_opts = [
-      :binary,
-      :exit_status,
-      {:env, env_list},
-      {:args, args}
-    ]
-    
-    try do
-      port = Port.open({:spawn_executable, System.find_executable(cmd)}, port_opts)
-      {:ok, port, nil}  # We don't have OS PID easily accessible
-    catch
-      :error, reason ->
-        {:error, reason}
+    # Find the executable
+    case System.find_executable(cmd) do
+      nil ->
+        {:error, {:executable_not_found, cmd}}
+      
+      executable ->
+        # Start the port
+        port_opts = [
+          :binary,
+          :exit_status,
+          :use_stdio,  # Important for stdio communication
+          {:env, env_list},
+          {:args, args}
+        ]
+        
+        try do
+          port = Port.open({:spawn_executable, executable}, port_opts)
+          {:ok, port}
+        catch
+          :error, reason ->
+            {:error, reason}
+        end
     end
   end
 
-  defp get_port_number(_port) do
-    # For stdio transport, we don't actually use WebSocket
-    # This is a placeholder - real implementation would vary by transport
-    0
-  end
 end

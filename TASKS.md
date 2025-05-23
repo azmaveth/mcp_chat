@@ -52,7 +52,7 @@ mcp_chat/
 - [ ] Add tool discovery and execution (partial - UI complete)
 - [ ] Implement resource handling (partial - UI complete)
 - [ ] Add prompt management (partial - UI complete)
-- [ ] Implement stdio transport for MCP servers
+- [x] Implement stdio transport for MCP servers
 
 ### Phase 3: LLM Backend Integration
 - [x] Define LLM adapter behaviour

@@ -26,10 +26,20 @@ name = "filesystem"
 command = ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
 
 [[mcp.servers]]
-# Example MCP server for GitHub
+# Example MCP server for GitHub (requires GITHUB_TOKEN)
 name = "github"
 command = ["npx", "-y", "@modelcontextprotocol/server-github"]
 env = { GITHUB_TOKEN = "YOUR_GITHUB_TOKEN" }
+
+# Uncomment to enable more servers:
+# [[mcp.servers]]
+# name = "brave-search"
+# command = ["npx", "-y", "@modelcontextprotocol/server-brave-search"]
+# env = { BRAVE_API_KEY = "YOUR_BRAVE_API_KEY" }
+
+# [[mcp.servers]]
+# name = "memory"
+# command = ["npx", "-y", "@modelcontextprotocol/server-memory"]
 
 [ui]
 theme = "dark"
