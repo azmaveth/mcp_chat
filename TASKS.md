@@ -78,7 +78,7 @@ mcp_chat/
 
 ### Phase 6: Advanced Features
 - [x] Add conversation persistence (save/load sessions with metadata)
-- [ ] Implement multi-turn context handling
+- [x] Implement multi-turn context handling (token counting, truncation strategies)
 - [ ] Add MCP server auto-discovery
 - [ ] Create plugin system for custom tools
 - [x] Add export functionality (markdown, JSON)
@@ -138,6 +138,8 @@ history_size = 1000
 - ✅ Added CLI commands for tool execution, resource reading, and prompt retrieval
 - ✅ Implemented conversation persistence with save/load functionality
 - ✅ Added session management with metadata (timestamps, message count, file size)
+- ✅ Implemented multi-turn context handling with token counting and truncation
+- ✅ Added context management commands (/context, /system, /tokens, /strategy)
 
 ## Development Notes
 

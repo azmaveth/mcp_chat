@@ -24,7 +24,11 @@ defmodule MCPChat.CLI.Commands do
     "prompt" => "Get an MCP prompt (usage: /prompt <server> <name>)",
     "backend" => "Switch LLM backend (usage: /backend <name>)",
     "model" => "Switch model (usage: /model <name>)",
-    "export" => "Export conversation (usage: /export [format] [path])"
+    "export" => "Export conversation (usage: /export [format] [path])",
+    "context" => "Show context statistics",
+    "system" => "Set system prompt (usage: /system <prompt>)",
+    "tokens" => "Set max tokens (usage: /tokens <number>)",
+    "strategy" => "Set context strategy (usage: /strategy <sliding_window|smart>)"
   }
   
   def handle_command(command) do
@@ -50,6 +54,10 @@ defmodule MCPChat.CLI.Commands do
       "backend" -> switch_backend(args)
       "model" -> switch_model(args)
       "export" -> export_conversation(args)
+      "context" -> show_context_stats()
+      "system" -> set_system_prompt(args)
+      "tokens" -> set_max_tokens(args)
+      "strategy" -> set_strategy(args)
       _ -> Renderer.show_error("Unknown command: /#{cmd}")
     end
   end
@@ -231,6 +239,56 @@ defmodule MCPChat.CLI.Commands do
     end
   end
   
+  
+  defp show_context_stats do
+    stats = Session.get_context_stats()
+    
+    Renderer.show_info("Context Statistics:")
+    Renderer.show_text("  Messages: #{stats.message_count}")
+    Renderer.show_text("  Estimated tokens: #{stats.estimated_tokens}/#{stats.max_tokens} (#{stats.tokens_used_percentage}%)")
+    Renderer.show_text("  Tokens remaining: #{stats.tokens_remaining}")
+    
+    # Show warning if approaching limit
+    if stats.tokens_used_percentage > 80 do
+      Renderer.show_warning("Context is #{stats.tokens_used_percentage}% full. Older messages may be truncated.")
+    end
+  end
+  
+  defp set_system_prompt([prompt]) do
+    config = %{system_prompt: prompt}
+    Session.update_context_config(config)
+    Renderer.show_info("System prompt set")
+  end
+  defp set_system_prompt([]) do
+    # Clear system prompt
+    config = %{system_prompt: nil}
+    Session.update_context_config(config)
+    Renderer.show_info("System prompt cleared")
+  end
+  
+  defp set_max_tokens([tokens_str]) do
+    case Integer.parse(tokens_str) do
+      {tokens, _} when tokens > 0 ->
+        config = %{max_tokens: tokens}
+        Session.update_context_config(config)
+        Renderer.show_info("Max tokens set to #{tokens}")
+      _ ->
+        Renderer.show_error("Invalid token count. Please provide a positive number.")
+    end
+  end
+  defp set_max_tokens(_) do
+    Renderer.show_error("Usage: /tokens <number>")
+  end
+  
+  defp set_strategy([strategy]) when strategy in ["sliding_window", "smart"] do
+    atom_strategy = String.to_atom(strategy)
+    config = %{strategy: atom_strategy}
+    Session.update_context_config(config)
+    Renderer.show_info("Context strategy set to #{strategy}")
+  end
+  defp set_strategy(_) do
+    Renderer.show_error("Usage: /strategy <sliding_window|smart>")
+  end
   
   defp get_current_model do
     session = Session.get_current_session()

@@ -99,6 +99,15 @@ defmodule MCPChat.CLI.Renderer do
     ])
   end
   
+  def show_warning(message) do
+    puts([
+      "\n",
+      Owl.Data.tag("Warning", :yellow),
+      Owl.Data.tag(" › ", :light_black),
+      Owl.Data.tag(message, :yellow)
+    ])
+  end
+  
   def show_command_output(output) do
     puts([
       "\n",

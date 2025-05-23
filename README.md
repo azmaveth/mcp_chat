@@ -116,7 +116,43 @@ See `config/example.toml` for a complete configuration example.
 - `/load <name or index>` - Load a saved session
 - `/sessions` - List all saved sessions
 - `/export [format]` - Export conversation (markdown/json)
+- `/context` - Show context statistics (token usage)
+- `/system <prompt>` - Set/clear system prompt
+- `/tokens <number>` - Set max context tokens
+- `/strategy <type>` - Set context strategy (sliding_window/smart)
 - `/exit` or `/quit` - Exit the application
+
+## Context Management
+
+MCP Chat includes intelligent context management to handle long conversations:
+
+### Features
+
+- **Token Counting**: Estimates token usage to stay within model limits
+- **Automatic Truncation**: Manages context window with configurable strategies
+- **System Prompts**: Persistent system prompts across conversations
+- **Context Statistics**: Real-time visibility into token usage
+
+### Context Strategies
+
+1. **Sliding Window** (default): Keeps the most recent messages that fit within token limit
+2. **Smart**: Preserves system prompt, initial context, and recent messages with truncation notices
+
+### Usage Examples
+
+```bash
+# Set a system prompt
+/system You are an expert Elixir developer
+
+# Set max tokens (default: 4096)
+/tokens 8192
+
+# Change context strategy
+/strategy smart
+
+# Check context usage
+/context
+```
 
 ## MCP Server Mode
 

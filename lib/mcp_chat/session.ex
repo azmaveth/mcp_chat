@@ -65,6 +65,27 @@ defmodule MCPChat.Session do
   def restore_session(session) do
     GenServer.call(__MODULE__, {:restore_session, session})
   end
+  
+  @doc """
+  Get messages prepared for LLM with context management.
+  """
+  def get_messages_for_llm(options \\ []) do
+    GenServer.call(__MODULE__, {:get_messages_for_llm, options})
+  end
+  
+  @doc """
+  Update context configuration.
+  """
+  def update_context_config(config) do
+    GenServer.cast(__MODULE__, {:update_context_config, config})
+  end
+  
+  @doc """
+  Get context statistics.
+  """
+  def get_context_stats do
+    GenServer.call(__MODULE__, :get_context_stats)
+  end
 
   # Server Callbacks
 
@@ -163,6 +184,32 @@ defmodule MCPChat.Session do
     end
     {:reply, result, state}
   end
+  
+  def handle_call({:get_messages_for_llm, options}, _from, state) do
+    messages = state.current_session.messages |> Enum.reverse()
+    
+    # Merge context config with options
+    context_config = Map.merge(
+      state.current_session.context,
+      Enum.into(options, %{})
+    )
+    
+    # Prepare messages with context management
+    prepared_messages = MCPChat.Context.prepare_messages(
+      messages,
+      Map.to_list(context_config)
+    )
+    
+    {:reply, prepared_messages, state}
+  end
+  
+  def handle_call(:get_context_stats, _from, state) do
+    messages = state.current_session.messages |> Enum.reverse()
+    max_tokens = get_in(state.current_session.context, [:max_tokens]) || 4096
+    
+    stats = MCPChat.Context.get_context_stats(messages, max_tokens)
+    {:reply, stats, state}
+  end
 
   @impl true
   def handle_cast(:clear_session, state) do
@@ -179,6 +226,17 @@ defmodule MCPChat.Session do
   def handle_cast({:set_context, context}, state) do
     updated_session = %{state.current_session | 
       context: context,
+      updated_at: DateTime.utc_now()
+    }
+    
+    new_state = %{state | current_session: updated_session}
+    {:noreply, new_state}
+  end
+  
+  def handle_cast({:update_context_config, config}, state) do
+    updated_context = Map.merge(state.current_session.context, config)
+    updated_session = %{state.current_session | 
+      context: updated_context,
       updated_at: DateTime.utc_now()
     }
     

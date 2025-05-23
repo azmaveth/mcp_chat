@@ -77,7 +77,8 @@ defmodule MCPChat.CLI.Chat do
   
   defp get_llm_response(_message) do
     session = Session.get_current_session()
-    messages = Session.get_messages()
+    # Get messages with context management
+    messages = Session.get_messages_for_llm()
     
     # Get the appropriate LLM adapter
     adapter = get_llm_adapter(session.llm_backend)
@@ -85,6 +86,7 @@ defmodule MCPChat.CLI.Chat do
     # Build options from session context
     options = []
     options = if session.context[:model], do: [{:model, session.context[:model]} | options], else: options
+    options = if session.context[:system_prompt], do: [{:system_prompt, session.context[:system_prompt]} | options], else: options
     
     # Check if adapter is configured
     if not adapter.configured?() do
