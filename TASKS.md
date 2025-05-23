@@ -3,10 +3,11 @@
 ## Project Overview
 
 An Elixir-based MCP (Model Context Protocol) client that provides a CLI chat interface with support for:
-- Multiple LLM backends (OpenAI, Anthropic, local models via Bumblebee/Nx)
+- Multiple LLM backends (Anthropic Claude 4, OpenAI, local models via Bumblebee/Nx)
 - MCP server connections for extensible functionality
-- Configuration via TOML files
+- Configuration via TOML files and environment variables
 - Interactive chat interface with history and context management
+- Real-time streaming responses
 
 ## Architecture
 
@@ -55,9 +56,10 @@ mcp_chat/
 ### Phase 3: LLM Backend Integration
 - [x] Define LLM adapter behaviour
 - [ ] Implement OpenAI adapter
-- [x] Implement Anthropic adapter
+- [x] Implement Anthropic adapter (with Claude 4 support)
 - [x] Add streaming response support
 - [x] Create backend configuration system
+- [x] Add environment variable support for API keys
 
 ### Phase 4: CLI Chat Interface
 - [x] Build interactive chat loop
@@ -94,8 +96,8 @@ Example `config.toml`:
 default = "anthropic"
 
 [llm.anthropic]
-api_key = "YOUR_API_KEY"
-model = "claude-3-sonnet-20240229"
+api_key = "YOUR_API_KEY"  # Or use ANTHROPIC_API_KEY env var
+model = "claude-sonnet-4-20250514"
 max_tokens = 4096
 
 [llm.openai]
@@ -116,6 +118,14 @@ servers = [
 theme = "dark"
 history_size = 1000
 ```
+
+## Recent Updates (May 2025)
+
+- ✅ Updated to Claude 4 models (claude-sonnet-4-20250514)
+- ✅ Fixed SSE streaming implementation for real-time responses
+- ✅ Added environment variable support for API keys
+- ✅ Fixed Owl.Table rendering issues
+- ✅ Improved error handling and user feedback
 
 ## Development Notes
 

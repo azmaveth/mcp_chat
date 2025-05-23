@@ -4,7 +4,7 @@ An Elixir-based CLI chat client with support for the Model Context Protocol (MCP
 
 ## Features
 
-- 🤖 Multiple LLM backend support (Anthropic Claude, OpenAI, Local models via Bumblebee)
+- 🤖 Multiple LLM backend support (Anthropic Claude 4, OpenAI, Local models via Bumblebee)
 - 🔌 MCP server integration for extensible functionality
 - 💬 Interactive CLI chat interface with rich formatting
 - 📝 Conversation history and session management
@@ -12,6 +12,7 @@ An Elixir-based CLI chat client with support for the Model Context Protocol (MCP
 - 📊 Export conversations to Markdown or JSON
 - ⚡ Streaming response support
 - 🔧 TOML-based configuration
+- 🔑 Environment variable support for API keys
 
 ## Installation
 
@@ -27,10 +28,11 @@ An Elixir-based CLI chat client with support for the Model Context Protocol (MCP
 git clone https://github.com/yourusername/mcp_chat.git
 cd mcp_chat
 
-# Install dependencies
-mix deps.get
+# Run the setup script (installs deps, builds, creates config)
+./setup.sh
 
-# Build the escript
+# Or manually:
+mix deps.get
 mix escript.build
 
 # Run the chat client
@@ -39,21 +41,30 @@ mix escript.build
 
 ## Configuration
 
-Create a configuration file at `~/.config/mcp_chat/config.toml`:
+The client can be configured via:
+1. Configuration file at `~/.config/mcp_chat/config.toml`
+2. Environment variables (e.g., `ANTHROPIC_API_KEY`)
+
+### Configuration File
 
 ```toml
 [llm]
 default = "anthropic"
 
 [llm.anthropic]
-api_key = "YOUR_API_KEY"
-model = "claude-3-sonnet-20240229"
+api_key = "YOUR_API_KEY"  # Or use ANTHROPIC_API_KEY env var
+model = "claude-sonnet-4-20250514"
 max_tokens = 4096
 
 [[mcp.servers]]
 name = "filesystem"
 command = ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
 ```
+
+### Environment Variables
+
+- `ANTHROPIC_API_KEY` - Your Anthropic API key (takes precedence if config file key is empty)
+- `OPENAI_API_KEY` - Your OpenAI API key (when OpenAI adapter is implemented)
 
 See `config/example.toml` for a complete configuration example.
 
@@ -83,6 +94,17 @@ See `config/example.toml` for a complete configuration example.
 - `/model <name>` - Switch model
 - `/export [format]` - Export conversation (markdown/json)
 - `/exit` or `/quit` - Exit the application
+
+## Troubleshooting
+
+### No response from chat
+- Ensure your API key is set either in `~/.config/mcp_chat/config.toml` or as the `ANTHROPIC_API_KEY` environment variable
+- Check that you're using a valid model name (default: `claude-sonnet-4-20250514`)
+- Verify your internet connection
+
+### Build errors with EXLA
+- The local model support via Bumblebee/Nx is optional and may have compilation issues on some systems
+- The chat client works fine without it for cloud-based LLMs
 
 ## Development
 
