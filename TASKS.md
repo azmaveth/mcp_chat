@@ -322,7 +322,7 @@ history_size = 1000
     - [x] Fix renderer function calls (render_* -> show_*)
     - [x] Fix config get calls
     - [x] Fix cost/context data structure references
-    - [ ] Fix remaining compilation error in utility module
+    - [x] Fix remaining compilation error in utility module
   - [ ] Update tests for refactored command structure
   - [ ] Benefits:
     - Reduced cyclomatic complexity (from 37 to <10 per module)

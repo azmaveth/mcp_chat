@@ -114,19 +114,21 @@ defmodule MCPChat.CLI.Commands.Utility do
 
     if Map.has_key?(cost_info, :error) do
       IO.puts(cost_info.error)
-    elsif Map.get(cost_info, :total_cost, 0) > 0 do
-      IO.puts("Token Usage:")
-      IO.puts("  Input tokens:  #{format_number(cost_info.input_tokens)}")
-      IO.puts("  Output tokens: #{format_number(cost_info.output_tokens)}")
-      IO.puts("  Total tokens:  #{format_number(cost_info.total_tokens)}")
-      IO.puts("")
-
-      IO.puts("Cost Breakdown:")
-      IO.puts("  Input cost:  $#{format_cost(cost_info.input_cost)}")
-      IO.puts("  Output cost: $#{format_cost(cost_info.output_cost)}")
-      IO.puts("  Total cost:  $#{format_cost(cost_info.total_cost)}")
     else
-      IO.puts("No token usage recorded yet.")
+      if Map.get(cost_info, :total_cost, 0) > 0 do
+        IO.puts("Token Usage:")
+        IO.puts("  Input tokens:  #{format_number(cost_info.input_tokens)}")
+        IO.puts("  Output tokens: #{format_number(cost_info.output_tokens)}")
+        IO.puts("  Total tokens:  #{format_number(cost_info.total_tokens)}")
+        IO.puts("")
+
+        IO.puts("Cost Breakdown:")
+        IO.puts("  Input cost:  $#{format_cost(cost_info.input_cost)}")
+        IO.puts("  Output cost: $#{format_cost(cost_info.output_cost)}")
+        IO.puts("  Total cost:  $#{format_cost(cost_info.total_cost)}")
+      else
+        IO.puts("No token usage recorded yet.")
+      end
     end
 
     :ok
@@ -143,6 +145,7 @@ defmodule MCPChat.CLI.Commands.Utility do
 
     # Generate filename
     timestamp = DateTime.utc_now() |> DateTime.to_iso8601(:basic)
+
     extension =
       case format do
         :json -> "json"
