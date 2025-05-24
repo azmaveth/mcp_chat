@@ -13,7 +13,7 @@ defmodule MCPChat.CLI.LineEditor do
   # ANSI escape sequences
   @cursor_right "\e[C"
   @cursor_left "\e[D"
-  @clear_line "\r\e[K]"
+  @clear_line "\r\e[K"
 
   # Key codes
   @backspace 127
