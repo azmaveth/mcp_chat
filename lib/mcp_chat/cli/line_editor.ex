@@ -70,6 +70,8 @@ defmodule MCPChat.CLI.LineEditor do
   def handle_call({:read_line, prompt, _opts}, _from, state) do
     # Set up terminal for raw input
     old_settings = :io.getopts(:standard_io)
+    # Ensure we flush any pending output first
+    IO.write("")
     :io.setopts(:standard_io, binary: true, echo: false)
 
     # Initialize line state

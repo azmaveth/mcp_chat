@@ -43,7 +43,6 @@ defmodule MCPChat.CLI.Renderer do
 
   def format_prompt() do
     [
-      "\n",
       Owl.Data.tag("You", @colors.prompt),
       Owl.Data.tag(" › ", :light_black)
     ]
