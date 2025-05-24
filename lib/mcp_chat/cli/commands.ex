@@ -919,46 +919,84 @@ defmodule MCPChat.CLI.Commands do
   defp list_models() do
     backend = Session.get_current_session().llm_backend
 
-    models =
-      case backend do
-        "anthropic" ->
-          MCPChat.LLM.Anthropic.available_models()
+    case backend do
+      "anthropic" ->
+        fetch_and_display_models(MCPChat.LLM.Anthropic, backend)
 
-        "openai" ->
-          MCPChat.LLM.OpenAI.available_models()
+      "openai" ->
+        fetch_and_display_models(MCPChat.LLM.OpenAI, backend)
 
-        "local" ->
-          # Show both available models and loaded models
-          available = MCPChat.LLM.Local.available_models()
-          loaded = MCPChat.LLM.ModelLoader.list_loaded_models()
+      "local" ->
+        fetch_and_display_local_models()
 
-          Renderer.show_info("Available models:")
-          Enum.each(available, fn model -> IO.puts("  #{model}") end)
+      _ ->
+        Renderer.show_error("Unknown backend: #{backend}")
+    end
+  end
 
-          if not Enum.empty?(loaded) do
-            Renderer.show_info("\nLoaded models:")
-            Enum.each(loaded, fn model -> IO.puts("  #{model}") end)
-          end
+  defp fetch_and_display_models(adapter, backend_name) do
+    Renderer.show_thinking()
+    Renderer.show_info("Fetching available models...")
 
-          # Return empty to skip the table rendering below
-          []
+    case adapter.list_models() do
+      {:ok, models} when is_list(models) and models != [] ->
+        current_model = get_current_model()
 
-        _ ->
-          []
-      end
+        # Handle both map and string formats
+        rows =
+          Enum.map(models, fn
+            model when is_map(model) ->
+              %{
+                "Model ID" => model.id || model[:id],
+                "Name" => model.name || model[:name] || model.id || model[:id],
+                "Current" => if((model.id || model[:id]) == current_model, do: "✓", else: "")
+              }
 
-    if models != [] do
-      current_model = get_current_model()
+            model when is_binary(model) ->
+              %{
+                "Model ID" => model,
+                "Name" => model,
+                "Current" => if(model == current_model, do: "✓", else: "")
+              }
+          end)
 
-      rows =
-        Enum.map(models, fn model ->
-          %{
-            "Model" => model,
-            "Current" => if(model == current_model, do: "✓", else: "")
-          }
-        end)
+        Renderer.show_table(["Model ID", "Name", "Current"], rows)
 
-      Renderer.show_table(["Model", "Current"], rows)
+      {:ok, []} ->
+        Renderer.show_info("No models available for #{backend_name}")
+
+      {:error, reason} ->
+        Renderer.show_error("Failed to fetch models: #{inspect(reason)}")
+    end
+  end
+
+  defp fetch_and_display_local_models() do
+    case MCPChat.LLM.Local.list_models() do
+      {:ok, models} when is_list(models) and models != [] ->
+        current_model = get_current_model()
+
+        rows =
+          Enum.map(models, fn model ->
+            status_indicator =
+              case model.status do
+                "loaded" -> " (loaded)"
+                _ -> ""
+              end
+
+            %{
+              "Model ID" => model.id,
+              "Name" => model.name <> status_indicator,
+              "Current" => if(model.id == current_model, do: "✓", else: "")
+            }
+          end)
+
+        Renderer.show_table(["Model ID", "Name", "Current"], rows)
+
+      {:ok, []} ->
+        Renderer.show_info("No local models available")
+
+      {:error, reason} ->
+        Renderer.show_error("Failed to list local models: #{inspect(reason)}")
     end
   end
 

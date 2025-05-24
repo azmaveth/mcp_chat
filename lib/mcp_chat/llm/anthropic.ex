@@ -132,16 +132,19 @@ defmodule MCPChat.LLM.Anthropic do
 
   @impl true
   def list_models() do
-    {:ok,
-     [
-       "claude-sonnet-4-20_250_514",
-       "claude-opus-4-20_250_514",
-       "claude-3-5-sonnet-20_241_022",
-       "claude-3-5-haiku-20_241_022",
-       "claude-3-opus-20_240_229",
-       "claude-3-sonnet-20_240_229",
-       "claude-3-haiku-20_240_307"
-     ]}
+    # Anthropic doesn't provide a models API endpoint, so we maintain a curated list
+    # These are ordered by capability/recency
+    models = [
+      %{id: "claude-sonnet-4-20250514", name: "Claude 4 Sonnet", context: 200_000},
+      %{id: "claude-opus-4-20250514", name: "Claude 4 Opus", context: 200_000},
+      %{id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", context: 200_000},
+      %{id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku", context: 200_000},
+      %{id: "claude-3-opus-20240229", name: "Claude 3 Opus", context: 200_000},
+      %{id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet", context: 200_000},
+      %{id: "claude-3-haiku-20240307", name: "Claude 3 Haiku", context: 200_000}
+    ]
+
+    {:ok, models}
   end
 
   # Private Functions

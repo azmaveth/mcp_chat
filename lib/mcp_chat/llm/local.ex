@@ -44,11 +44,44 @@ defmodule MCPChat.LLM.Local do
 
   @impl true
   def list_models() do
-    # Return loaded models and available models
+    # Return loaded models and available models in a structured format
     loaded = ModelLoader.list_loaded_models()
     available = available_models()
-    all_models = Enum.uniq(loaded ++ available)
-    {:ok, all_models}
+
+    # Convert to map format for consistency
+    available_maps =
+      Enum.map(available, fn model_id ->
+        %{
+          id: model_id,
+          name: humanize_model_name(model_id),
+          status: if(model_id in loaded, do: "loaded", else: "available")
+        }
+      end)
+
+    # Add any loaded models that aren't in the available list
+    loaded_only = loaded -- available
+
+    loaded_maps =
+      Enum.map(loaded_only, fn model_id ->
+        %{
+          id: model_id,
+          name: humanize_model_name(model_id),
+          status: "loaded"
+        }
+      end)
+
+    {:ok, available_maps ++ loaded_maps}
+  end
+
+  defp humanize_model_name(model_id) do
+    case model_id do
+      "microsoft/phi-2" -> "Phi-2 (2.7B)"
+      "meta-llama/Llama-2-7b-hf" -> "Llama 2 (7B)"
+      "mistralai/Mistral-7B-v0.1" -> "Mistral (7B)"
+      "EleutherAI/gpt-neo-1.3B" -> "GPT-Neo (1.3B)"
+      "google/flan-t5-base" -> "Flan-T5 Base"
+      _ -> model_id
+    end
   end
 
   @impl true

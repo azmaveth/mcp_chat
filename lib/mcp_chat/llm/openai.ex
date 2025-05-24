@@ -128,16 +128,58 @@ defmodule MCPChat.LLM.OpenAI do
 
   @impl true
   def list_models() do
-    # We could fetch this from the API, but for now return common models
-    {:ok,
-     [
-       "gpt-4-turbo-preview",
-       "gpt-4-turbo",
-       "gpt-4",
-       "gpt-4-32k",
-       "gpt-3.5-turbo",
-       "gpt-3.5-turbo-16k"
-     ]}
+    # Fetch models dynamically from OpenAI API
+    case fetch_models_from_api() do
+      {:ok, models} ->
+        {:ok, models}
+
+      {:error, _reason} ->
+        # Fallback to static list if API call fails
+        {:ok, fallback_models()}
+    end
+  end
+
+  defp fetch_models_from_api() do
+    headers = [
+      {"Authorization", "Bearer #{get_api_key()}"},
+      {"Content-Type", "application/json"}
+    ]
+
+    case Req.get("#{@base_url}/models", headers: headers) do
+      {:ok, %{status: 200, body: body}} ->
+        models =
+          body["data"]
+          |> Enum.filter(fn model ->
+            # Filter for chat models
+            String.contains?(model["id"], "gpt") and
+              not String.contains?(model["id"], "instruct")
+          end)
+          |> Enum.map(fn model ->
+            %{
+              id: model["id"],
+              name: model["id"],
+              created: model["created"],
+              owned_by: model["owned_by"]
+            }
+          end)
+          |> Enum.sort_by(& &1.id, :desc)
+
+        {:ok, models}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp fallback_models() do
+    [
+      %{id: "gpt-4-turbo-preview", name: "GPT-4 Turbo Preview"},
+      %{id: "gpt-4-turbo", name: "GPT-4 Turbo"},
+      %{id: "gpt-4", name: "GPT-4"},
+      %{id: "gpt-4-32k", name: "GPT-4 32K"},
+      %{id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo"},
+      %{id: "gpt-3.5-turbo-16k", name: "GPT-3.5 Turbo 16K"}
+    ]
   end
 
   # Private Functions
