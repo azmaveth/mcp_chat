@@ -85,7 +85,7 @@ mcp_chat/
 - [x] Implement MCP server functionality (stdio and SSE transports)
 
 ### Phase 7: Testing & Documentation
-- [ ] Write unit tests for all modules (in progress)
+- [x] Write unit tests for all modules (completed - all major modules have test coverage)
   - [x] Context module (token estimation, truncation strategies)
   - [x] Cost module (pricing calculations, usage tracking)
   - [x] Alias module (command aliases, circular reference detection)
@@ -97,7 +97,7 @@ mcp_chat/
   - [x] Ollama LLM adapter (basic tests)
   - [x] AWS Bedrock LLM adapter (basic tests)
   - [x] Google Gemini LLM adapter (basic tests)
-  - [ ] Local LLM adapter (needs Bumblebee mock tests)
+  - [x] Local LLM adapter (needs Bumblebee mock tests)
   - [x] Model Loader module (GenServer for model management)
   - [x] EXLA/EMLX configuration module
   - [x] CLI Commands module (command handling, validation)
