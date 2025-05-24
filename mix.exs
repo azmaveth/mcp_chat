@@ -43,8 +43,8 @@ defmodule McpChat.MixProject do
       # Local model support with Bumblebee
       {:bumblebee, "~> 0.5"},
       {:nx, "~> 0.7"},
-      {:exla, "~> 0.9", optional: true},
-      {:emlx, "~> 0.1", optional: true},
+      # {:exla, "~> 0.9", optional: true},  # Commented out due to compilation issues on macOS
+      {:emlx, github: "elixir-nx/emlx", branch: "main", optional: true},
       {:ortex, "~> 0.1", optional: true},
 
       # Development dependencies
