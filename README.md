@@ -50,38 +50,12 @@ mix escript.build
 
 ## Configuration
 
-The client can be configured via:
-1. Configuration file at `~/.config/mcp_chat/config.toml`
-2. Environment variables (e.g., `ANTHROPIC_API_KEY`)
+MCP Chat is configured via TOML files and environment variables. See the [Configuration Guide](docs/CONFIGURATION.md) for complete details.
 
-### Configuration File
-
-```toml
-[llm]
-default = "anthropic"
-
-[llm.anthropic]
-api_key = "YOUR_API_KEY"  # Or use ANTHROPIC_API_KEY env var
-model = "claude-sonnet-4-20250514"
-max_tokens = 4096
-
-[[mcp.servers]]
-name = "filesystem"
-command = ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
-
-# MCP Server configuration (optional)
-[mcp_server]
-stdio_enabled = false
-sse_enabled = false
-sse_port = 8080
-```
-
-### Environment Variables
-
-- `ANTHROPIC_API_KEY` - Your Anthropic API key (takes precedence if config file key is empty)
-- `OPENAI_API_KEY` - Your OpenAI API key (takes precedence if config file key is empty)
-
-See `config/example.toml` for a complete configuration example.
+**Quick setup:**
+1. Configuration file: `~/.config/mcp_chat/config.toml`
+2. API keys via environment: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`
+3. See `config.example.toml` for a complete example
 
 ## Usage
 
@@ -104,195 +78,43 @@ See `config/example.toml` for a complete configuration example.
 ./mcp_chat --config /path/to/config.toml
 ```
 
-### Available Commands
+### Key Commands
 
-- `/help` - Show available commands
-- `/clear` - Clear the screen
-- `/history` - Show conversation history
-- `/new` - Start a new conversation
-- `/config` - Show current configuration
+- `/help` - Show all available commands
+- `/backend <name>` - Switch LLM backend (anthropic, openai, ollama, local)
+- `/models` - List available models
 - `/servers` - List connected MCP servers
-- `/discover` - Discover available MCP servers
-- `/connect <name>` - Connect to a discovered server
-- `/disconnect <name>` - Disconnect from a server
-- `/tools` - List available MCP tools
-- `/tool <server> <tool> [args]` - Execute an MCP tool
-- `/resources` - List available MCP resources  
-- `/resource <server> <uri>` - Read an MCP resource
-- `/prompts` - List available MCP prompts
-- `/prompt <server> <name> [args]` - Get an MCP prompt
-- `/backend <name>` - Switch LLM backend
-- `/model <name>` - Switch model
-- `/models` - List available models for current backend
-- `/loadmodel <id>` - Load a local model (local backend only)
-- `/unloadmodel <id>` - Unload a local model (local backend only)
-- `/acceleration` - Show hardware acceleration info
-- `/save [name]` - Save the current session
-- `/load <name or index>` - Load a saved session
-- `/sessions` - List all saved sessions
-- `/export [format]` - Export conversation (markdown/json)
-- `/context` - Show context statistics and estimated cost for next message
-- `/system <prompt>` - Set/clear system prompt
-- `/tokens <number>` - Set max context tokens
-- `/strategy <type>` - Set context strategy (sliding_window/smart)
-- `/cost` - Show session cost based on token usage
-- `/alias` - Manage custom command shortcuts
-- `/exit` or `/quit` - Exit the application
+- `/discover` - Auto-discover MCP servers
+- `/save` - Save current session
+- `/cost` - Show session cost
+- `/acceleration` - Show GPU/acceleration info
+- `/exit` - Exit the application
 
-## Context Management
+See the [User Guide](docs/USER_GUIDE.md) for the complete command reference.
 
-MCP Chat includes intelligent context management to handle long conversations:
+## Key Features Explained
 
-### Features
+### Context Management
+- Intelligent handling of long conversations with token counting
+- Multiple truncation strategies (sliding window, smart)
+- Real-time token usage and cost estimation
 
-- **Token Counting**: Estimates token usage to stay within model limits
-- **Automatic Truncation**: Manages context window with configurable strategies
-- **System Prompts**: Persistent system prompts across conversations
-- **Context Statistics**: Real-time visibility into token usage
-- **Cost Estimation**: Shows estimated cost for the next message
+### Cost Tracking
+- Automatic tracking of input/output tokens
+- Real-time cost calculation with current pricing
+- Session cost summaries with `/cost`
 
-### Context Strategies
+### MCP Integration
+- Auto-discover and connect to MCP servers with `/discover`
+- Use filesystem, GitHub, database, and other tools
+- Run MCP Chat as a server for other clients
 
-1. **Sliding Window** (default): Keeps the most recent messages that fit within token limit
-2. **Smart**: Preserves system prompt, initial context, and recent messages with truncation notices
+### Command Aliases
+- Create custom command shortcuts
+- Support for parameters and command sequences
+- Persistent aliases across sessions
 
-### Usage Examples
-
-```bash
-# Set a system prompt
-/system You are an expert Elixir developer
-
-# Set max tokens (default: 4096)
-/tokens 8192
-
-# Change context strategy
-/strategy smart
-
-# Check context usage
-/context
-```
-
-## Cost Tracking
-
-MCP Chat automatically tracks token usage and calculates costs based on current provider pricing:
-
-### Features
-
-- **Automatic Token Tracking**: Counts input and output tokens for each message
-- **Real-time Cost Calculation**: Uses up-to-date pricing for each model
-- **Multiple Model Support**: Pricing for all major Anthropic and OpenAI models
-- **Smart Formatting**: Shows costs in appropriate units (cents for small amounts)
-
-### Usage
-
-```bash
-# Check current session cost
-/cost
-```
-
-The cost display includes:
-- Token counts (input/output/total)
-- Cost breakdown by input and output
-- Total session cost in USD
-- Current model pricing information
-
-## MCP Server Discovery
-
-MCP Chat can automatically discover available MCP servers:
-
-### Auto-Discovery Methods
-
-1. **Quick Setup**: Pre-configured popular MCP servers
-2. **NPM Packages**: Scans globally installed npm packages
-3. **Environment Variables**: Detects MCP-related environment variables
-4. **Local Directories**: Searches known locations for MCP servers
-
-### Usage
-
-```bash
-# Discover available servers
-/discover
-
-# Connect to a discovered server
-/connect filesystem
-
-# Disconnect from a server
-/disconnect filesystem
-```
-
-### Quick Setup Servers
-
-- `filesystem` - Local file access
-- `github` - GitHub integration (requires GITHUB_TOKEN)
-- `postgres` - PostgreSQL access (requires DATABASE_URL)
-- `sqlite` - SQLite database access
-- `memory` - Persistent memory storage
-- `puppeteer` - Browser automation
-- And more...
-
-## Command Aliases
-
-Create custom shortcuts for frequently used command sequences:
-
-### Creating Aliases
-
-```bash
-# Simple alias for multiple commands
-/alias add status=/context;/cost
-
-# Alias with parameters ($1, $2, etc.)
-/alias add check=/tool $1 $2;/resource $1 $3
-
-# Complex setup alias
-/alias add setup=/system You are a helpful assistant;/tokens 8192;/strategy smart
-
-# Alias that includes a message
-/alias add greet=/clear;Hello! How can I help you today?
-```
-
-### Using Aliases
-
-```bash
-# Execute an alias
-/status
-
-# Pass arguments to parameterized aliases
-/check filesystem read_file /etc/hosts
-
-# Use $* for all arguments
-/alias add say=I want to say: $*
-/say hello world
-```
-
-### Managing Aliases
-
-```bash
-# List all aliases
-/alias list
-/alias
-
-# Remove an alias
-/alias remove status
-```
-
-Aliases are saved to `~/.config/mcp_chat/aliases.json` and persist between sessions.
-
-## MCP Server Mode
-
-MCP Chat can also function as an MCP server, allowing other MCP clients to interact with it. See [MCP_SERVER.md](MCP_SERVER.md) for detailed documentation.
-
-### Quick Start
-
-```bash
-# Run as stdio MCP server
-./mcp_server
-
-# Or enable in config.toml and run normally
-[mcp_server]
-stdio_enabled = true  # For stdio transport
-sse_enabled = true    # For HTTP/SSE transport
-sse_port = 8080
-```
+See the [MCP Servers Guide](docs/MCP_SERVERS.md) for detailed MCP functionality.
 
 ## Troubleshooting
 
