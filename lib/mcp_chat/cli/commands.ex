@@ -1113,6 +1113,7 @@ defmodule MCPChat.CLI.Commands do
           if acc_info.memory do
             Renderer.show_text("  Unified Memory: #{acc_info.memory.total_gb} GB")
           end
+
           Renderer.show_text("  Backend: #{acc_info.backend}")
 
         :cpu ->
@@ -1128,6 +1129,7 @@ defmodule MCPChat.CLI.Commands do
       cond do
         Code.ensure_loaded?(EMLX) ->
           Renderer.show_text("  EMLX Status: ✓ Loaded (Apple Silicon optimized)")
+
           if acc_info.type == :metal do
             Renderer.show_text("  Mixed Precision: Automatic")
             Renderer.show_text("  Memory Optimization: Unified memory")

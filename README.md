@@ -302,8 +302,35 @@ sse_port = 8080
 - Verify your internet connection
 
 ### Build errors with EXLA
+
+#### macOS Compilation Error
+If you encounter C++ template errors when compiling EXLA on macOS:
+```
+error: a template argument list is expected after a name prefixed by the template keyword
+```
+
+**Solutions:**
+1. **Recommended for Apple Silicon**: Skip EXLA and use EMLX instead:
+   ```bash
+   mix deps.clean exla
+   mix deps.get  # EMLX will be used automatically
+   ```
+
+2. **Use the provided installation script**:
+   ```bash
+   ./install_exla_macos.sh
+   ```
+
+3. **Manual workaround**:
+   ```bash
+   export CXXFLAGS="-Wno-error=missing-template-arg-list-after-template-kw"
+   mix deps.compile exla --force
+   ```
+
+#### General Notes
 - The local model support via Bumblebee/Nx is optional and may have compilation issues on some systems
 - The chat client works fine without it for cloud-based LLMs
+- On Apple Silicon, EMLX is preferred over EXLA for better performance
 
 ## Local Model Support & GPU Acceleration
 

@@ -6,9 +6,34 @@ echo "Setting up MCP Chat Client..."
 echo "Installing Elixir dependencies..."
 mix deps.get
 
-# Compile the project
-echo "Compiling..."
-mix compile
+# Handle macOS-specific EXLA compilation issues
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "Detected macOS. Checking for Apple Silicon..."
+    if [[ $(uname -m) == "arm64" ]]; then
+        echo "Apple Silicon detected. EMLX will be used for Metal acceleration."
+        # Try to compile, but don't fail if EXLA has issues
+        mix compile || {
+            echo "Note: EXLA compilation failed. This is expected on macOS with newer Xcode."
+            echo "EMLX will be used for local model acceleration instead."
+            # Clean EXLA and compile without it
+            mix deps.clean exla
+            mix compile
+        }
+    else
+        # Intel Mac
+        echo "Intel Mac detected. Attempting to compile with EXLA..."
+        export CXXFLAGS="-Wno-error=missing-template-arg-list-after-template-kw"
+        mix compile || {
+            echo "EXLA compilation failed. Continuing without GPU acceleration."
+            mix deps.clean exla
+            mix compile
+        }
+    fi
+else
+    # Non-macOS systems
+    echo "Compiling..."
+    mix compile
+fi
 
 # Build escript
 echo "Building executable..."
