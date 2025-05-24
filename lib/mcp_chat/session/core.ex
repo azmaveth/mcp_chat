@@ -19,6 +19,7 @@ defmodule MCPChat.Session.Core do
   """
 
   alias MCPChat.Types.Session
+  alias MCPChat.Error
 
   @doc """
   Create a new session with the specified backend.
@@ -233,7 +234,7 @@ defmodule MCPChat.Session.Core do
     if session.token_usage do
       MCPChat.Cost.calculate_session_cost(session, session.token_usage, opts)
     else
-      {:error, "No token usage data"}
+      {:error, :no_token_usage}
     end
   end
 

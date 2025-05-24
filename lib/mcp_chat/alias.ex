@@ -153,13 +153,22 @@ defmodule MCPChat.Alias do
   defp get_aliases_path(path_provider) do
     case path_provider do
       MCPChat.PathProvider.Default ->
-        MCPChat.PathProvider.Default.get_path(:aliases_file)
+        case MCPChat.PathProvider.Default.get_path(:aliases_file) do
+          {:ok, path} -> path
+          {:error, _} -> Path.expand("~/.config/mcp_chat/aliases.json")  # fallback
+        end
 
       provider when is_pid(provider) ->
-        MCPChat.PathProvider.Static.get_path(provider, :aliases_file)
+        case MCPChat.PathProvider.Static.get_path(provider, :aliases_file) do
+          {:ok, path} -> path
+          {:error, _} -> "/tmp/mcp_chat_test/aliases.json"  # fallback
+        end
 
       provider ->
-        provider.get_path(:aliases_file)
+        case provider.get_path(:aliases_file) do
+          {:ok, path} -> path
+          {:error, _} -> Path.expand("~/.config/mcp_chat/aliases.json")  # fallback
+        end
     end
   end
 end

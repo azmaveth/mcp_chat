@@ -18,6 +18,8 @@ defmodule MCPChat.Alias.Core do
       # => {:ok, ["ls", "-la"]}
   """
 
+  alias MCPChat.Error
+
   @doc """
   Load aliases from a file path.
 
@@ -88,13 +90,13 @@ defmodule MCPChat.Alias.Core do
     # Validate alias name
     cond do
       String.length(name) == 0 ->
-        {:error, "Alias name cannot be empty"}
+        Error.validation_error(:name, "cannot be empty")
 
       String.contains?(name, " ") ->
-        {:error, "Alias name cannot contain spaces"}
+        Error.validation_error(:name, "cannot contain spaces")
 
       is_reserved_command?(name) ->
-        {:error, "Cannot override built-in command '#{name}'"}
+        Error.validation_error(:name, "cannot override built-in command '#{name}'")
 
       true ->
         # Validate commands
@@ -124,7 +126,7 @@ defmodule MCPChat.Alias.Core do
       updated_aliases = Map.delete(aliases, name)
       {:ok, updated_aliases}
     else
-      {:error, "Alias '#{name}' not found"}
+      {:error, :not_found}
     end
   end
 
@@ -140,7 +142,7 @@ defmodule MCPChat.Alias.Core do
   """
   def get_alias(aliases, name) do
     case Map.get(aliases, name) do
-      nil -> {:error, "Alias '#{name}' not found"}
+      nil -> {:error, :not_found}
       commands -> {:ok, commands}
     end
   end
@@ -171,7 +173,7 @@ defmodule MCPChat.Alias.Core do
   def expand_alias(aliases, name) do
     case Map.get(aliases, name) do
       nil ->
-        {:error, "Alias '#{name}' not found"}
+        {:error, :not_found}
 
       commands ->
         expanded = expand_commands(commands, aliases, [name])
@@ -233,10 +235,10 @@ defmodule MCPChat.Alias.Core do
   defp validate_commands(commands) do
     cond do
       length(commands) == 0 ->
-        {:error, "Commands list cannot be empty"}
+        Error.validation_error(:commands, "cannot be empty")
 
       Enum.any?(commands, &(not is_binary(&1))) ->
-        {:error, "All commands must be strings"}
+        Error.validation_error(:commands, "must all be strings")
 
       true ->
         :ok

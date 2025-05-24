@@ -14,12 +14,14 @@ defmodule MCPChat.PathProvider do
   @doc """
   Gets the path for a specific file type within the config directory.
   """
-  @callback get_path(file_type :: atom()) :: String.t()
+  @callback get_path(file_type :: atom()) :: {:ok, String.t()} | {:error, term()}
 
   @doc """
   Gets all configured paths.
   """
   @callback get_all_paths() :: map()
+
+  alias MCPChat.Error
 
   defmodule Default do
     @moduledoc """
@@ -36,34 +38,34 @@ defmodule MCPChat.PathProvider do
     def get_path(file_type) do
       case file_type do
         :config_file ->
-          Path.join(config_dir(), "config.toml")
+          {:ok, Path.join(config_dir(), "config.toml")}
 
         :aliases_file ->
-          Path.join(config_dir(), "aliases.json")
+          {:ok, Path.join(config_dir(), "aliases.json")}
 
         :sessions_dir ->
-          Path.join(config_dir(), "sessions")
+          {:ok, Path.join(config_dir(), "sessions")}
 
         :history_file ->
-          Path.join(config_dir(), "history")
+          {:ok, Path.join(config_dir(), "history")}
 
         :model_cache_dir ->
-          Path.expand("~/.mcp_chat/models")
+          {:ok, Path.expand("~/.mcp_chat/models")}
 
         :server_connections_file ->
-          Path.expand("~/.mcp_chat/connected_servers.json")
+          {:ok, Path.expand("~/.mcp_chat/connected_servers.json")}
 
         :mcp_discovery_dirs ->
-          [
+          {:ok, [
             Path.expand("~/.mcp/servers"),
             "/usr/local/share/mcp/servers",
             "/opt/homebrew/share/mcp/servers",
             Path.expand("~/mcp-servers"),
             Path.expand("~/projects/mcp-servers")
-          ]
+          ]}
 
         _ ->
-          raise ArgumentError, "Unknown file type: #{file_type}"
+          {:error, {:invalid_file_type, file_type}}
       end
     end
 
@@ -106,8 +108,12 @@ defmodule MCPChat.PathProvider do
 
     def get_path(provider, file_type) do
       Agent.get(provider, fn paths ->
-        Map.get(paths, file_type) ||
-          default_path(Map.get(paths, :config_dir, "/tmp/mcp_chat_test"), file_type)
+        case Map.get(paths, file_type) do
+          nil ->
+            default_path(Map.get(paths, :config_dir, "/tmp/mcp_chat_test"), file_type)
+          path ->
+            {:ok, path}
+        end
       end)
     end
 
@@ -117,14 +123,14 @@ defmodule MCPChat.PathProvider do
 
     defp default_path(base_dir, file_type) do
       case file_type do
-        :config_file -> Path.join(base_dir, "config.toml")
-        :aliases_file -> Path.join(base_dir, "aliases.json")
-        :sessions_dir -> Path.join(base_dir, "sessions")
-        :history_file -> Path.join(base_dir, "history")
-        :model_cache_dir -> Path.join(base_dir, "models")
-        :server_connections_file -> Path.join(base_dir, "connected_servers.json")
-        :mcp_discovery_dirs -> [Path.join(base_dir, "mcp_servers")]
-        _ -> Path.join(base_dir, to_string(file_type))
+        :config_file -> {:ok, Path.join(base_dir, "config.toml")}
+        :aliases_file -> {:ok, Path.join(base_dir, "aliases.json")}
+        :sessions_dir -> {:ok, Path.join(base_dir, "sessions")}
+        :history_file -> {:ok, Path.join(base_dir, "history")}
+        :model_cache_dir -> {:ok, Path.join(base_dir, "models")}
+        :server_connections_file -> {:ok, Path.join(base_dir, "connected_servers.json")}
+        :mcp_discovery_dirs -> {:ok, [Path.join(base_dir, "mcp_servers")]}
+        _ -> {:error, {:invalid_file_type, file_type}}
       end
     end
   end
