@@ -132,19 +132,67 @@ defmodule MCPChat.LLM.Anthropic do
 
   @impl true
   def list_models() do
-    # Anthropic doesn't provide a models API endpoint, so we maintain a curated list
-    # These are ordered by capability/recency
-    models = [
-      %{id: "claude-sonnet-4-20250514", name: "Claude 4 Sonnet", context: 200_000},
-      %{id: "claude-opus-4-20250514", name: "Claude 4 Opus", context: 200_000},
-      %{id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", context: 200_000},
-      %{id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku", context: 200_000},
-      %{id: "claude-3-opus-20240229", name: "Claude 3 Opus", context: 200_000},
-      %{id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet", context: 200_000},
-      %{id: "claude-3-haiku-20240307", name: "Claude 3 Haiku", context: 200_000}
+    # Fetch models dynamically from Anthropic API
+    case fetch_models_from_api() do
+      {:ok, models} ->
+        {:ok, models}
+
+      {:error, _reason} ->
+        # Fallback to static list if API call fails
+        {:ok, fallback_models()}
+    end
+  end
+
+  defp fetch_models_from_api() do
+    headers = [
+      {"x-api-key", get_api_key()},
+      {"anthropic-version", "2023-06-01"},
+      {"Content-Type", "application/json"}
     ]
 
-    {:ok, models}
+    case Req.get("#{@base_url}/models", headers: headers) do
+      {:ok, %{status: 200, body: body}} ->
+        models =
+          body["data"]
+          |> Enum.map(fn model ->
+            %{
+              id: model["id"],
+              name: model["display_name"] || model["id"],
+              created_at: model["created_at"],
+              type: model["type"]
+            }
+          end)
+          |> Enum.sort_by(& &1.id, :desc)
+
+        # Handle pagination if needed
+        if body["has_more"] do
+          # For now, just return the first page
+          # Could implement full pagination if needed
+          {:ok, models}
+        else
+          {:ok, models}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+
+      {:ok, %{status: status}} ->
+        {:error, "API returned status #{status}"}
+    end
+  end
+
+  defp fallback_models() do
+    # Fallback list if API is unavailable
+    [
+      %{id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet"},
+      %{id: "claude-sonnet-4-20250514", name: "Claude 4 Sonnet"},
+      %{id: "claude-opus-4-20250514", name: "Claude 4 Opus"},
+      %{id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet"},
+      %{id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku"},
+      %{id: "claude-3-opus-20240229", name: "Claude 3 Opus"},
+      %{id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet"},
+      %{id: "claude-3-haiku-20240307", name: "Claude 3 Haiku"}
+    ]
   end
 
   # Private Functions
