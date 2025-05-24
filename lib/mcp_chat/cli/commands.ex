@@ -441,7 +441,7 @@ defmodule MCPChat.CLI.Commands do
   end
 
   defp switch_backend([backend]) do
-    backends = ["anthropic", "openai", "local", "ollama"]
+    backends = ["anthropic", "openai", "local", "ollama", "bedrock", "gemini"]
 
     if backend in backends do
       Session.new_session(backend)
@@ -987,6 +987,12 @@ defmodule MCPChat.CLI.Commands do
 
       "ollama" ->
         fetch_and_display_models(MCPChat.LLM.Ollama, backend)
+
+      "bedrock" ->
+        fetch_and_display_models(MCPChat.LLM.Bedrock, backend)
+
+      "gemini" ->
+        fetch_and_display_models(MCPChat.LLM.Gemini, backend)
 
       _ ->
         Renderer.show_error("Unknown backend: #{backend}")

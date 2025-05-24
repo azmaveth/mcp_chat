@@ -14,7 +14,7 @@
 # ==============================================================================
 
 [llm]
-# Default LLM backend to use (anthropic, openai, ollama, local)
+# Default LLM backend to use (anthropic, openai, ollama, local, bedrock, gemini)
 default = "anthropic"
 
 # ------------------------------------------------------------------------------
@@ -120,6 +120,84 @@ max_tokens = 2048
 
 # Temperature
 temperature = 0.7
+
+# ------------------------------------------------------------------------------
+# AWS Bedrock Configuration
+# ------------------------------------------------------------------------------
+[llm.bedrock]
+# AWS credentials - leave empty to use AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY env vars
+# access_key_id = ""
+# secret_access_key = ""
+# session_token = ""  # Optional, for temporary credentials
+
+# AWS region - can also use AWS_REGION env var
+region = "us-east-1"
+
+# AWS profile to use (optional) - can also use AWS_PROFILE env var
+# profile = "default"
+
+# Model to use - available models:
+# Anthropic:
+# - claude-instant-v1
+# - claude-v2
+# - claude-3-sonnet
+# - claude-3-haiku
+# Amazon:
+# - titan-lite
+# - titan-express
+# Meta:
+# - llama2-13b
+# - llama2-70b
+# Cohere:
+# - command
+# - command-light
+# Mistral:
+# - mistral-7b
+# - mixtral-8x7b
+model = "claude-3-sonnet"
+
+# Maximum tokens
+max_tokens = 4096
+
+# Temperature
+temperature = 0.7
+
+# ------------------------------------------------------------------------------
+# Google Gemini Configuration
+# ------------------------------------------------------------------------------
+[llm.gemini]
+# API key - leave empty to use GOOGLE_API_KEY environment variable
+api_key = ""
+
+# Model to use - available models:
+# - gemini-pro (text only)
+# - gemini-pro-vision (multimodal - text and images)
+# - gemini-ultra (most capable, when available)
+# - gemini-nano (lightweight, for edge devices)
+model = "gemini-pro"
+
+# Maximum tokens
+max_tokens = 2048
+
+# Temperature (0.0-1.0)
+temperature = 0.7
+
+# Top-p sampling (0.0-1.0)
+top_p = 0.95
+
+# Top-k sampling
+top_k = 40
+
+# Safety settings (optional) - threshold can be:
+# - BLOCK_NONE
+# - BLOCK_ONLY_HIGH
+# - BLOCK_MEDIUM_AND_ABOVE (default)
+# - BLOCK_LOW_AND_ABOVE
+# [llm.gemini.safety_settings]
+# HARM_CATEGORY_HARASSMENT = "BLOCK_MEDIUM_AND_ABOVE"
+# HARM_CATEGORY_HATE_SPEECH = "BLOCK_MEDIUM_AND_ABOVE"
+# HARM_CATEGORY_SEXUALLY_EXPLICIT = "BLOCK_MEDIUM_AND_ABOVE"
+# HARM_CATEGORY_DANGEROUS_CONTENT = "BLOCK_MEDIUM_AND_ABOVE"
 
 # ==============================================================================
 # MCP Client Configuration

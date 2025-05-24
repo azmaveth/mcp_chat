@@ -28,6 +28,36 @@ defmodule MCPChat.Cost do
       "gpt-3.5-turbo-16k" => %{input: 3.00, output: 4.00},
       "gpt-4o" => %{input: 5.00, output: 15.00},
       "gpt-4o-mini" => %{input: 0.15, output: 0.60}
+    },
+    "bedrock" => %{
+      # Anthropic via Bedrock (slightly different pricing)
+      "claude-instant-v1" => %{input: 0.80, output: 2.40},
+      "claude-v2" => %{input: 8.00, output: 24.00},
+      "claude-v2.1" => %{input: 8.00, output: 24.00},
+      "claude-3-sonnet" => %{input: 3.00, output: 15.00},
+      "claude-3-haiku" => %{input: 0.25, output: 1.25},
+      # Amazon Titan
+      "titan-lite" => %{input: 0.30, output: 0.40},
+      "titan-express" => %{input: 1.30, output: 1.70},
+      # Meta Llama 2
+      "llama2-13b" => %{input: 0.75, output: 1.00},
+      "llama2-70b" => %{input: 1.95, output: 2.56},
+      # Cohere
+      "command" => %{input: 1.50, output: 2.00},
+      "command-light" => %{input: 0.30, output: 0.60},
+      # AI21 Jurassic
+      "jurassic-2-mid" => %{input: 1.25, output: 1.25},
+      "jurassic-2-ultra" => %{input: 18.80, output: 18.80},
+      # Mistral
+      "mistral-7b" => %{input: 0.20, output: 0.26},
+      "mixtral-8x7b" => %{input: 0.45, output: 0.70}
+    },
+    "gemini" => %{
+      # Google Gemini pricing (as of Jan 2025)
+      "gemini-pro" => %{input: 0.50, output: 1.50},
+      "gemini-pro-vision" => %{input: 0.50, output: 1.50},
+      "gemini-ultra" => %{input: 5.00, output: 15.00},
+      "gemini-nano" => %{input: 0.10, output: 0.30}
     }
   }
 

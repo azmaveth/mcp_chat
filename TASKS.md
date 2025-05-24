@@ -362,6 +362,60 @@ history_size = 1000
     7. Demonstrate context truncation
     8. Show session save/load
 
+## Phase 14: Additional LLM Backends
+- [x] Add AWS Bedrock support
+  - [x] Implement Bedrock adapter (MCPChat.LLM.Bedrock)
+  - [x] Support multiple model providers through Bedrock:
+    - [x] Anthropic Claude (via Bedrock)
+    - [x] AI21 Labs Jurassic
+    - [x] Amazon Titan
+    - [x] Cohere Command
+    - [x] Meta Llama 2/3
+    - [x] Mistral/Mixtral
+  - [x] Authentication via AWS credentials:
+    - [x] AWS access key/secret key
+    - [x] IAM role support
+    - [x] AWS profile support
+    - [x] STS temporary credentials
+  - [x] Region configuration
+  - [x] Streaming support with Bedrock runtime
+  - [x] Model-specific parameter handling
+  - [x] Cost tracking for Bedrock pricing
+- [x] Add Google Gemini support
+  - [x] Implement Gemini adapter (MCPChat.LLM.Gemini)
+  - [x] Support Gemini model variants:
+    - [x] Gemini Pro
+    - [x] Gemini Pro Vision (multimodal)
+    - [x] Gemini Ultra (when available)
+    - [x] Gemini Nano (for local/edge)
+  - [x] Authentication:
+    - [x] API key support
+    - [ ] OAuth2 for user auth (not implemented - API key sufficient)
+    - [ ] Service account credentials (not implemented - API key sufficient) 
+    - [ ] ADC (Application Default Credentials) (not implemented - API key sufficient)
+  - [x] Features:
+    - [x] Text generation
+    - [x] Multimodal support (images)
+    - [ ] Function calling (not implemented in initial version)
+    - [x] Streaming responses
+    - [x] Safety settings configuration
+  - [ ] Region/location configuration (uses default)
+  - [ ] Rate limiting and quota management (handled by API)
+- [x] Update configuration examples:
+  - [x] Add Bedrock config section
+  - [x] Add Gemini config section
+  - [x] Document authentication methods
+  - [x] Show region/endpoint configuration
+- [x] Update model listing:
+  - [x] Dynamically fetch available Bedrock models
+  - [x] List Gemini model variants
+  - [x] Show model capabilities (text, vision, etc.)
+- [x] Integration testing:
+  - [x] Test each Bedrock model provider (basic tests)
+  - [x] Test Gemini multimodal features (basic tests)
+  - [ ] Verify streaming works correctly (requires API keys)
+  - [x] Ensure cost tracking is accurate
+
 ## Development Notes
 
 - Use supervisor trees for fault tolerance

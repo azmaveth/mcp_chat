@@ -36,6 +36,10 @@ defmodule McpChat.MixProject do
       # Configuration
       {:toml, "~> 0.7"},
 
+      # AWS SDK for Bedrock
+      {:aws, "~> 1.0"},
+      {:hackney, "~> 1.18"},
+
       # HTTP server for SSE support
       {:plug, "~> 1.15"},
       {:plug_cowboy, "~> 2.7"},

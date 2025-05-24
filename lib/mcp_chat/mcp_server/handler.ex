@@ -342,6 +342,11 @@ defmodule MCPChat.MCPServer.Handler do
   # Helper functions
 
   defp get_llm_adapter("anthropic"), do: MCPChat.LLM.Anthropic
+  defp get_llm_adapter("openai"), do: MCPChat.LLM.OpenAI
+  defp get_llm_adapter("local"), do: MCPChat.LLM.Local
+  defp get_llm_adapter("ollama"), do: MCPChat.LLM.Ollama
+  defp get_llm_adapter("bedrock"), do: MCPChat.LLM.Bedrock
+  defp get_llm_adapter("gemini"), do: MCPChat.LLM.Gemini
   defp get_llm_adapter(_), do: MCPChat.LLM.Anthropic
 
   defp format_history(messages) do

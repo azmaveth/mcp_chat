@@ -34,6 +34,7 @@ defmodule MCPChat.MCP.DemoServer do
         version: "1.0.0"
       }
     }
+
     {:reply, {:ok, response}, state}
   end
 
@@ -124,29 +125,30 @@ defmodule MCPChat.MCP.DemoServer do
   end
 
   def handle_call({:mcp_request, "tools/call", params}, _from, state) do
-    result = case params["name"] do
-      "calculate" ->
-        calculate(params["arguments"]["expression"])
-      
-      "get_time" ->
-        get_time(params["arguments"])
-      
-      "generate_data" ->
-        generate_data(params["arguments"])
-      
-      "analyze_text" ->
-        analyze_text(params["arguments"])
-      
-      _ ->
-        {:error, "Unknown tool"}
-    end
+    result =
+      case params["name"] do
+        "calculate" ->
+          calculate(params["arguments"]["expression"])
+
+        "get_time" ->
+          get_time(params["arguments"])
+
+        "generate_data" ->
+          generate_data(params["arguments"])
+
+        "analyze_text" ->
+          analyze_text(params["arguments"])
+
+        _ ->
+          {:error, "Unknown tool"}
+      end
 
     case result do
       {:ok, content} ->
         {:reply, {:ok, %{content: [%{type: "text", text: content}]}}, state}
-      
+
       {:error, error} ->
-        {:reply, {:error, %{code: -32602, message: error}}, state}
+        {:reply, {:error, %{code: -32_602, message: error}}, state}
     end
   end
 
@@ -156,9 +158,10 @@ defmodule MCPChat.MCP.DemoServer do
     # Simple calculator using Code.eval_string with safety restrictions
     try do
       # Only allow basic math operations
-      safe_expr = expression
+      safe_expr =
+        expression
         |> String.replace(~r/[^0-9+\-*\/\(\)\.\s]/, "")
-      
+
       if safe_expr != expression do
         {:error, "Invalid characters in expression"}
       else
@@ -172,18 +175,19 @@ defmodule MCPChat.MCP.DemoServer do
 
   defp get_time(%{"format" => format, "timezone" => _timezone} = _args) do
     now = DateTime.utc_now()
-    
-    result = case format do
-      "unix" ->
-        "#{DateTime.to_unix(now)}"
-      
-      "human" ->
-        Calendar.strftime(now, "%B %d, %Y at %I:%M %p UTC")
-      
-      _ ->
-        DateTime.to_iso8601(now)
-    end
-    
+
+    result =
+      case format do
+        "unix" ->
+          "#{DateTime.to_unix(now)}"
+
+        "human" ->
+          Calendar.strftime(now, "%B %d, %Y at %I:%M %p UTC")
+
+        _ ->
+          DateTime.to_iso8601(now)
+      end
+
     {:ok, result}
   end
 
@@ -192,48 +196,49 @@ defmodule MCPChat.MCP.DemoServer do
   end
 
   defp generate_data(%{"type" => type, "count" => count}) do
-    data = case type do
-      "users" ->
-        Enum.map(1..count, fn i ->
-          %{
-            id: i,
-            name: "User #{i}",
-            email: "user#{i}@example.com",
-            created_at: DateTime.utc_now() |> DateTime.to_iso8601()
-          }
-        end)
-      
-      "products" ->
-        Enum.map(1..count, fn i ->
-          %{
-            id: i,
-            name: "Product #{i}",
-            price: :rand.uniform(1000) / 10,
-            stock: :rand.uniform(100)
-          }
-        end)
-      
-      "transactions" ->
-        Enum.map(1..count, fn i ->
-          %{
-            id: i,
-            amount: :rand.uniform(10000) / 100,
-            timestamp: DateTime.utc_now() |> DateTime.to_iso8601(),
-            status: Enum.random(["completed", "pending", "failed"])
-          }
-        end)
-      
-      "logs" ->
-        Enum.map(1..count, fn i ->
-          %{
-            id: i,
-            level: Enum.random(["info", "warning", "error"]),
-            message: "Log entry #{i}",
-            timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
-          }
-        end)
-    end
-    
+    data =
+      case type do
+        "users" ->
+          Enum.map(1..count, fn i ->
+            %{
+              id: i,
+              name: "User #{i}",
+              email: "user#{i}@example.com",
+              created_at: DateTime.utc_now() |> DateTime.to_iso8601()
+            }
+          end)
+
+        "products" ->
+          Enum.map(1..count, fn i ->
+            %{
+              id: i,
+              name: "Product #{i}",
+              price: :rand.uniform(1_000) / 10,
+              stock: :rand.uniform(100)
+            }
+          end)
+
+        "transactions" ->
+          Enum.map(1..count, fn i ->
+            %{
+              id: i,
+              amount: :rand.uniform(10_000) / 100,
+              timestamp: DateTime.utc_now() |> DateTime.to_iso8601(),
+              status: Enum.random(["completed", "pending", "failed"])
+            }
+          end)
+
+        "logs" ->
+          Enum.map(1..count, fn i ->
+            %{
+              id: i,
+              level: Enum.random(["info", "warning", "error"]),
+              message: "Log entry #{i}",
+              timestamp: DateTime.utc_now() |> DateTime.to_iso8601()
+            }
+          end)
+      end
+
     {:ok, Jason.encode!(data, pretty: true)}
   end
 
@@ -242,50 +247,53 @@ defmodule MCPChat.MCP.DemoServer do
   end
 
   defp analyze_text(%{"text" => text, "metrics" => metrics}) do
-    results = Enum.map(metrics, fn metric ->
-      case metric do
-        "word_count" ->
-          words = text |> String.split(~r/\s+/) |> length()
-          "Word count: #{words}"
-        
-        "char_count" ->
-          chars = String.length(text)
-          "Character count: #{chars}"
-        
-        "readability" ->
-          # Simple readability score based on average word length
-          words = String.split(text, ~r/\s+/)
-          avg_word_length = 
-            words 
-            |> Enum.map(&String.length/1)
-            |> Enum.sum()
-            |> Kernel./(length(words))
-            |> Float.round(2)
-          
-          "Average word length: #{avg_word_length} (#{readability_level(avg_word_length)})"
-        
-        "sentiment" ->
-          # Very basic sentiment analysis
-          positive_words = ~w[good great excellent amazing wonderful fantastic love like]
-          negative_words = ~w[bad terrible awful horrible hate dislike poor wrong]
-          
-          words = text |> String.downcase() |> String.split(~r/\s+/)
-          positive_count = Enum.count(words, &(&1 in positive_words))
-          negative_count = Enum.count(words, &(&1 in negative_words))
-          
-          sentiment = cond do
-            positive_count > negative_count -> "Positive"
-            negative_count > positive_count -> "Negative"
-            true -> "Neutral"
-          end
-          
-          "Sentiment: #{sentiment} (#{positive_count} positive, #{negative_count} negative words)"
-        
-        _ ->
-          "Unknown metric: #{metric}"
-      end
-    end)
-    
+    results =
+      Enum.map(metrics, fn metric ->
+        case metric do
+          "word_count" ->
+            words = text |> String.split(~r/\s+/) |> length()
+            "Word count: #{words}"
+
+          "char_count" ->
+            chars = String.length(text)
+            "Character count: #{chars}"
+
+          "readability" ->
+            # Simple readability score based on average word length
+            words = String.split(text, ~r/\s+/)
+
+            avg_word_length =
+              words
+              |> Enum.map(&String.length/1)
+              |> Enum.sum()
+              |> Kernel./(length(words))
+              |> Float.round(2)
+
+            "Average word length: #{avg_word_length} (#{readability_level(avg_word_length)})"
+
+          "sentiment" ->
+            # Very basic sentiment analysis
+            positive_words = ~w[good great excellent amazing wonderful fantastic love like]
+            negative_words = ~w[bad terrible awful horrible hate dislike poor wrong]
+
+            words = text |> String.downcase() |> String.split(~r/\s+/)
+            positive_count = Enum.count(words, &(&1 in positive_words))
+            negative_count = Enum.count(words, &(&1 in negative_words))
+
+            sentiment =
+              cond do
+                positive_count > negative_count -> "Positive"
+                negative_count > positive_count -> "Negative"
+                true -> "Neutral"
+              end
+
+            "Sentiment: #{sentiment} (#{positive_count} positive, #{negative_count} negative words)"
+
+          _ ->
+            "Unknown metric: #{metric}"
+        end
+      end)
+
     {:ok, Enum.join(results, "\n")}
   end
 
@@ -296,7 +304,7 @@ defmodule MCPChat.MCP.DemoServer do
   defp readability_level(avg_length) do
     cond do
       avg_length < 4 -> "Very Easy"
-      avg_length < 5 -> "Easy" 
+      avg_length < 5 -> "Easy"
       avg_length < 6 -> "Medium"
       avg_length < 7 -> "Difficult"
       true -> "Very Difficult"

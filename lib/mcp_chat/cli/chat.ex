@@ -109,6 +109,8 @@ defmodule MCPChat.CLI.Chat do
       env_var =
         case backend_name do
           "openai" -> "OPENAI_API_KEY"
+          "bedrock" -> "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
+          "gemini" -> "GOOGLE_API_KEY"
           _ -> "ANTHROPIC_API_KEY"
         end
 
@@ -139,6 +141,8 @@ defmodule MCPChat.CLI.Chat do
   defp get_llm_adapter("openai"), do: MCPChat.LLM.OpenAI
   defp get_llm_adapter("local"), do: MCPChat.LLM.Local
   defp get_llm_adapter("ollama"), do: MCPChat.LLM.Ollama
+  defp get_llm_adapter("bedrock"), do: MCPChat.LLM.Bedrock
+  defp get_llm_adapter("gemini"), do: MCPChat.LLM.Gemini
   defp get_llm_adapter(_), do: MCPChat.LLM.Anthropic
 
   defp stream_response(adapter, messages, options) do

@@ -8,7 +8,7 @@ defmodule MCPChat.CLI.SimpleLineReader do
   require Logger
 
   @history_file "~/.config/mcp_chat/history"
-  @max_history_size 1000
+  @max_history_size 1_000
 
   defstruct [:history, :completion_fn]
 
@@ -21,22 +21,22 @@ defmodule MCPChat.CLI.SimpleLineReader do
   def read_line(prompt, _opts \\ []) do
     # Use Erlang's IO system which has built-in line editing
     input = IO.gets(prompt)
-    
+
     case input do
-      :eof -> 
+      :eof ->
         :eof
-        
-      {:error, _reason} -> 
+
+      {:error, _reason} ->
         :eof
-        
+
       line when is_binary(line) ->
         line = String.trim_trailing(line, "\n")
-        
+
         # Add to history if not empty
         if line != "" do
           GenServer.cast(__MODULE__, {:add_to_history, line})
         end
-        
+
         line
     end
   end
@@ -54,11 +54,11 @@ defmodule MCPChat.CLI.SimpleLineReader do
   def init(_opts) do
     # Load history
     history = load_history()
-    
+
     # Set up readline-like behavior using Erlang's edlin
     # This gives us arrow keys and basic line editing
     Application.put_env(:elixir, :ansi_enabled, true)
-    
+
     {:ok, %__MODULE__{history: history}}
   end
 
@@ -86,7 +86,7 @@ defmodule MCPChat.CLI.SimpleLineReader do
 
   defp load_history() do
     path = Path.expand(@history_file)
-    
+
     case File.read(path) do
       {:ok, content} ->
         content
@@ -102,16 +102,16 @@ defmodule MCPChat.CLI.SimpleLineReader do
   defp save_history(history) do
     path = Path.expand(@history_file)
     dir = Path.dirname(path)
-    
+
     # Ensure directory exists
     File.mkdir_p!(dir)
-    
+
     # Write history (newest first in file)
-    content = 
+    content =
       history
       |> Enum.reverse()
       |> Enum.join("\n")
-    
+
     File.write!(path, content <> "\n")
   rescue
     e ->
