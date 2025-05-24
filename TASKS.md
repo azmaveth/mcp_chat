@@ -189,6 +189,26 @@ history_size = 1000
   - [ ] Currently showing escape sequences (^[[A, ^P, etc) instead of working
   - [ ] Need proper terminal input handling for SimpleLineReader
 
+## Phase 9: BEAM-Native MCP Transport
+- [ ] Create custom MCP transport using BEAM message passing
+  - [ ] Implement transport that uses Erlang processes instead of stdio/SSE
+  - [ ] Support connecting MCP servers as supervised GenServers
+  - [ ] Enable direct message passing between Elixir MCP clients/servers
+  - [ ] Benefits:
+    - No serialization overhead for local connections
+    - Built-in supervision and fault tolerance
+    - Native distributed support (connect to remote BEAM nodes)
+    - Better performance for Elixir-based MCP tools
+  - [ ] Implementation:
+    - Create MCPChat.MCP.BeamTransport behaviour
+    - Implement client and server sides
+    - Support both local and distributed (node-to-node) connections
+    - Maintain compatibility with JSON-RPC protocol structure
+  - [ ] Use cases:
+    - Running MCP servers as part of the same BEAM VM
+    - Distributed MCP servers across Erlang cluster
+    - High-performance local tool execution
+
 ## Development Notes
 
 - Use supervisor trees for fault tolerance
