@@ -7,8 +7,6 @@ defmodule MCPChat.Alias do
 
   use GenServer
 
-  @aliases_file "~/.config/mcp_chat/aliases.json"
-
   # Client API
 
   def start_link(opts \\ []) do
@@ -70,9 +68,12 @@ defmodule MCPChat.Alias do
   # Server Callbacks
 
   @impl true
-  def init(_opts) do
+  def init(opts) do
+    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    
     state = %{
-      aliases: load_aliases()
+      aliases: load_aliases(path_provider),
+      path_provider: path_provider
     }
 
     {:ok, state}
@@ -153,14 +154,14 @@ defmodule MCPChat.Alias do
 
   @impl true
   def handle_cast(:save_aliases, state) do
-    save_aliases_to_file(state.aliases)
+    save_aliases_to_file(state.aliases, state.path_provider)
     {:noreply, state}
   end
 
   # Private functions
 
-  defp load_aliases() do
-    path = Path.expand(@aliases_file)
+  defp load_aliases(path_provider) do
+    path = get_aliases_path(path_provider)
 
     if File.exists?(path) do
       case File.read(path) do
@@ -182,8 +183,8 @@ defmodule MCPChat.Alias do
     end
   end
 
-  defp save_aliases_to_file(aliases) do
-    path = Path.expand(@aliases_file)
+  defp save_aliases_to_file(aliases, path_provider) do
+    path = get_aliases_path(path_provider)
     dir = Path.dirname(path)
 
     # Ensure directory exists
@@ -269,5 +270,16 @@ defmodule MCPChat.Alias do
           [cmd]
       end
     end)
+  end
+
+  defp get_aliases_path(path_provider) do
+    case path_provider do
+      MCPChat.PathProvider.Default ->
+        MCPChat.PathProvider.Default.get_path(:aliases_file)
+      provider when is_pid(provider) ->
+        MCPChat.PathProvider.Static.get_path(provider, :aliases_file)
+      provider ->
+        provider.get_path(:aliases_file)
+    end
   end
 end

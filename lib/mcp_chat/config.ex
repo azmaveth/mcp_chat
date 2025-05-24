@@ -30,7 +30,20 @@ defmodule MCPChat.Config do
   end
 
   def config_dir() do
-    Path.expand("~/.config/mcp_chat")
+    path_provider = get_path_provider()
+    case path_provider do
+      MCPChat.PathProvider.Default ->
+        MCPChat.PathProvider.Default.config_dir()
+      provider when is_pid(provider) ->
+        MCPChat.PathProvider.Static.config_dir(provider)
+      provider ->
+        provider.config_dir()
+    end
+  end
+  
+  defp get_path_provider() do
+    # For now, always use default. Later this can be configurable.
+    MCPChat.PathProvider.Default
   end
 
   def get_all() do
@@ -41,9 +54,21 @@ defmodule MCPChat.Config do
 
   @impl true
   def init(opts) do
-    config_path =
-      Keyword.get(opts, :config_path, @default_config_path)
-      |> Path.expand()
+    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    
+    config_path = case Keyword.get(opts, :config_path) do
+      nil ->
+        case path_provider do
+          MCPChat.PathProvider.Default ->
+            MCPChat.PathProvider.Default.get_path(:config_file)
+          provider when is_pid(provider) ->
+            MCPChat.PathProvider.Static.get_path(provider, :config_file)
+          provider ->
+            provider.get_path(:config_file)
+        end
+      path ->
+        Path.expand(path)
+    end
 
     state = %{
       config_path: config_path,

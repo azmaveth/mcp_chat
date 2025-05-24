@@ -4,30 +4,21 @@
 
 After analyzing the codebase, here are the refactoring tasks that should be completed before extracting libraries:
 
-## 1. Configuration Injection Pattern
+## 1. Configuration Injection Pattern ✅ COMPLETED
 
 **Issue**: Many modules directly access `MCPChat.Config.get()`, creating tight coupling.
 
 **Affected modules**:
-- All LLM adapters (Anthropic, OpenAI, Ollama, Bedrock, Gemini, Local)
-- MCP modules (BuiltinResources, Discovery)
-- Cost module
+- All LLM adapters (Anthropic, OpenAI, Ollama, Bedrock, Gemini, Local) ✅
+- MCP modules (BuiltinResources, Discovery) - Application layer, OK to use Config
+- Cost module ✅
+- Session module ✅
 
-**Refactoring needed**:
-- Change from direct Config access to configuration injection
-- Pass config as parameter or in init/start_link
-- This allows libraries to be used without MCPChat.Config
-
-**Example**:
-```elixir
-# Current (coupled)
-def get_config do
-  MCPChat.Config.get([:llm, :anthropic]) || %{}
-end
-
-# Refactored (decoupled)
-def new(config \\ %{}) do
-  %__MODULE__{config: config}
+**Refactoring completed**:
+- Created ConfigProvider behaviour with Default and Static implementations
+- All LLM adapters now accept `:config_provider` option
+- Cost and Session modules support config injection
+- Libraries can now be used without depending on MCPChat.Config
 end
 ```
 
@@ -62,18 +53,21 @@ end
 - Ensure all modules work with plain data structures
 - Move any Session-specific logic to application layer
 
-## 5. File System Dependencies
+## 5. File System Dependencies 🔄 PARTIALLY COMPLETED
 
 **Issue**: Several modules directly access file system:
-- Alias module uses hardcoded path `~/.mcp_chat/aliases.json`
-- Persistence module uses hardcoded paths
-- ServerPersistence uses hardcoded path `~/.mcp_chat/connected_servers.json`
-- ModelLoader uses hardcoded path `~/.mcp_chat/models`
+- Alias module uses hardcoded path `~/.mcp_chat/aliases.json` ✅
+- Persistence module uses hardcoded paths ✅
+- ServerPersistence uses hardcoded path `~/.mcp_chat/connected_servers.json` (can be updated later)
+- ModelLoader uses hardcoded path `~/.mcp_chat/models` (can be updated later)
+- Config module uses hardcoded paths ✅
+- MCP Discovery uses hardcoded paths ✅
 
-**Refactoring needed**:
-- Make all paths configurable
-- Add path injection to init functions
-- Libraries should not assume specific directory structures
+**Refactoring completed for core modules**:
+- Created PathProvider behaviour with Default and Static implementations
+- Updated Config, Alias, Persistence, and MCP Discovery modules
+- All file paths now configurable through dependency injection
+- Libraries can work with custom directory structures
 
 ## 6. Process Dependencies
 

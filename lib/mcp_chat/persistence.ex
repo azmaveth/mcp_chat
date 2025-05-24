@@ -5,7 +5,6 @@ defmodule MCPChat.Persistence do
 
   alias MCPChat.Types.Session
 
-  @sessions_dir "~/.config/mcp_chat/sessions"
   @extension ".json"
 
   # Public API
@@ -24,11 +23,14 @@ defmodule MCPChat.Persistence do
   @doc """
   Save a specific session to disk.
   """
-  def save_session(session, name \\ nil) do
-    ensure_sessions_dir()
+  def save_session(session, name \\ nil, opts \\ []) do
+    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    sessions_dir = get_sessions_dir(path_provider)
+    
+    ensure_sessions_dir(sessions_dir)
 
     filename = build_filename(session, name)
-    path = Path.join(sessions_dir(), filename)
+    path = Path.join(sessions_dir, filename)
 
     data = serialize_session(session)
 
@@ -41,8 +43,9 @@ defmodule MCPChat.Persistence do
   @doc """
   Load a session from disk by name or ID.
   """
-  def load_session(identifier) do
-    path = find_session_file(identifier)
+  def load_session(identifier, opts \\ []) do
+    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    path = find_session_file(identifier, path_provider)
 
     with {:ok, data} <- File.read(path),
          {:ok, session} <- deserialize_session(data) do
@@ -56,15 +59,18 @@ defmodule MCPChat.Persistence do
   @doc """
   List all saved sessions.
   """
-  def list_sessions() do
-    ensure_sessions_dir()
+  def list_sessions(opts \\ []) do
+    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    sessions_dir = get_sessions_dir(path_provider)
+    
+    ensure_sessions_dir(sessions_dir)
 
-    case File.ls(sessions_dir()) do
+    case File.ls(sessions_dir) do
       {:ok, files} ->
         sessions =
           files
           |> Enum.filter(&String.ends_with?(&1, @extension))
-          |> Enum.map(&load_session_metadata/1)
+          |> Enum.map(&load_session_metadata(&1, sessions_dir))
           |> Enum.reject(&is_nil/1)
           |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
 
@@ -78,8 +84,9 @@ defmodule MCPChat.Persistence do
   @doc """
   Delete a saved session.
   """
-  def delete_session(identifier) do
-    path = find_session_file(identifier)
+  def delete_session(identifier, opts \\ []) do
+    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    path = find_session_file(identifier, path_provider)
     File.rm(path)
   end
 
@@ -108,12 +115,18 @@ defmodule MCPChat.Persistence do
 
   # Private Functions
 
-  defp sessions_dir() do
-    Path.expand(@sessions_dir)
+  defp get_sessions_dir(path_provider) do
+    case path_provider do
+      MCPChat.PathProvider.Default ->
+        MCPChat.PathProvider.Default.get_path(:sessions_dir)
+      provider when is_pid(provider) ->
+        MCPChat.PathProvider.Static.get_path(provider, :sessions_dir)
+      provider ->
+        provider.get_path(:sessions_dir)
+    end
   end
 
-  defp ensure_sessions_dir() do
-    dir = sessions_dir()
+  defp ensure_sessions_dir(dir) do
     File.mkdir_p!(dir)
   end
 
@@ -132,33 +145,35 @@ defmodule MCPChat.Persistence do
     "#{safe_name}_#{session.id}#{@extension}"
   end
 
-  defp find_session_file(identifier) when is_integer(identifier) do
-    ensure_sessions_dir()
+  defp find_session_file(identifier, path_provider) when is_integer(identifier) do
+    sessions_dir = get_sessions_dir(path_provider)
+    ensure_sessions_dir(sessions_dir)
 
     # Load by index
-    case list_sessions() do
+    case list_sessions(path_provider: path_provider) do
       {:ok, sessions} ->
         case Enum.at(sessions, identifier - 1) do
-          nil -> Path.join(sessions_dir(), "not_found")
-          session -> Path.join(sessions_dir(), session.filename)
+          nil -> Path.join(sessions_dir, "not_found")
+          session -> Path.join(sessions_dir, session.filename)
         end
 
       _ ->
-        Path.join(sessions_dir(), "not_found")
+        Path.join(sessions_dir, "not_found")
     end
   end
 
-  defp find_session_file(identifier) when is_binary(identifier) do
-    ensure_sessions_dir()
+  defp find_session_file(identifier, path_provider) when is_binary(identifier) do
+    sessions_dir = get_sessions_dir(path_provider)
+    ensure_sessions_dir(sessions_dir)
 
     # Try exact filename first
-    exact_path = Path.join(sessions_dir(), identifier <> @extension)
+    exact_path = Path.join(sessions_dir, identifier <> @extension)
 
     if File.exists?(exact_path) do
       exact_path
     else
       # Search by ID or name
-      case File.ls(sessions_dir()) do
+      case File.ls(sessions_dir) do
         {:ok, files} ->
           matching_file =
             files
@@ -168,13 +183,13 @@ defmodule MCPChat.Persistence do
             end)
 
           if matching_file do
-            Path.join(sessions_dir(), matching_file)
+            Path.join(sessions_dir, matching_file)
           else
-            Path.join(sessions_dir(), "not_found")
+            Path.join(sessions_dir, "not_found")
           end
 
         _ ->
-          Path.join(sessions_dir(), "not_found")
+          Path.join(sessions_dir, "not_found")
       end
     end
   end
@@ -238,8 +253,8 @@ defmodule MCPChat.Persistence do
     end
   end
 
-  defp load_session_metadata(filename) do
-    path = Path.join(sessions_dir(), filename)
+  defp load_session_metadata(filename, sessions_dir) do
+    path = Path.join(sessions_dir, filename)
 
     with {:ok, data} <- File.read(path),
          {:ok, json} <- Jason.decode(data),
