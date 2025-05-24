@@ -49,6 +49,8 @@ defmodule MCPChat.LoggerProvider do
     Falls back to IO.puts if Logger is not available.
     """
     @behaviour MCPChat.LoggerProvider
+    
+    require Logger
 
     @impl true
     def debug(message, metadata \\ []) do
