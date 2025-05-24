@@ -237,11 +237,35 @@ defmodule MCPChat.MCP.ServerManager do
 
   @impl true
   def handle_info(:start_configured_servers, state) do
-    # Try to start configured servers
-    handle_call(:start_configured_servers, nil, state)
-    # Get the new state
-    |> elem(2)
-    |> then(&{:noreply, &1})
+    # Start servers from config file
+    config_state =
+      handle_call(:start_configured_servers, nil, state)
+      |> elem(2)
+
+    # Also start saved servers with auto_connect enabled
+    saved_servers = MCPChat.MCP.ServerPersistence.load_all_servers()
+    auto_connect_servers = Enum.filter(saved_servers, &(&1["auto_connect"] == true))
+
+    final_state =
+      Enum.reduce(auto_connect_servers, config_state, fn server_config, acc_state ->
+        # Check if server is already started
+        if Map.has_key?(acc_state.servers, server_config["name"]) do
+          acc_state
+        else
+          Logger.info("Auto-connecting to saved server: #{server_config["name"]}")
+
+          case start_server_supervised(server_config, acc_state.supervisor) do
+            {:ok, {name, pid}} ->
+              %{acc_state | servers: Map.put(acc_state.servers, name, pid)}
+
+            {:error, reason} ->
+              Logger.warning("Failed to auto-connect server #{server_config["name"]}: #{inspect(reason)}")
+              acc_state
+          end
+        end
+      end)
+
+    {:noreply, final_state}
   end
 
   @impl true

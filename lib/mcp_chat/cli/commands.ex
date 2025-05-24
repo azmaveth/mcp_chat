@@ -18,6 +18,7 @@ defmodule MCPChat.CLI.Commands do
     "sessions" => "List saved sessions",
     "config" => "Show current configuration",
     "servers" => "List connected MCP servers",
+    "saved" => "List saved MCP server connections",
     "discover" => "Discover available MCP servers",
     "connect" => "Connect to an MCP server (usage: /connect <name>)",
     "disconnect" => "Disconnect from an MCP server (usage: /disconnect <name>)",
@@ -59,6 +60,7 @@ defmodule MCPChat.CLI.Commands do
         "sessions" -> list_sessions()
         "config" -> show_config()
         "servers" -> list_servers()
+        "saved" -> list_saved_servers()
         "discover" -> discover_servers()
         "connect" -> connect_server(args)
         "disconnect" -> disconnect_server(args)
@@ -161,6 +163,31 @@ defmodule MCPChat.CLI.Commands do
         end)
 
       Renderer.show_table(["Name", "Status", "Port"], rows)
+    end
+  end
+
+  defp list_saved_servers() do
+    saved_servers = MCPChat.MCP.ServerPersistence.load_all_servers()
+
+    if Enum.empty?(saved_servers) do
+      Renderer.show_info("No saved MCP server connections")
+    else
+      connected_servers = MCPChat.MCP.ServerManager.list_servers()
+      connected_names = MapSet.new(connected_servers, & &1.name)
+
+      rows =
+        Enum.map(saved_servers, fn server ->
+          is_connected = MapSet.member?(connected_names, server["name"])
+
+          %{
+            "Name" => server["name"],
+            "Transport" => if(server["url"], do: "SSE", else: "stdio"),
+            "Auto-connect" => if(server["auto_connect"], do: "✓", else: ""),
+            "Connected" => if(is_connected, do: "✓", else: "")
+          }
+        end)
+
+      Renderer.show_table(["Name", "Transport", "Auto-connect", "Connected"], rows)
     end
   end
 
@@ -289,6 +316,10 @@ defmodule MCPChat.CLI.Commands do
         {:ok, _pid} ->
           Renderer.show_info("Successfully connected to #{name}")
 
+          # Save the server configuration for auto-reconnect
+          save_config = normalize_server_config(server_config)
+          MCPChat.MCP.ServerPersistence.save_server(save_config)
+
         {:error, {:already_started, _}} ->
           Renderer.show_info("Server #{name} is already connected")
 
@@ -308,6 +339,9 @@ defmodule MCPChat.CLI.Commands do
     case MCPChat.MCP.ServerManager.stop_server(name) do
       :ok ->
         Renderer.show_info("Disconnected from #{name}")
+
+        # Remove from persistent storage
+        MCPChat.MCP.ServerPersistence.remove_server(name)
 
       {:error, :not_found} ->
         Renderer.show_error("Server '#{name}' is not connected")
@@ -1051,5 +1085,16 @@ defmodule MCPChat.CLI.Commands do
 
   defp unload_model(_) do
     Renderer.show_error("Usage: /unloadmodel <model-id>")
+  end
+
+  defp normalize_server_config(config) do
+    # Convert atom keys to strings for JSON serialization
+    config
+    |> Enum.map(fn
+      {k, v} when is_atom(k) -> {to_string(k), v}
+      {k, v} -> {k, v}
+    end)
+    |> Enum.into(%{})
+    |> Map.put("auto_connect", true)
   end
 end
