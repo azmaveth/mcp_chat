@@ -239,6 +239,12 @@ The system automatically selects the best backend:
 
 4. **Model Caching**: Models are cached locally after first download
 
+## Known Limitations
+
+- **Arrow Keys**: In escript mode, arrow keys for command history show escape sequences (^[[A, ^[[B) instead of navigating history. This is a limitation of running as an escript rather than in an Erlang shell.
+- **Emacs Keybindings**: Similar to arrow keys, Ctrl-P/N and other readline keybindings show as literal characters.
+- **Workaround**: Command history is still saved to `~/.config/mcp_chat/history` and can be accessed by running the app in the Elixir shell instead of as an escript.
+
 ## Development
 
 See [TASKS.md](TASKS.md) for the development roadmap and task list.

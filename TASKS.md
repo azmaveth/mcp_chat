@@ -171,6 +171,23 @@ history_size = 1000
 - ✅ Created quick setup configurations for popular MCP servers
 - ✅ Implemented custom command aliases with parameter substitution
 - ✅ Added /alias command for creating shortcuts and command sequences
+- ✅ Added command history with arrow keys and Emacs keybindings (SimpleLineReader)
+
+## Phase 8: UI/UX Improvements
+- [ ] Update /backend and /model commands to show current setting when no params
+  - [ ] Add popup selection box for available backends/models
+  - [ ] Show "current: <value>" before selection
+- [ ] Consolidate MCP commands under /mcp with subcommands
+  - [ ] Move /servers, /tools, /resources, /prompts, /connect, /disconnect, /discover, /saved
+  - [ ] Add "/mcp connect <command> <args> --env KEY=VALUE" for arbitrary servers
+  - [ ] Support multiple --env flags for environment variables
+- [ ] Add /context subcommands for manual file management
+  - [ ] /context add <file> - Add local file to context
+  - [ ] /context rm <file> - Remove file from context
+  - [ ] Support persistent context files across conversations
+- [ ] Fix arrow keys and Emacs keybindings in line editor
+  - [ ] Currently showing escape sequences (^[[A, ^P, etc) instead of working
+  - [ ] Need proper terminal input handling for SimpleLineReader
 
 ## Development Notes
 
