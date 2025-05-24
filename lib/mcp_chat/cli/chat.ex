@@ -12,7 +12,7 @@ defmodule MCPChat.CLI.Chat do
     Renderer.show_welcome()
 
     # Set up command completion
-    MCPChat.CLI.LineEditor.set_completion_fn(&Commands.get_completions/1)
+    MCPChat.CLI.SimpleLineReader.set_completion_fn(&Commands.get_completions/1)
 
     # Start the chat loop
     chat_loop()
@@ -23,7 +23,7 @@ defmodule MCPChat.CLI.Chat do
     IO.write("\n")
     prompt = Renderer.format_prompt()
 
-    case MCPChat.CLI.LineEditor.read_line(prompt) do
+    case MCPChat.CLI.SimpleLineReader.read_line(prompt) do
       :eof ->
         Renderer.show_goodbye()
         :ok
