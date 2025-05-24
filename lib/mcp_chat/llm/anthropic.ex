@@ -6,7 +6,7 @@ defmodule MCPChat.LLM.Anthropic do
   require Logger
 
   @default_base_url "https://api.anthropic.com/v1"
-  @default_model "claude-sonnet-4-20_250_514"
+  @default_model "claude-sonnet-4-20250514"
 
   @impl true
   def chat(messages, options \\ []) do
@@ -27,7 +27,7 @@ defmodule MCPChat.LLM.Anthropic do
 
     headers = [
       {"x-api-key", get_api_key()},
-      {"anthropic-version", "2_023-06-01"},
+      {"anthropic-version", "2023-06-01"},
       {"content-type", "application/json"}
     ]
 
@@ -63,7 +63,7 @@ defmodule MCPChat.LLM.Anthropic do
 
     headers = [
       {"x-api-key", get_api_key()},
-      {"anthropic-version", "2_023-06-01"},
+      {"anthropic-version", "2023-06-01"},
       {"content-type", "application/json"}
     ]
 
@@ -123,11 +123,16 @@ defmodule MCPChat.LLM.Anthropic do
   def available_models() do
     [
       "claude-sonnet-4-20250514",
-      "claude-opus-3-20240229",
-      "claude-sonnet-3.5-20241022",
-      "claude-sonnet-3.5-20240620",
+      "claude-opus-4-20250514",
+      "claude-3-7-sonnet-20250219",
+      "claude-3-5-sonnet-20241022",
+      "claude-3-5-sonnet-20240620",
       "claude-3-5-haiku-20241022",
-      "claude-haiku-3-20240307"
+      "claude-3-opus-20240229",
+      "claude-3-sonnet-20240229",
+      "claude-3-haiku-20240307",
+      "claude-2.1",
+      "claude-2.0"
     ]
   end
 
@@ -185,14 +190,17 @@ defmodule MCPChat.LLM.Anthropic do
   defp fallback_models() do
     # Fallback list if API is unavailable
     [
-      %{id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet"},
-      %{id: "claude-sonnet-4-20250514", name: "Claude 4 Sonnet"},
-      %{id: "claude-opus-4-20250514", name: "Claude 4 Opus"},
-      %{id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet"},
-      %{id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku"},
-      %{id: "claude-3-opus-20240229", name: "Claude 3 Opus"},
-      %{id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet"},
-      %{id: "claude-3-haiku-20240307", name: "Claude 3 Haiku"}
+      %{id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4"},
+      %{id: "claude-opus-4-20250514", name: "Claude Opus 4"},
+      %{id: "claude-3-sonnet-20240229", name: "Claude Sonnet 3"},
+      %{id: "claude-3-opus-20240229", name: "Claude Opus 3"},
+      %{id: "claude-3-haiku-20240307", name: "Claude Haiku 3"},
+      %{id: "claude-3-7-sonnet-20250219", name: "Claude Sonnet 3.7"},
+      %{id: "claude-3-5-sonnet-20241022", name: "Claude Sonnet 3.5 (New)"},
+      %{id: "claude-3-5-sonnet-20240620", name: "Claude Sonnet 3.5 (Old)"},
+      %{id: "claude-3-5-haiku-20241022", name: "Claude Haiku 3.5"},
+      %{id: "claude-2.1", name: "Claude 2.1"},
+      %{id: "claude-2.0", name: "Claude 2.0"}
     ]
   end
 
