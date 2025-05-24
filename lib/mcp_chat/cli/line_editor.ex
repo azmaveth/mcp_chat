@@ -13,7 +13,6 @@ defmodule MCPChat.CLI.LineEditor do
   # ANSI escape sequences
   @cursor_right "\e[C"
   @cursor_left "\e[D"
-  @clear_line "\r\e[K"
 
   # Key codes
   @backspace 127
@@ -370,7 +369,7 @@ defmodule MCPChat.CLI.LineEditor do
   defp kill_to_end(state) do
     new_buffer = String.slice(state.buffer, 0, state.cursor)
     new_state = %{state | buffer: new_buffer}
-    IO.write(@clear_line)
+    IO.write("\r\e[2K")
     IO.write(state.prompt <> new_buffer)
     new_state
   end
@@ -482,7 +481,8 @@ defmodule MCPChat.CLI.LineEditor do
   end
 
   defp redraw_line(state) do
-    IO.write(@clear_line)
+    # Move to beginning of line and clear entire line
+    IO.write("\r\e[2K")
     IO.write(state.prompt <> state.buffer)
     # Move cursor to correct position
     if state.cursor < String.length(state.buffer) do
