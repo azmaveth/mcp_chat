@@ -100,15 +100,15 @@ defmodule MCPChat.CLI.Commands.MCP do
     quick_servers = Discovery.quick_setup_servers()
 
     # Group by status
-    available = Enum.filter(quick_servers, &(&1.status == :available))
-    missing_reqs = Enum.filter(quick_servers, &(&1.status == :missing_requirements))
+    available = Enum.filter(quick_servers, &(&1[:status] == :available))
+    missing_reqs = Enum.filter(quick_servers, &(&1[:status] == :missing_requirements))
 
     if Enum.any?(available) do
       show_info("\nAvailable servers (ready to connect):")
 
       Enum.each(available, fn server ->
-        IO.puts("  • #{server.name} - #{server.description}")
-        IO.puts("    Connect with: /connect #{server.name}")
+        IO.puts("  • #{server[:name]} - #{server[:description]}")
+        IO.puts("    Connect with: /connect #{server[:name]}")
       end)
     end
 
@@ -116,8 +116,8 @@ defmodule MCPChat.CLI.Commands.MCP do
       show_info("\nServers requiring configuration:")
 
       Enum.each(missing_reqs, fn server ->
-        IO.puts("  • #{server.name} - #{server.description}")
-        IO.puts("    Missing: #{Enum.join(server.missing, ", ")}")
+        IO.puts("  • #{server[:name]} - #{server[:description]}")
+        IO.puts("    Missing: #{Enum.join(server[:missing], ", ")}")
       end)
     end
 

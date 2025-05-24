@@ -66,6 +66,7 @@ defmodule MCPChat.CLI.Commands.LLM do
         current = get_current_backend()
         show_info("Current backend: #{current}")
         show_info("Available backends: #{Enum.join(available_backends, ", ")}")
+        :ok
 
       [backend | _] ->
         if backend in available_backends do
@@ -85,12 +86,16 @@ defmodule MCPChat.CLI.Commands.LLM do
               _ ->
                 :ok
             end
+
+            :ok
           else
             show_error("#{backend} backend is not configured. Please check your configuration.")
+            :ok
           end
         else
           show_error("Unknown backend: #{backend}")
           show_info("Available backends: #{Enum.join(available_backends, ", ")}")
+          :ok
         end
     end
   end
@@ -101,8 +106,11 @@ defmodule MCPChat.CLI.Commands.LLM do
       MCPChat.Session.update_session(%{model: model})
       {backend, _} = get_current_model()
       show_success("Switched to model: #{model} (#{backend})")
+      :ok
     else
-      {:error, msg} -> show_error(msg)
+      {:error, msg} ->
+        show_error(msg)
+        :ok
     end
   end
 

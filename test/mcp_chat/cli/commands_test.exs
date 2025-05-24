@@ -160,13 +160,14 @@ defmodule MCPChat.CLI.CommandsTest do
   end
 
   describe "sessions command" do
-    test "shows message when no saved sessions" do
+    test "shows saved sessions or no sessions message" do
       output =
         capture_io(fn ->
           Commands.handle_command("sessions")
         end)
 
-      assert output =~ "No saved sessions" or output =~ "Name"
+      # Either shows no sessions or lists sessions
+      assert output =~ "No saved sessions" or output =~ "Saved sessions:"
     end
   end
 
@@ -214,7 +215,7 @@ defmodule MCPChat.CLI.CommandsTest do
           Commands.handle_command("backend")
         end)
 
-      assert output =~ "Usage:" or output =~ "specify"
+      assert output =~ "Current backend:" or output =~ "Available backends:"
     end
 
     test "switches to valid backend" do
@@ -232,7 +233,7 @@ defmodule MCPChat.CLI.CommandsTest do
           Commands.handle_command("backend invalid")
         end)
 
-      assert output =~ "Invalid backend" or output =~ "Available:"
+      assert output =~ "Unknown backend" or output =~ "Available backends:"
     end
   end
 
@@ -271,7 +272,7 @@ defmodule MCPChat.CLI.CommandsTest do
   end
 
   describe "export command" do
-    test "exports to JSON by default" do
+    test "exports to markdown by default" do
       MCPChat.Session.add_message("user", "Test export")
 
       output =
@@ -279,11 +280,11 @@ defmodule MCPChat.CLI.CommandsTest do
           Commands.handle_command("export")
         end)
 
-      assert output =~ "Exported to" or output =~ ".json"
+      assert output =~ "exported to:" or output =~ ".md"
 
       # Clean up any created file
       File.ls!(".")
-      |> Enum.filter(&String.match?(&1, ~r/^chat_export.*\.json$/))
+      |> Enum.filter(&String.match?(&1, ~r/^chat_export.*\.md$/))
       |> Enum.each(&File.rm!/1)
     end
 
@@ -295,23 +296,23 @@ defmodule MCPChat.CLI.CommandsTest do
           Commands.handle_command("export markdown")
         end)
 
-      assert output =~ "Exported to" or output =~ ".markdown"
+      assert output =~ "exported to:" or output =~ ".md"
 
       # Clean up any created file
       File.ls!(".")
-      |> Enum.filter(&String.match?(&1, ~r/^chat_export.*\.markdown$/))
+      |> Enum.filter(&String.match?(&1, ~r/^chat_export.*\.md$/))
       |> Enum.each(&File.rm!/1)
     end
   end
 
   describe "system command" do
-    test "requires prompt text" do
+    test "shows current system prompt when no args" do
       output =
         capture_io(fn ->
           Commands.handle_command("system")
         end)
 
-      assert output =~ "System prompt cleared"
+      assert output =~ "No system prompt set" or output =~ "Current system prompt"
     end
 
     test "sets system prompt" do

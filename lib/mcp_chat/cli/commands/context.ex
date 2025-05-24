@@ -88,6 +88,8 @@ defmodule MCPChat.CLI.Commands.Context do
             IO.puts(content)
         end
 
+        :ok
+
       _ ->
         prompt = parse_args(args)
         Session.set_system_prompt(prompt)
@@ -95,15 +97,19 @@ defmodule MCPChat.CLI.Commands.Context do
         # Calculate token count
         tokens = Context.estimate_tokens(prompt)
         show_success("System prompt updated (#{tokens} tokens)")
+        :ok
     end
   end
 
   defp set_max_tokens(args) do
     with {:ok, args} <- require_arg(args, "/tokens <number>"),
          tokens_str <- parse_args(args),
-         {tokens, ""} <- Integer.parse(tokens_str) do
+         # Remove underscores from number strings
+         cleaned_str = String.replace(tokens_str, "_", ""),
+         {tokens, ""} <- Integer.parse(cleaned_str) do
       if tokens < 100 do
         show_error("Max tokens must be at least 100")
+        :ok
       else
         Session.update_session(%{context: %{max_tokens: tokens}})
         show_success("Max tokens set to: #{tokens}")
@@ -118,13 +124,17 @@ defmodule MCPChat.CLI.Commands.Context do
               "Messages will be truncated on next request."
           )
         end
+
+        :ok
       end
     else
       {:error, msg} ->
         show_error(msg)
+        :ok
 
       _ ->
         show_error("Invalid number format")
+        :ok
     end
   end
 
@@ -135,10 +145,11 @@ defmodule MCPChat.CLI.Commands.Context do
       [] ->
         # Show current strategy
         session = Session.get_current_session()
-        current = session.truncation_strategy || "sliding_window"
+        current = session.context[:truncation_strategy] || "sliding_window"
 
         show_info("Current strategy: #{current}")
         show_info("Available strategies: #{Enum.join(strategies, ", ")}")
+        :ok
 
       [strategy | _] ->
         if strategy in strategies do
@@ -152,9 +163,12 @@ defmodule MCPChat.CLI.Commands.Context do
             "smart" ->
               show_info("Will preserve system prompt and important context when truncating")
           end
+
+          :ok
         else
           show_error("Unknown strategy: #{strategy}")
           show_info("Available strategies: #{Enum.join(strategies, ", ")}")
+          :ok
         end
     end
   end

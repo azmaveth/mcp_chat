@@ -323,7 +323,7 @@ history_size = 1000
     - [x] Fix config get calls
     - [x] Fix cost/context data structure references
     - [x] Fix remaining compilation error in utility module
-  - [ ] Update tests for refactored command structure
+  - [x] Update tests for refactored command structure
   - [ ] Benefits:
     - Reduced cyclomatic complexity (from 37 to <10 per module)
     - Better code organization and maintainability

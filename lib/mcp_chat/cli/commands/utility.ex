@@ -12,7 +12,7 @@ defmodule MCPChat.CLI.Commands.Utility do
 
   use MCPChat.CLI.Commands.Base
 
-  alias MCPChat.{Session, Config, Cost, Persistence}
+  alias MCPChat.{Session, Cost, Persistence}
 
   @impl true
   def commands() do
@@ -58,26 +58,15 @@ defmodule MCPChat.CLI.Commands.Utility do
 
     MCPChat.CLI.Renderer.show_text("## Available Commands\n")
 
-    # Group commands by category
-    categories = [
-      {"Session Management", ~w[new save load sessions history]},
-      {"LLM Configuration", ~w[backend model models loadmodel unloadmodel acceleration]},
-      {"MCP Servers", ~w[servers discover connect disconnect saved]},
-      {"MCP Tools & Resources", ~w[tools tool resources resource prompts prompt]},
-      {"Context Management", ~w[context system tokens strategy]},
-      {"Utilities", ~w[help clear config cost export alias]},
-      {"Navigation", ~w[exit quit]}
-    ]
+    # Show table header
+    IO.puts("Command          | Description")
+    IO.puts("---------------- | -----------")
 
-    Enum.each(categories, fn {category, commands} ->
-      IO.puts("\n#{category}:")
-
-      commands
-      |> Enum.filter(&Map.has_key?(all_commands, &1))
-      |> Enum.each(fn cmd ->
-        desc = Map.get(all_commands, cmd, "")
-        IO.puts("  /#{String.pad_trailing(cmd, 12)} #{desc}")
-      end)
+    # Sort and display all commands
+    all_commands
+    |> Enum.sort_by(fn {cmd, _desc} -> cmd end)
+    |> Enum.each(fn {cmd, desc} ->
+      IO.puts("/#{String.pad_trailing(cmd, 15)} | #{desc}")
     end)
 
     IO.puts("\nType /help <command> for detailed help on a specific command.")
@@ -91,13 +80,24 @@ defmodule MCPChat.CLI.Commands.Utility do
   end
 
   defp show_config() do
-    config = Config.get([:llm]) || %{}
+    session = Session.get_current_session()
 
     MCPChat.CLI.Renderer.show_text("## Current Configuration\n")
 
-    # Format config as YAML-like output
-    formatted = format_config(config, 0)
-    IO.puts(formatted)
+    # Show configuration in table format
+    IO.puts("Setting              | Value")
+    IO.puts("-------------------- | -----")
+    IO.puts("LLM Backend          | #{session.llm_backend || "Not set"}")
+    IO.puts("Model                | #{session.context[:model] || "Not set"}")
+
+    # Show MCP servers
+    servers = MCPChat.MCP.ServerManager.list_servers()
+    server_count = length(servers)
+    IO.puts("MCP Servers          | #{server_count} connected")
+
+    # Show context settings
+    IO.puts("Max Tokens           | #{session.context[:max_tokens] || "4_096"}")
+    IO.puts("Truncation Strategy  | #{session.context[:truncation_strategy] || "sliding_window"}")
 
     :ok
   end
@@ -109,7 +109,7 @@ defmodule MCPChat.CLI.Commands.Utility do
     MCPChat.CLI.Renderer.show_text("## Session Cost Summary\n")
 
     IO.puts("Backend: #{session.llm_backend || "Not set"}")
-    IO.puts("Model: #{session.model || "Not set"}")
+    IO.puts("Model: #{session.context[:model] || "Not set"}")
     IO.puts("")
 
     if Map.has_key?(cost_info, :error) do
@@ -195,24 +195,6 @@ defmodule MCPChat.CLI.Commands.Utility do
       "exit" => "Exit the application",
       "quit" => "Exit the application"
     })
-  end
-
-  defp format_config(config, indent) when is_map(config) do
-    config
-    |> Enum.map(fn {key, value} ->
-      spaces = String.duplicate("  ", indent)
-
-      if is_map(value) do
-        "#{spaces}#{key}:\n#{format_config(value, indent + 1)}"
-      else
-        "#{spaces}#{key}: #{inspect(value)}"
-      end
-    end)
-    |> Enum.join("\n")
-  end
-
-  defp format_config(config, _indent) do
-    inspect(config)
   end
 
   defp format_number(n) when n >= 1_000_000 do

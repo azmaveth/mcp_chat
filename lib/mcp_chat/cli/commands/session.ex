@@ -106,39 +106,42 @@ defmodule MCPChat.CLI.Commands.Session do
   end
 
   defp list_sessions() do
-    sessions = Persistence.list_sessions()
+    case Persistence.list_sessions() do
+      {:ok, sessions} when sessions == [] ->
+        show_info("No saved sessions")
 
-    if Enum.empty?(sessions) do
-      show_info("No saved sessions found")
-    else
-      show_info("Saved sessions:")
+      {:ok, sessions} ->
+        show_info("Saved sessions:")
 
-      sessions
-      |> Enum.sort_by(& &1.saved_at, {:desc, DateTime})
-      |> Enum.each(fn session ->
-        # Format the session info
-        time_ago = format_time_ago(session.saved_at)
-        _name = session.name || "Unnamed"
-        messages = "#{session.message_count} msgs"
+        sessions
+        |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
+        |> Enum.each(fn session ->
+          # Format the session info
+          time_ago = session.relative_time || format_time_ago(session.updated_at)
+          messages = "#{session.message_count} msgs"
 
-        # Show session details
-        if session.name do
-          IO.puts("  • #{session.name} (#{session.id})")
-        else
-          IO.puts("  • #{session.id}")
-        end
+          # Extract name from filename if available
+          name = extract_session_name(session.filename)
 
-        IO.puts("    #{messages}, #{time_ago}, #{format_bytes(session.file_size)}")
+          # Show session details
+          if name do
+            IO.puts("  • #{name} (#{session.id})")
+          else
+            IO.puts("  • #{session.id}")
+          end
 
-        # Show preview if available
-        if session.last_message do
-          preview = String.slice(session.last_message, 0, 60)
-          suffix = if String.length(session.last_message) > 60, do: "...", else: ""
-          IO.puts("    \"#{preview}#{suffix}\"")
-        end
+          IO.puts("    #{messages}, #{time_ago}, #{format_bytes(session.size)}")
 
-        IO.puts("")
-      end)
+          # Backend info if available
+          if session.llm_backend do
+            IO.puts("    Backend: #{session.llm_backend}")
+          end
+
+          IO.puts("")
+        end)
+
+      {:error, reason} ->
+        show_error("Failed to list sessions: #{reason}")
     end
 
     :ok
@@ -148,23 +151,27 @@ defmodule MCPChat.CLI.Commands.Session do
     session = Session.get_current_session()
 
     if Enum.empty?(session.messages) do
-      show_info("No messages in current conversation")
+      show_info("No messages in history")
     else
       MCPChat.CLI.Renderer.show_text("## Conversation History\n")
 
       Enum.each(session.messages, fn msg ->
-        role = msg["role"]
-        content = msg["content"]
+        # Handle both map and struct access patterns
+        role = msg[:role] || msg["role"]
+        content = msg[:content] || msg["content"]
 
         case role do
           "system" ->
             MCPChat.CLI.Renderer.show_text("**System:** #{content}\n")
 
           "user" ->
-            MCPChat.CLI.Renderer.show_text("**You:** #{content}\n")
+            MCPChat.CLI.Renderer.show_text("**User:** #{content}\n")
 
           "assistant" ->
             MCPChat.CLI.Renderer.show_text("**Assistant:** #{content}\n")
+
+          nil ->
+            MCPChat.CLI.Renderer.show_text("**Unknown:** #{content}\n")
 
           _ ->
             MCPChat.CLI.Renderer.show_text("**#{String.capitalize(role)}:** #{content}\n")
@@ -193,4 +200,12 @@ defmodule MCPChat.CLI.Commands.Session do
   defp format_bytes(bytes) when bytes < 1_024, do: "#{bytes} B"
   defp format_bytes(bytes) when bytes < 1_048_576, do: "#{Float.round(bytes / 1_024, 1)} KB"
   defp format_bytes(bytes), do: "#{Float.round(bytes / 1_048_576, 1)} MB"
+
+  defp extract_session_name(filename) do
+    # Extract custom name from filename like "my-session_id.json"
+    case Regex.run(~r/^(.+?)_[a-f0-9]{32}\.json$/, filename) do
+      [_, name] when name not in ["session", "chat_session"] -> name
+      _ -> nil
+    end
+  end
 end
