@@ -294,6 +294,74 @@ history_size = 1000
     - [ ] Prompt user to resume on reconnection
     - [ ] Show estimated tokens/cost saved by resuming
 
+## Phase 13: Default Resources and Prompts
+- [ ] Add built-in MCP resources for better user experience
+  - [ ] Default resources to include:
+    - [ ] Project documentation links
+      - GitHub repository URL
+      - Online documentation site
+      - API reference
+      - Examples directory
+    - [ ] Quick reference cards
+      - Command cheat sheet
+      - MCP server setup guide
+      - LLM backend comparison
+    - [ ] System information
+      - Current version
+      - Loaded configuration
+      - Available features
+  - [ ] Implementation approach:
+    - Create built-in MCP resource server
+    - Auto-load on startup
+    - Available via /resource command
+- [ ] Add default MCP prompts for common tasks
+  - [ ] Utility prompts:
+    - [ ] "getting_started" - Interactive tutorial
+    - [ ] "demo" - Showcase all capabilities
+    - [ ] "troubleshoot" - Diagnose common issues
+    - [ ] "optimize" - Suggest config improvements
+  - [ ] Workflow prompts:
+    - [ ] "code_review" - Template for code analysis
+    - [ ] "writing_assistant" - Content creation workflow
+    - [ ] "research_mode" - Structured research approach
+    - [ ] "debug_session" - Debugging methodology
+  - [ ] Integration prompts:
+    - [ ] "setup_mcp_server" - Guide for adding new servers
+    - [ ] "create_agent" - Multi-agent setup wizard
+    - [ ] "api_integration" - Connect external services
+- [ ] Include default MCP servers for demos
+  - [ ] Essential servers to bundle:
+    - [ ] Filesystem (already common)
+    - [ ] Time/date server (for scheduling demos)
+    - [ ] Calculator (for computation demos)
+    - [ ] Demo data server (sample datasets)
+  - [ ] Optional but useful:
+    - [ ] SQLite server (local data management)
+    - [ ] Git server (code repository interaction)
+    - [ ] Markdown server (documentation access)
+  - [ ] Demo scenarios:
+    - [ ] "Analyze this file and suggest improvements"
+    - [ ] "Schedule a task for next week"
+    - [ ] "Calculate the cost of running this prompt 1000 times"
+    - [ ] "Search my documents for information about X"
+- [ ] Create interactive demo system
+  - [ ] `/demo` command that:
+    - [ ] Checks available MCP servers
+    - [ ] Runs through capability showcase
+    - [ ] Demonstrates each major feature
+    - [ ] Shows cost tracking
+    - [ ] Displays context management
+    - [ ] Performs actual useful tasks
+  - [ ] Demo flow:
+    1. Connect to filesystem server
+    2. Create a sample file
+    3. Analyze the file
+    4. Generate improvements
+    5. Save results
+    6. Show cost and token usage
+    7. Demonstrate context truncation
+    8. Show session save/load
+
 ## Development Notes
 
 - Use supervisor trees for fault tolerance
