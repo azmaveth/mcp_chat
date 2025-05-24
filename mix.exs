@@ -44,6 +44,7 @@ defmodule McpChat.MixProject do
       {:bumblebee, "~> 0.5"},
       {:nx, "~> 0.7"},
       {:exla, "~> 0.7", optional: true},
+      {:emlx, "~> 0.1", optional: true},
       {:ortex, "~> 0.1", optional: true},
 
       # Development dependencies

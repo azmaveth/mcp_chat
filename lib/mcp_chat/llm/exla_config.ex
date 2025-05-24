@@ -1,26 +1,34 @@
 defmodule MCPChat.LLM.EXLAConfig do
   @moduledoc """
-  Configuration module for EXLA backend optimization.
-  Provides optimal settings for CPU and GPU inference.
+  Configuration module for EXLA/EMLX backend optimization.
+  Provides optimal settings for CPU and GPU inference, including Apple Silicon support.
   """
 
   require Logger
 
   @doc """
-  Configure EXLA backend with optimal settings based on available hardware.
+  Configure EXLA/EMLX backend with optimal settings based on available hardware.
   """
   def configure_backend() do
-    if Code.ensure_loaded?(EXLA) do
-      backend_opts = determine_backend_options()
+    cond do
+      # Prefer EMLX for Apple Silicon
+      metal_available?() and Code.ensure_loaded?(EMLX) ->
+        Logger.info("EMLX backend configured for Apple Silicon")
+        Application.put_env(:nx, :default_backend, EMLX.Backend)
+        {:ok, :emlx}
 
-      Application.put_env(:nx, :default_backend, {EXLA.Backend, backend_opts})
-      Application.put_env(:nx, :default_defn_options, compiler: EXLA, client: backend_opts[:client])
+      Code.ensure_loaded?(EXLA) ->
+        backend_opts = determine_backend_options()
 
-      Logger.info("EXLA backend configured: #{inspect(backend_opts)}")
-      {:ok, backend_opts}
-    else
-      Logger.warn("EXLA not available, falling back to binary backend")
-      {:ok, :binary}
+        Application.put_env(:nx, :default_backend, {EXLA.Backend, backend_opts})
+        Application.put_env(:nx, :default_defn_options, compiler: EXLA, client: backend_opts[:client])
+
+        Logger.info("EXLA backend configured: #{inspect(backend_opts)}")
+        {:ok, backend_opts}
+
+      true ->
+        Logger.warn("EXLA/EMLX not available, falling back to binary backend")
+        {:ok, :binary}
     end
   end
 
@@ -28,31 +36,47 @@ defmodule MCPChat.LLM.EXLAConfig do
   Get optimal compiler options for model serving.
   """
   def serving_options() do
-    if Code.ensure_loaded?(EXLA) do
-      backend_opts = determine_backend_options()
-
-      [
-        compile: [
-          batch_size: get_optimal_batch_size(),
-          sequence_length: get_optimal_sequence_length()
-        ],
-        defn_options: [
-          compiler: EXLA,
-          client: backend_opts[:client]
-        ],
-        # Enable memory optimization
-        preallocate_params: true
-      ]
-    else
-      [
-        compile: [
-          batch_size: 1,
-          sequence_length: 512
-        ],
-        defn_options: [
-          compiler: Nx.BinaryBackend
+    cond do
+      # EMLX for Apple Silicon
+      metal_available?() and Code.ensure_loaded?(EMLX) ->
+        [
+          compile: [
+            batch_size: get_optimal_batch_size(),
+            sequence_length: get_optimal_sequence_length()
+          ],
+          defn_options: [
+            compiler: EMLX
+          ],
+          # Enable memory optimization
+          preallocate_params: true
         ]
-      ]
+
+      Code.ensure_loaded?(EXLA) ->
+        backend_opts = determine_backend_options()
+
+        [
+          compile: [
+            batch_size: get_optimal_batch_size(),
+            sequence_length: get_optimal_sequence_length()
+          ],
+          defn_options: [
+            compiler: EXLA,
+            client: backend_opts[:client]
+          ],
+          # Enable memory optimization
+          preallocate_params: true
+        ]
+
+      true ->
+        [
+          compile: [
+            batch_size: 1,
+            sequence_length: 512
+          ],
+          defn_options: [
+            compiler: Nx.BinaryBackend
+          ]
+        ]
     end
   end
 
@@ -103,28 +127,40 @@ defmodule MCPChat.LLM.EXLAConfig do
           type: :cuda,
           name: "NVIDIA CUDA",
           device_count: cuda_device_count(),
-          memory: cuda_memory_info()
+          memory: cuda_memory_info(),
+          backend: if(Code.ensure_loaded?(EXLA), do: "EXLA", else: "Not available")
         }
 
       rocm_available?() ->
         %{
           type: :rocm,
           name: "AMD ROCm",
-          device_count: 1
+          device_count: 1,
+          backend: if(Code.ensure_loaded?(EXLA), do: "EXLA", else: "Not available")
         }
 
       metal_available?() ->
+        backend =
+          cond do
+            Code.ensure_loaded?(EMLX) -> "EMLX"
+            Code.ensure_loaded?(EXLA) -> "EXLA"
+            true -> "Not available"
+          end
+
         %{
           type: :metal,
           name: "Apple Metal",
-          device_count: 1
+          device_count: 1,
+          backend: backend,
+          memory: metal_memory_info()
         }
 
       true ->
         %{
           type: :cpu,
           name: "CPU",
-          cores: System.schedulers_online()
+          cores: System.schedulers_online(),
+          backend: if(Code.ensure_loaded?(EXLA), do: "EXLA", else: "Binary")
         }
     end
   end
@@ -174,9 +210,27 @@ defmodule MCPChat.LLM.EXLAConfig do
   end
 
   defp metal_available? do
-    Code.ensure_loaded?(EXLA) and
-      :os.type() == {:unix, :darwin} and
+    :os.type() == {:unix, :darwin} and
       System.get_env("DISABLE_METAL") != "1"
+  end
+
+  defp metal_memory_info() do
+    # Try to get unified memory info on macOS
+    try do
+      {output, 0} = System.cmd("sysctl", ["hw.memsize"], stderr_to_stdout: true)
+
+      total_bytes =
+        output
+        |> String.trim()
+        |> String.split(": ")
+        |> List.last()
+        |> String.to_integer()
+
+      total_mb = div(total_bytes, 1_048_576)
+      %{total_mb: total_mb, total_gb: Float.round(total_mb / 1_024, 2)}
+    rescue
+      _ -> %{total_mb: 0, total_gb: 0}
+    end
   end
 
   defp get_optimal_batch_size() do
@@ -193,7 +247,15 @@ defmodule MCPChat.LLM.EXLAConfig do
         end
 
       :metal ->
-        2
+        # Apple Silicon unified memory allows for good batch sizes
+        memory_gb = metal_memory_info().total_gb
+
+        cond do
+          memory_gb >= 64 -> 8
+          memory_gb >= 32 -> 4
+          memory_gb >= 16 -> 2
+          true -> 1
+        end
 
       _ ->
         1
@@ -214,7 +276,15 @@ defmodule MCPChat.LLM.EXLAConfig do
         end
 
       :metal ->
-        1_024
+        # Apple Silicon can handle good sequence lengths
+        memory_gb = metal_memory_info().total_gb
+
+        cond do
+          memory_gb >= 64 -> 4_096
+          memory_gb >= 32 -> 2_048
+          memory_gb >= 16 -> 1_536
+          true -> 1_024
+        end
 
       _ ->
         512
@@ -225,11 +295,19 @@ defmodule MCPChat.LLM.EXLAConfig do
   Enable mixed precision training/inference for better performance.
   """
   def enable_mixed_precision() do
-    if Code.ensure_loaded?(EXLA) do
-      # Enable automatic mixed precision
-      Application.put_env(:exla, :mixed_precision, true)
-      Application.put_env(:exla, :preferred_dtype, {:f, 16})
-      Logger.info("Mixed precision enabled for better performance")
+    cond do
+      Code.ensure_loaded?(EMLX) ->
+        # EMLX automatically handles mixed precision on Apple Silicon
+        Logger.info("EMLX handles mixed precision automatically on Apple Silicon")
+
+      Code.ensure_loaded?(EXLA) ->
+        # Enable automatic mixed precision
+        Application.put_env(:exla, :mixed_precision, true)
+        Application.put_env(:exla, :preferred_dtype, {:f, 16})
+        Logger.info("Mixed precision enabled for better performance")
+
+      true ->
+        :ok
     end
   end
 
@@ -237,12 +315,19 @@ defmodule MCPChat.LLM.EXLAConfig do
   Optimize memory usage for large models.
   """
   def optimize_memory() do
-    if Code.ensure_loaded?(EXLA) do
-      # Enable gradient checkpointing and memory optimizations
-      Application.put_env(:exla, :allocator, :best_fit)
-      Application.put_env(:exla, :memory_fraction, 0.9)
-      Logger.info("Memory optimizations enabled")
+    cond do
+      Code.ensure_loaded?(EMLX) ->
+        # EMLX uses unified memory efficiently on Apple Silicon
+        Logger.info("EMLX optimizes unified memory usage on Apple Silicon")
+
+      Code.ensure_loaded?(EXLA) ->
+        # Enable gradient checkpointing and memory optimizations
+        Application.put_env(:exla, :allocator, :best_fit)
+        Application.put_env(:exla, :memory_fraction, 0.9)
+        Logger.info("Memory optimizations enabled")
+
+      true ->
+        :ok
     end
   end
 end
-

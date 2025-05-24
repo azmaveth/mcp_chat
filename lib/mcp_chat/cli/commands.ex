@@ -1109,6 +1109,12 @@ defmodule MCPChat.CLI.Commands do
             Renderer.show_text("  Memory: #{acc_info.memory.total_gb} GB")
           end
 
+        :metal ->
+          if acc_info.memory do
+            Renderer.show_text("  Unified Memory: #{acc_info.memory.total_gb} GB")
+          end
+          Renderer.show_text("  Backend: #{acc_info.backend}")
+
         :cpu ->
           Renderer.show_text("  Cores: #{acc_info.cores}")
 
@@ -1116,18 +1122,29 @@ defmodule MCPChat.CLI.Commands do
           :ok
       end
 
-      # Show if EXLA is loaded
-      if Code.ensure_loaded?(EXLA) do
-        Renderer.show_text("")
-        Renderer.show_text("  EXLA Status: ✓ Loaded")
-        Renderer.show_text("  Mixed Precision: Enabled")
-        Renderer.show_text("  Memory Optimization: Enabled")
-      else
-        Renderer.show_text("")
-        Renderer.show_text("  EXLA Status: Not loaded")
-        Renderer.show_text("  Install EXLA for GPU acceleration:")
-        Renderer.show_text("    XLA_TARGET=cuda12 mix deps.get  # For NVIDIA GPUs")
-        Renderer.show_text("    XLA_TARGET=cpu mix deps.get     # For CPU optimization")
+      # Show backend status
+      Renderer.show_text("")
+
+      cond do
+        Code.ensure_loaded?(EMLX) ->
+          Renderer.show_text("  EMLX Status: ✓ Loaded (Apple Silicon optimized)")
+          if acc_info.type == :metal do
+            Renderer.show_text("  Mixed Precision: Automatic")
+            Renderer.show_text("  Memory Optimization: Unified memory")
+          end
+
+        Code.ensure_loaded?(EXLA) ->
+          Renderer.show_text("  EXLA Status: ✓ Loaded")
+          Renderer.show_text("  Mixed Precision: Enabled")
+          Renderer.show_text("  Memory Optimization: Enabled")
+
+        true ->
+          Renderer.show_text("  Acceleration Status: Not loaded")
+          Renderer.show_text("")
+          Renderer.show_text("  Install acceleration backends:")
+          Renderer.show_text("    mix deps.get             # For EMLX on Apple Silicon")
+          Renderer.show_text("    XLA_TARGET=cuda12 mix deps.get  # For NVIDIA GPUs")
+          Renderer.show_text("    XLA_TARGET=cpu mix deps.get     # For CPU optimization")
       end
     else
       Renderer.show_info("Acceleration info not available (local backend not initialized)")

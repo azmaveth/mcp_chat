@@ -12,7 +12,7 @@ An Elixir-based CLI chat client with support for the Model Context Protocol (MCP
 ## Features
 
 - 🤖 Multiple LLM backend support (Anthropic Claude 4, OpenAI GPT-4, Ollama, Local models via Bumblebee)
-- 🚀 GPU acceleration support with EXLA (CUDA, ROCm, Metal)
+- 🚀 GPU acceleration support with EXLA (CUDA, ROCm) and EMLX (Apple Silicon/Metal)
 - 🔌 MCP client functionality - connect to local (stdio) and remote (SSE) MCP servers
 - 🛠️ MCP server functionality - expose chat as an MCP server (stdio and SSE transports)
 - 💬 Interactive CLI chat interface with rich formatting
@@ -307,11 +307,12 @@ sse_port = 8080
 
 ## Local Model Support & GPU Acceleration
 
-MCP Chat supports running models locally using Bumblebee with optional GPU acceleration via EXLA.
+MCP Chat supports running models locally using Bumblebee with optional GPU acceleration via EXLA and EMLX.
 
 ### Features
 
 - **Automatic Hardware Detection**: Detects available acceleration (CUDA, ROCm, Metal, CPU)
+- **Apple Silicon Optimization**: Native Metal acceleration via EMLX
 - **Optimized Inference**: Uses mixed precision and memory optimization
 - **Dynamic Model Loading**: Load and unload models on demand
 - **Multi-Backend Support**: Automatically selects the best available backend
@@ -319,6 +320,10 @@ MCP Chat supports running models locally using Bumblebee with optional GPU accel
 ### Installation with GPU Support
 
 ```bash
+# For Apple Silicon (M1/M2/M3) - Recommended
+mix deps.get  # EMLX will be installed automatically
+mix compile
+
 # For NVIDIA GPUs (CUDA)
 XLA_TARGET=cuda12 mix deps.get
 mix compile
@@ -327,14 +332,18 @@ mix compile
 XLA_TARGET=rocm mix deps.get
 mix compile
 
-# For Apple Silicon (Metal)
-mix deps.get
-mix compile
-
-# For CPU optimization only
+# For CPU optimization only (non-Apple Silicon)
 XLA_TARGET=cpu mix deps.get
 mix compile
 ```
+
+#### Backend Selection
+
+The system automatically selects the best backend:
+1. **Apple Silicon**: EMLX (preferred) or EXLA with Metal
+2. **NVIDIA GPUs**: EXLA with CUDA
+3. **AMD GPUs**: EXLA with ROCm
+4. **CPU**: EXLA with optimized CPU settings or binary backend
 
 ### Usage
 
@@ -370,9 +379,16 @@ mix compile
    - 16GB: Better performance for 7B models
    - 24GB+: Can run multiple models or larger batch sizes
 
-2. **Mixed Precision**: Automatically enabled for better performance
+2. **Apple Silicon**: Unified memory architecture allows efficient model loading
+   - M1/M2 (8-16GB): Good for smaller models (up to 7B)
+   - M1/M2 Pro/Max (16-64GB): Can handle larger models efficiently
+   - M3 series: Enhanced performance with EMLX optimization
 
-3. **Model Caching**: Models are cached locally after first download
+3. **Mixed Precision**: Automatically enabled for better performance
+   - EMLX: Automatic mixed precision on Apple Silicon
+   - EXLA: Configurable FP16/FP32 mixed precision
+
+4. **Model Caching**: Models are cached locally after first download
 
 ## Development
 
