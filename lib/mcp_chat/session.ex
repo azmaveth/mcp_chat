@@ -7,7 +7,7 @@ defmodule MCPChat.Session do
   """
   use GenServer
 
-  alias MCPChat.Types.Session
+  alias MCPChat.Session.Core, as: SessionCore
 
   # Client API
 
@@ -125,7 +125,7 @@ defmodule MCPChat.Session do
     config_provider = Keyword.get(opts, :config_provider, MCPChat.ConfigProvider.Default)
 
     state = %{
-      current_session: create_new_session(nil, config_provider),
+      current_session: SessionCore.new_session(nil, config_provider: config_provider),
       sessions: [],
       config_provider: config_provider
     }
@@ -135,37 +135,23 @@ defmodule MCPChat.Session do
 
   @impl true
   def handle_call({:new_session, backend}, _from, state) do
-    new_session = create_new_session(backend, state.config_provider)
+    new_session = SessionCore.new_session(backend, config_provider: state.config_provider)
     new_state = %{state | current_session: new_session, sessions: [state.current_session | state.sessions]}
     {:reply, {:ok, new_session}, new_state}
   end
 
   @impl true
   def handle_call({:add_message, role, content}, _from, state) do
-    message = %{
-      role: role,
-      content: content,
-      timestamp: DateTime.utc_now()
-    }
-
-    updated_session = %{
-      state.current_session
-      | messages: [message | state.current_session.messages],
-        updated_at: DateTime.utc_now()
-    }
-
+    updated_session = SessionCore.add_message(state.current_session, role, content)
     new_state = %{state | current_session: updated_session}
     {:reply, :ok, new_state}
   end
 
   @impl true
   def handle_call({:get_messages, limit}, _from, state) do
-    messages =
-      state.current_session.messages
-      |> Enum.reverse()
-      |> maybe_limit(limit)
-
-    {:reply, messages, state}
+    messages = SessionCore.get_messages(state.current_session, limit)
+    # Keep original behavior of reversing messages for GenServer API
+    {:reply, Enum.reverse(messages), state}
   end
 
   def handle_call(:get_current_session, _from, state) do
@@ -236,16 +222,12 @@ defmodule MCPChat.Session do
   end
 
   def handle_call(:get_context_stats, _from, state) do
-    messages = state.current_session.messages |> Enum.reverse()
-    max_tokens = get_in(state.current_session.context, [:max_tokens]) || 4_096
-
-    stats = MCPChat.Context.get_context_stats(messages, max_tokens)
+    stats = SessionCore.get_context_stats(state.current_session)
     {:reply, stats, state}
   end
 
   def handle_call(:get_session_cost, _from, state) do
-    token_usage = state.current_session.token_usage || %{input_tokens: 0, output_tokens: 0}
-    cost_info = MCPChat.Cost.calculate_session_cost(state.current_session, token_usage)
+    cost_info = SessionCore.get_session_cost(state.current_session, config_provider: state.config_provider)
     {:reply, cost_info, state}
   end
 
@@ -257,119 +239,44 @@ defmodule MCPChat.Session do
 
   @impl true
   def handle_cast(:clear_session, state) do
-    updated_session = %{state.current_session | messages: [], context: %{}, updated_at: DateTime.utc_now()}
-
+    updated_session = SessionCore.clear_messages(state.current_session)
+    updated_session = SessionCore.set_context(updated_session, %{})
     new_state = %{state | current_session: updated_session}
     {:noreply, new_state}
   end
 
   def handle_cast({:set_context, context}, state) do
-    updated_session = %{state.current_session | context: context, updated_at: DateTime.utc_now()}
-
+    updated_session = SessionCore.set_context(state.current_session, context)
     new_state = %{state | current_session: updated_session}
     {:noreply, new_state}
   end
 
   def handle_cast({:update_context_config, config}, state) do
-    updated_context = Map.merge(state.current_session.context, config)
-    updated_session = %{state.current_session | context: updated_context, updated_at: DateTime.utc_now()}
-
+    updated_session = SessionCore.update_context(state.current_session, config)
     new_state = %{state | current_session: updated_session}
     {:noreply, new_state}
   end
 
   def handle_cast({:track_token_usage, input_messages, response_content}, state) do
     usage = MCPChat.Cost.track_token_usage(input_messages, response_content)
-
-    # Update or initialize token usage
-    current_usage = state.current_session.token_usage || %{input_tokens: 0, output_tokens: 0}
-
-    # Handle both string and atom keys for compatibility
-    current_input = Map.get(current_usage, :input_tokens) || Map.get(current_usage, "input_tokens", 0)
-    current_output = Map.get(current_usage, :output_tokens) || Map.get(current_usage, "output_tokens", 0)
-
-    usage_input = Map.get(usage, :input_tokens) || Map.get(usage, "input_tokens", 0)
-    usage_output = Map.get(usage, :output_tokens) || Map.get(usage, "output_tokens", 0)
-
-    updated_usage = %{
-      input_tokens: current_input + usage_input,
-      output_tokens: current_output + usage_output
-    }
-
-    updated_session = %{state.current_session | token_usage: updated_usage, updated_at: DateTime.utc_now()}
-
+    updated_session = SessionCore.track_token_usage(state.current_session, usage)
     new_state = %{state | current_session: updated_session}
     {:noreply, new_state}
   end
 
   def handle_cast({:update_session, updates}, state) do
-    updated_session = struct(state.current_session, Map.put(updates, :updated_at, DateTime.utc_now()))
+    updated_session = SessionCore.update_session(state.current_session, updates)
     new_state = %{state | current_session: updated_session}
     {:noreply, new_state}
   end
 
   def handle_cast({:set_system_prompt, prompt}, state) do
-    # Add or update system message at the beginning of messages
-    messages = state.current_session.messages
-
-    # Remove existing system message if present
-    filtered_messages = Enum.reject(messages, fn msg -> msg.role == "system" end)
-
-    # Add new system message
-    system_message = %{
-      role: "system",
-      content: prompt,
-      timestamp: DateTime.utc_now()
-    }
-
-    updated_messages = [system_message | filtered_messages]
-
-    updated_session = %{
-      state.current_session
-      | messages: updated_messages,
-        updated_at: DateTime.utc_now()
-    }
-
+    updated_session = SessionCore.set_system_prompt(state.current_session, prompt)
     new_state = %{state | current_session: updated_session}
     {:noreply, new_state}
   end
 
-  # Private Functions
+  # Private Functions - only those specific to GenServer behavior
 
-  defp create_new_session(backend, config_provider) do
-    backend = backend || get_default_backend(config_provider)
-
-    %Session{
-      id: generate_session_id(),
-      llm_backend: backend,
-      messages: [],
-      context: %{},
-      created_at: DateTime.utc_now(),
-      updated_at: DateTime.utc_now(),
-      token_usage: %{input_tokens: 0, output_tokens: 0}
-    }
-  end
-
-  defp generate_session_id() do
-    :crypto.strong_rand_bytes(16)
-    |> Base.encode16(case: :lower)
-  end
-
-  defp get_default_backend(config_provider) do
-    case config_provider do
-      MCPChat.ConfigProvider.Default ->
-        MCPChat.Config.get([:llm, :default]) || "anthropic"
-
-      provider when is_pid(provider) ->
-        # Static provider (Agent pid)
-        MCPChat.ConfigProvider.Static.get(provider, [:llm, :default]) || "anthropic"
-
-      provider ->
-        # Custom provider module
-        provider.get([:llm, :default]) || "anthropic"
-    end
-  end
-
-  defp maybe_limit(messages, nil), do: messages
-  defp maybe_limit(messages, limit), do: Enum.take(messages, limit)
+  # Note: Session creation and manipulation logic moved to MCPChat.Session.Core
 end

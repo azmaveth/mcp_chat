@@ -1,7 +1,7 @@
 defmodule MCPChat.PathProvider do
   @moduledoc """
   Behaviour for path providers and a default implementation.
-  
+
   This allows modules to receive file paths through dependency injection
   rather than using hardcoded paths, making them more portable and testable.
   """
@@ -85,7 +85,7 @@ defmodule MCPChat.PathProvider do
   defmodule Static do
     @moduledoc """
     Static path provider for testing and library usage.
-    
+
     Usage:
         paths = %{
           config_dir: "/tmp/test_config",
@@ -106,7 +106,7 @@ defmodule MCPChat.PathProvider do
 
     def get_path(provider, file_type) do
       Agent.get(provider, fn paths ->
-        Map.get(paths, file_type) || 
+        Map.get(paths, file_type) ||
           default_path(Map.get(paths, :config_dir, "/tmp/mcp_chat_test"), file_type)
       end)
     end

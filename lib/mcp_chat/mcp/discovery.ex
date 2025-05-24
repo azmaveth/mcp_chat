@@ -80,15 +80,18 @@ defmodule MCPChat.MCP.Discovery do
   """
   def discover_known_locations(opts \\ []) do
     path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
-    
-    locations = case path_provider do
-      MCPChat.PathProvider.Default ->
-        MCPChat.PathProvider.Default.get_path(:mcp_discovery_dirs)
-      provider when is_pid(provider) ->
-        MCPChat.PathProvider.Static.get_path(provider, :mcp_discovery_dirs)
-      provider ->
-        provider.get_path(:mcp_discovery_dirs)
-    end
+
+    locations =
+      case path_provider do
+        MCPChat.PathProvider.Default ->
+          MCPChat.PathProvider.Default.get_path(:mcp_discovery_dirs)
+
+        provider when is_pid(provider) ->
+          MCPChat.PathProvider.Static.get_path(provider, :mcp_discovery_dirs)
+
+        provider ->
+          provider.get_path(:mcp_discovery_dirs)
+      end
 
     locations
     |> Enum.filter(&File.dir?/1)

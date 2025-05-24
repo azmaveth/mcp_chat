@@ -1,11 +1,11 @@
 defmodule MCPChat.MCP.ServerManager do
   @moduledoc """
-  Manages multiple MCP server connections.
+  GenServer wrapper for managing multiple MCP server connections.
+  Delegates all operations to MCPChat.MCP.ServerManager.Core.
   """
   use GenServer
 
-  alias MCPChat.MCP.Server
-  alias MCPChat.Config
+  alias MCPChat.MCP.ServerManager.Core
 
   require Logger
 
@@ -66,10 +66,7 @@ defmodule MCPChat.MCP.ServerManager do
     # Start the registry for MCP servers
     {:ok, _} = Registry.start_link(keys: :unique, name: MCPChat.MCP.ServerRegistry)
 
-    state = %{
-      servers: %{},
-      supervisor: nil
-    }
+    state = Core.new_state()
 
     # Start servers after init
     send(self(), :start_configured_servers)
@@ -79,8 +76,6 @@ defmodule MCPChat.MCP.ServerManager do
 
   @impl true
   def handle_call(:start_configured_servers, _from, state) do
-    servers = Config.get([:mcp, :servers]) || []
-
     # Start a supervisor for the servers if needed
     {:ok, supervisor} =
       DynamicSupervisor.start_link(
@@ -88,151 +83,70 @@ defmodule MCPChat.MCP.ServerManager do
         name: MCPChat.MCP.ServerSupervisor
       )
 
-    # Start each configured server
-    results = Enum.map(servers, &start_server_supervised(&1, supervisor))
+    state_with_supervisor = Core.set_supervisor(state, supervisor)
+    {new_state, result} = Core.start_configured_servers(state_with_supervisor)
 
-    # Update state with started servers
-    new_servers =
-      results
-      |> Enum.filter(fn {status, _} -> status == :ok end)
-      |> Enum.map(fn {:ok, {name, pid}} -> {name, pid} end)
-      |> Enum.into(%{})
-
-    new_state = %{state | servers: new_servers, supervisor: supervisor}
-
-    {:reply, {:ok, map_size(new_servers)}, new_state}
+    {:reply, result, new_state}
   end
 
   @impl true
   def handle_call({:start_server, config}, _from, state) do
-    case start_server_supervised(config, state.supervisor) do
-      {:ok, {name, pid}} ->
-        new_servers = Map.put(state.servers, name, pid)
-        {:reply, {:ok, pid}, %{state | servers: new_servers}}
-
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
-    end
+    {new_state, result} = Core.start_server(state, config)
+    {:reply, result, new_state}
   end
 
   @impl true
   def handle_call({:stop_server, name}, _from, state) do
-    case Map.get(state.servers, name) do
-      nil ->
-        {:reply, {:error, :not_found}, state}
-
-      pid ->
-        DynamicSupervisor.terminate_child(state.supervisor, pid)
-        new_servers = Map.delete(state.servers, name)
-        {:reply, :ok, %{state | servers: new_servers}}
-    end
+    {new_state, result} = Core.stop_server(state, name)
+    {:reply, result, new_state}
   end
 
   @impl true
   def handle_call(:list_servers, _from, state) do
-    servers =
-      state.servers
-      |> Enum.map(fn {name, _pid} ->
-        case Server.get_status(name) do
-          {:error, _} -> nil
-          status -> status
-        end
-      end)
-      |> Enum.reject(&is_nil/1)
-
+    servers = Core.list_servers(state)
     {:reply, servers, state}
   end
 
   @impl true
   def handle_call({:get_server, name}, _from, state) do
-    case Map.get(state.servers, name) do
-      nil ->
-        {:reply, {:error, :not_found}, state}
-
-      _pid ->
-        case Server.get_status(name) do
-          {:error, reason} -> {:reply, {:error, reason}, state}
-          status -> {:reply, {:ok, status}, state}
-        end
-    end
+    result = Core.get_server(state, name)
+    {:reply, result, state}
   end
 
   @impl true
   def handle_call(:list_all_tools, _from, state) do
-    # Aggregate tools from all connected servers
-    tools =
-      state.servers
-      |> Enum.map(fn {name, _pid} ->
-        case Server.get_tools(name) do
-          {:ok, tools} -> Enum.map(tools, &Map.put(&1, :server, name))
-          _ -> []
-        end
-      end)
-      |> List.flatten()
-
+    tools = Core.list_all_tools(state)
     {:reply, tools, state}
   end
 
   @impl true
   def handle_call({:call_tool, server_name, tool_name, arguments}, _from, state) do
-    if Map.has_key?(state.servers, server_name) do
-      result = Server.call_tool(server_name, tool_name, arguments)
-      {:reply, result, state}
-    else
-      {:reply, {:error, :server_not_found}, state}
-    end
+    result = Core.call_tool(state, server_name, tool_name, arguments)
+    {:reply, result, state}
   end
 
   @impl true
   def handle_call(:list_all_resources, _from, state) do
-    # Aggregate resources from all connected servers
-    resources =
-      state.servers
-      |> Enum.map(fn {name, _pid} ->
-        case Server.get_resources(name) do
-          {:ok, resources} -> Enum.map(resources, &Map.put(&1, :server, name))
-          _ -> []
-        end
-      end)
-      |> List.flatten()
-
+    resources = Core.list_all_resources(state)
     {:reply, resources, state}
   end
 
   @impl true
   def handle_call({:read_resource, server_name, uri}, _from, state) do
-    if Map.has_key?(state.servers, server_name) do
-      result = Server.read_resource(server_name, uri)
-      {:reply, result, state}
-    else
-      {:reply, {:error, :server_not_found}, state}
-    end
+    result = Core.read_resource(state, server_name, uri)
+    {:reply, result, state}
   end
 
   @impl true
   def handle_call(:list_all_prompts, _from, state) do
-    # Aggregate prompts from all connected servers
-    prompts =
-      state.servers
-      |> Enum.map(fn {name, _pid} ->
-        case Server.get_prompts(name) do
-          {:ok, prompts} -> Enum.map(prompts, &Map.put(&1, :server, name))
-          _ -> []
-        end
-      end)
-      |> List.flatten()
-
+    prompts = Core.list_all_prompts(state)
     {:reply, prompts, state}
   end
 
   @impl true
   def handle_call({:get_prompt, server_name, prompt_name, arguments}, _from, state) do
-    if Map.has_key?(state.servers, server_name) do
-      result = Server.get_prompt(server_name, prompt_name, arguments)
-      {:reply, result, state}
-    else
-      {:reply, {:error, :server_not_found}, state}
-    end
+    result = Core.get_prompt(state, server_name, prompt_name, arguments)
+    {:reply, result, state}
   end
 
   @impl true
@@ -243,107 +157,15 @@ defmodule MCPChat.MCP.ServerManager do
       |> elem(2)
 
     # Also start saved servers with auto_connect enabled
-    saved_servers = MCPChat.MCP.ServerPersistence.load_all_servers()
-    auto_connect_servers = Enum.filter(saved_servers, &(&1["auto_connect"] == true))
-
-    final_state =
-      Enum.reduce(auto_connect_servers, config_state, fn server_config, acc_state ->
-        # Check if server is already started
-        if Map.has_key?(acc_state.servers, server_config["name"]) do
-          acc_state
-        else
-          Logger.info("Auto-connecting to saved server: #{server_config["name"]}")
-
-          case start_server_supervised(server_config, acc_state.supervisor) do
-            {:ok, {name, pid}} ->
-              %{acc_state | servers: Map.put(acc_state.servers, name, pid)}
-
-            {:error, reason} ->
-              Logger.warning("Failed to auto-connect server #{server_config["name"]}: #{inspect(reason)}")
-              acc_state
-          end
-        end
-      end)
+    final_state = Core.start_auto_connect_servers(config_state)
 
     {:noreply, final_state}
   end
 
   @impl true
   def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
-    # Find which server died
-    case Enum.find(state.servers, fn {_name, server_pid} -> server_pid == pid end) do
-      {name, _} ->
-        Logger.warning("MCP server #{name} died: #{inspect(reason)}")
-        new_servers = Map.delete(state.servers, name)
-        {:noreply, %{state | servers: new_servers}}
-
-      nil ->
-        {:noreply, state}
-    end
-  end
-
-  # Private Functions
-
-  defp start_server_supervised(config, supervisor) do
-    name = config[:name] || config["name"]
-    command = config[:command] || config["command"]
-    url = config[:url] || config["url"]
-    env = config[:env] || config["env"] || %{}
-
-    cond do
-      name && command ->
-        # Stdio transport
-        child_spec = %{
-          id: {Server, name},
-          start:
-            {Server, :start_link,
-             [
-               [
-                 name: name,
-                 command: command,
-                 env: env,
-                 auto_connect: true
-               ]
-             ]},
-          restart: :temporary
-        }
-
-        case DynamicSupervisor.start_child(supervisor, child_spec) do
-          {:ok, pid} ->
-            {:ok, {name, pid}}
-
-          {:error, reason} ->
-            Logger.error("Failed to start MCP server #{name}: #{inspect(reason)}")
-            {:error, reason}
-        end
-
-      name && url ->
-        # SSE transport
-        child_spec = %{
-          id: {Server, name},
-          start:
-            {Server, :start_link,
-             [
-               [
-                 name: name,
-                 url: url,
-                 auto_connect: true
-               ]
-             ]},
-          restart: :temporary
-        }
-
-        case DynamicSupervisor.start_child(supervisor, child_spec) do
-          {:ok, pid} ->
-            {:ok, {name, pid}}
-
-          {:error, reason} ->
-            Logger.error("Failed to start MCP server #{name}: #{inspect(reason)}")
-            {:error, reason}
-        end
-
-      true ->
-        {:error, :invalid_config}
-    end
+    Logger.warning("MCP server process died: #{inspect(reason)}")
+    new_state = Core.handle_server_death(state, pid)
+    {:noreply, new_state}
   end
 end

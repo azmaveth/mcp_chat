@@ -26,7 +26,7 @@ defmodule MCPChat.Persistence do
   def save_session(session, name \\ nil, opts \\ []) do
     path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
     sessions_dir = get_sessions_dir(path_provider)
-    
+
     ensure_sessions_dir(sessions_dir)
 
     filename = build_filename(session, name)
@@ -62,7 +62,7 @@ defmodule MCPChat.Persistence do
   def list_sessions(opts \\ []) do
     path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
     sessions_dir = get_sessions_dir(path_provider)
-    
+
     ensure_sessions_dir(sessions_dir)
 
     case File.ls(sessions_dir) do
@@ -119,8 +119,10 @@ defmodule MCPChat.Persistence do
     case path_provider do
       MCPChat.PathProvider.Default ->
         MCPChat.PathProvider.Default.get_path(:sessions_dir)
+
       provider when is_pid(provider) ->
         MCPChat.PathProvider.Static.get_path(provider, :sessions_dir)
+
       provider ->
         provider.get_path(:sessions_dir)
     end
