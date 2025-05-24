@@ -30,14 +30,18 @@ Welcome to MCP Chat, an Elixir-based chat client that supports multiple Large La
 
 ### First Run
 
-Run MCP Chat with:
+Build and run MCP Chat:
 ```bash
-mix mcp_chat
+# Build the executable
+mix escript.build
+
+# Run the chat client
+./mcp_chat
 ```
 
 Or with options:
 ```bash
-mix mcp_chat --config path/to/config.toml --backend anthropic
+./mcp_chat --config path/to/config.toml --backend anthropic
 ```
 
 ### Command Line Options

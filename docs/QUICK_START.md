@@ -42,7 +42,18 @@ api_key = "your-key-here"
 ## 4. Start Chatting!
 
 ```bash
-mix mcp_chat
+# Build the executable
+mix escript.build
+
+# Run the chat client
+./mcp_chat
+```
+
+Or run directly in Elixir (with better terminal support):
+```bash
+iex -S mix
+# Then in IEx:
+iex> MCPChat.main()
 ```
 
 ## Essential Commands

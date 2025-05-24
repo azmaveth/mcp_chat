@@ -52,7 +52,7 @@ mix compile
 Run the setup script to create necessary directories and configuration:
 
 ```bash
-mix mcp_chat.setup
+./setup.sh
 ```
 
 Or manually create the config directory:
@@ -121,14 +121,17 @@ history_size = 1000
 ### Basic Usage
 
 ```bash
+# Build the executable
+mix escript.build
+
 # Run with default settings
-mix mcp_chat
+./mcp_chat
 
 # Run with specific backend
-mix mcp_chat --backend openai
+./mcp_chat --backend openai
 
 # Run with custom config file
-mix mcp_chat --config /path/to/config.toml
+./mcp_chat --config /path/to/config.toml
 ```
 
 ### Creating an Alias
@@ -136,7 +139,7 @@ mix mcp_chat --config /path/to/config.toml
 Add to your shell profile for easier access:
 
 ```bash
-alias mcp='cd /path/to/mcp_chat && mix mcp_chat'
+alias mcp='cd /path/to/mcp_chat && ./mcp_chat'
 ```
 
 Then you can simply run:
@@ -288,7 +291,7 @@ iex -S mix
 1. Check the [User Guide](USER_GUIDE.md)
 2. Run with debug logging:
    ```bash
-   ELIXIR_LOG_LEVEL=debug mix mcp_chat
+   ELIXIR_LOG_LEVEL=debug ./mcp_chat
    ```
 3. Check application logs in `~/.config/mcp_chat/logs/`
 
