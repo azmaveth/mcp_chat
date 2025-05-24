@@ -6,8 +6,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
 
   alias MCPChat.MCP.Server
   alias MCPChat.ConfigProvider
-
-  require Logger
+  alias MCPChat.LoggerProvider
 
   @type server_state :: %{
           servers: map(),
@@ -49,10 +48,11 @@ defmodule MCPChat.MCP.ServerManager.Core do
   @spec start_configured_servers(server_state(), keyword()) :: {server_state(), {:ok, integer()}}
   def start_configured_servers(state, opts \\ []) do
     config_provider = Keyword.get(opts, :config_provider, ConfigProvider.Default)
+    logger_provider = Keyword.get(opts, :logger_provider, LoggerProvider.Default)
     servers = config_provider.get([:mcp, :servers]) || []
 
     # Start each configured server
-    results = Enum.map(servers, &start_server_supervised(&1, state.supervisor))
+    results = Enum.map(servers, &start_server_supervised(&1, state.supervisor, logger_provider))
 
     # Update state with started servers
     new_servers =
@@ -69,9 +69,11 @@ defmodule MCPChat.MCP.ServerManager.Core do
   @doc """
   Starts a single server and returns updated state.
   """
-  @spec start_server(server_state(), server_config()) :: {server_state(), {:ok, pid()} | {:error, term()}}
-  def start_server(state, config) do
-    case start_server_supervised(config, state.supervisor) do
+  @spec start_server(server_state(), server_config(), keyword()) :: {server_state(), {:ok, pid()} | {:error, term()}}
+  def start_server(state, config, opts \\ []) do
+    logger_provider = Keyword.get(opts, :logger_provider, LoggerProvider.Default)
+    
+    case start_server_supervised(config, state.supervisor, logger_provider) do
       {:ok, {name, pid}} ->
         new_servers = Map.put(state.servers, name, pid)
         {%{state | servers: new_servers}, {:ok, pid}}
@@ -213,11 +215,13 @@ defmodule MCPChat.MCP.ServerManager.Core do
   @doc """
   Handles server process death by removing it from state.
   """
-  @spec handle_server_death(server_state(), pid()) :: server_state()
-  def handle_server_death(state, pid) do
+  @spec handle_server_death(server_state(), pid(), keyword()) :: server_state()
+  def handle_server_death(state, pid, opts \\ []) do
+    logger_provider = Keyword.get(opts, :logger_provider, LoggerProvider.Default)
+    
     case Enum.find(state.servers, fn {_name, server_pid} -> server_pid == pid end) do
       {name, _} ->
-        Logger.warning("MCP server #{name} died")
+        logger_provider.warning("MCP server #{name} died")
         %{state | servers: Map.delete(state.servers, name)}
 
       nil ->
@@ -228,8 +232,9 @@ defmodule MCPChat.MCP.ServerManager.Core do
   @doc """
   Starts auto-connect servers and returns updated state.
   """
-  @spec start_auto_connect_servers(server_state()) :: server_state()
-  def start_auto_connect_servers(state) do
+  @spec start_auto_connect_servers(server_state(), keyword()) :: server_state()
+  def start_auto_connect_servers(state, opts \\ []) do
+    logger_provider = Keyword.get(opts, :logger_provider, LoggerProvider.Default)
     saved_servers = MCPChat.MCP.ServerPersistence.load_all_servers()
     auto_connect_servers = Enum.filter(saved_servers, &(&1["auto_connect"] == true))
 
@@ -238,14 +243,14 @@ defmodule MCPChat.MCP.ServerManager.Core do
       if Map.has_key?(acc_state.servers, server_config["name"]) do
         acc_state
       else
-        Logger.info("Auto-connecting to saved server: #{server_config["name"]}")
+        logger_provider.info("Auto-connecting to saved server: #{server_config["name"]}")
 
-        case start_server_supervised(server_config, acc_state.supervisor) do
+        case start_server_supervised(server_config, acc_state.supervisor, logger_provider) do
           {:ok, {name, pid}} ->
             %{acc_state | servers: Map.put(acc_state.servers, name, pid)}
 
           {:error, reason} ->
-            Logger.warning("Failed to auto-connect server #{server_config["name"]}: #{inspect(reason)}")
+            logger_provider.warning("Failed to auto-connect server #{server_config["name"]}: #{inspect(reason)}")
             acc_state
         end
       end
@@ -254,8 +259,8 @@ defmodule MCPChat.MCP.ServerManager.Core do
 
   # Private Functions
 
-  @spec start_server_supervised(map(), pid()) :: {:ok, {String.t(), pid()}} | {:error, term()}
-  defp start_server_supervised(config, supervisor) do
+  @spec start_server_supervised(map(), pid(), module()) :: {:ok, {String.t(), pid()}} | {:error, term()}
+  defp start_server_supervised(config, supervisor, logger_provider \\ LoggerProvider.Default) do
     name = config[:name] || config["name"]
     command = config[:command] || config["command"]
     url = config[:url] || config["url"]
@@ -284,7 +289,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
             {:ok, {name, pid}}
 
           {:error, reason} ->
-            Logger.error("Failed to start MCP server #{name}: #{inspect(reason)}")
+            logger_provider.error("Failed to start MCP server #{name}: #{inspect(reason)}")
             {:error, reason}
         end
 
@@ -309,7 +314,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
             {:ok, {name, pid}}
 
           {:error, reason} ->
-            Logger.error("Failed to start MCP server #{name}: #{inspect(reason)}")
+            logger_provider.error("Failed to start MCP server #{name}: #{inspect(reason)}")
             {:error, reason}
         end
 
