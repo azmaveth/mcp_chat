@@ -11,7 +11,8 @@ An Elixir-based CLI chat client with support for the Model Context Protocol (MCP
 
 ## Features
 
-- 🤖 Multiple LLM backend support (Anthropic Claude 4, OpenAI GPT-4, Local models via Bumblebee)
+- 🤖 Multiple LLM backend support (Anthropic Claude 4, OpenAI GPT-4, Ollama, Local models via Bumblebee)
+- 🚀 GPU acceleration support with EXLA (CUDA, ROCm, Metal)
 - 🔌 MCP client functionality - connect to local (stdio) and remote (SSE) MCP servers
 - 🛠️ MCP server functionality - expose chat as an MCP server (stdio and SSE transports)
 - 💬 Interactive CLI chat interface with rich formatting
@@ -122,6 +123,10 @@ See `config/example.toml` for a complete configuration example.
 - `/prompt <server> <name> [args]` - Get an MCP prompt
 - `/backend <name>` - Switch LLM backend
 - `/model <name>` - Switch model
+- `/models` - List available models for current backend
+- `/loadmodel <id>` - Load a local model (local backend only)
+- `/unloadmodel <id>` - Unload a local model (local backend only)
+- `/acceleration` - Show hardware acceleration info
 - `/save [name]` - Save the current session
 - `/load <name or index>` - Load a saved session
 - `/sessions` - List all saved sessions
@@ -299,6 +304,75 @@ sse_port = 8080
 ### Build errors with EXLA
 - The local model support via Bumblebee/Nx is optional and may have compilation issues on some systems
 - The chat client works fine without it for cloud-based LLMs
+
+## Local Model Support & GPU Acceleration
+
+MCP Chat supports running models locally using Bumblebee with optional GPU acceleration via EXLA.
+
+### Features
+
+- **Automatic Hardware Detection**: Detects available acceleration (CUDA, ROCm, Metal, CPU)
+- **Optimized Inference**: Uses mixed precision and memory optimization
+- **Dynamic Model Loading**: Load and unload models on demand
+- **Multi-Backend Support**: Automatically selects the best available backend
+
+### Installation with GPU Support
+
+```bash
+# For NVIDIA GPUs (CUDA)
+XLA_TARGET=cuda12 mix deps.get
+mix compile
+
+# For AMD GPUs (ROCm)
+XLA_TARGET=rocm mix deps.get
+mix compile
+
+# For Apple Silicon (Metal)
+mix deps.get
+mix compile
+
+# For CPU optimization only
+XLA_TARGET=cpu mix deps.get
+mix compile
+```
+
+### Usage
+
+```bash
+# Switch to local backend
+/backend local
+
+# Check acceleration status
+/acceleration
+
+# List available models
+/models
+
+# Load a model
+/loadmodel microsoft/phi-2
+
+# Unload a model
+/unloadmodel microsoft/phi-2
+```
+
+### Supported Models
+
+- Microsoft Phi-2 (2.7B parameters)
+- Llama 2 7B
+- Mistral 7B
+- GPT-Neo 1.3B
+- Flan-T5 Base
+
+### Performance Tips
+
+1. **GPU Memory**: Larger models require more VRAM
+   - 8GB: Can run models up to 7B parameters
+   - 16GB: Better performance for 7B models
+   - 24GB+: Can run multiple models or larger batch sizes
+
+2. **Mixed Precision**: Automatically enabled for better performance
+
+3. **Model Caching**: Models are cached locally after first download
 
 ## Development
 

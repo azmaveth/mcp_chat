@@ -5,6 +5,7 @@ defmodule MCPChat.LLM.ModelLoader do
 
   use GenServer
   require Logger
+  alias MCPChat.LLM.EXLAConfig
 
   @model_cache_dir Path.expand("~/.mcp_chat/models")
 
@@ -42,15 +43,32 @@ defmodule MCPChat.LLM.ModelLoader do
     GenServer.call(__MODULE__, {:unload_model, model_identifier})
   end
 
+  @doc """
+  Get information about hardware acceleration.
+  """
+  def get_acceleration_info() do
+    GenServer.call(__MODULE__, :get_acceleration_info)
+  end
+
   # Server callbacks
 
   def init(_opts) do
     # Ensure model cache directory exists
     File.mkdir_p!(@model_cache_dir)
 
+    # Configure EXLA backend for optimal performance
+    EXLAConfig.configure_backend()
+    EXLAConfig.enable_mixed_precision()
+    EXLAConfig.optimize_memory()
+
+    # Log acceleration info
+    acc_info = EXLAConfig.acceleration_info()
+    Logger.info("Model loader initialized with #{acc_info.name} acceleration")
+
     state = %{
       models: %{},
-      loading: MapSet.new()
+      loading: MapSet.new(),
+      acceleration: acc_info
     }
 
     {:ok, state}
@@ -105,6 +123,10 @@ defmodule MCPChat.LLM.ModelLoader do
     end
   end
 
+  def handle_call(:get_acceleration_info, _from, state) do
+    {:reply, state.acceleration, state}
+  end
+
   # Private functions
 
   defp do_load_model(model_identifier) do
@@ -118,15 +140,15 @@ defmodule MCPChat.LLM.ModelLoader do
       with {:ok, model_info} <- Bumblebee.load_model(repository_id, opts),
            {:ok, tokenizer} <- Bumblebee.load_tokenizer(repository_id, opts),
            {:ok, generation_config} <- Bumblebee.load_generation_config(repository_id, opts) do
-        # Create serving for text generation
+        # Create serving for text generation with optimized settings
+        serving_opts = EXLAConfig.serving_options()
+
         serving =
           Bumblebee.Text.generation(
             model_info,
             tokenizer,
             generation_config,
-            compile: [batch_size: 1, sequence_length: 1_028],
-            stream: true,
-            defn_options: [compiler: determine_backend()]
+            Keyword.merge(serving_opts, stream: true)
           )
 
         model_data = %{
@@ -171,14 +193,6 @@ defmodule MCPChat.LLM.ModelLoader do
           "phi" -> {"microsoft/phi-2", [cache_dir: @model_cache_dir]}
           _ -> {identifier, [cache_dir: @model_cache_dir]}
         end
-    end
-  end
-
-  defp determine_backend() do
-    cond do
-      Code.ensure_loaded?(EXLA) -> EXLA.Backend
-      Code.ensure_loaded?(Ortex) -> Ortex.Backend
-      true -> Nx.BinaryBackend
     end
   end
 end

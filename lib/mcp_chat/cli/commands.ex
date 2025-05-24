@@ -33,6 +33,7 @@ defmodule MCPChat.CLI.Commands do
     "models" => "List available models for current backend",
     "loadmodel" => "Load a local model (usage: /loadmodel <model-id|path>)",
     "unloadmodel" => "Unload a local model (usage: /unloadmodel <model-id>)",
+    "acceleration" => "Show hardware acceleration info",
     "export" => "Export conversation (usage: /export [format] [path])",
     "context" => "Show context statistics",
     "system" => "Set system prompt (usage: /system <prompt>)",
@@ -75,6 +76,7 @@ defmodule MCPChat.CLI.Commands do
         "models" -> list_models()
         "loadmodel" -> load_model(args)
         "unloadmodel" -> unload_model(args)
+        "acceleration" -> show_acceleration_info()
         "export" -> export_conversation(args)
         "context" -> show_context_stats()
         "system" -> set_system_prompt(args)
@@ -1024,11 +1026,12 @@ defmodule MCPChat.CLI.Commands do
             %{
               "Model ID" => model.id,
               "Name" => model.name <> status_indicator,
+              "Acceleration" => model[:acceleration] || "Unknown",
               "Current" => if(model.id == current_model, do: "✓", else: "")
             }
           end)
 
-        Renderer.show_table(["Model ID", "Name", "Current"], rows)
+        Renderer.show_table(["Model ID", "Name", "Acceleration", "Current"], rows)
 
       {:ok, []} ->
         Renderer.show_info("No local models available")
@@ -1049,7 +1052,11 @@ defmodule MCPChat.CLI.Commands do
 
       case MCPChat.LLM.ModelLoader.load_model(model_id) do
         {:ok, _model_info} ->
+          # Get acceleration info
+          acc_info = MCPChat.LLM.ModelLoader.get_acceleration_info()
           Renderer.show_success("Model loaded successfully: #{model_id}")
+          Renderer.show_info("Using acceleration: #{acc_info.name}")
+
           # Update current model in config
           Config.put([:llm, :local, :model_path], model_id)
           Session.set_context(%{model: model_id})
@@ -1085,6 +1092,46 @@ defmodule MCPChat.CLI.Commands do
 
   defp unload_model(_) do
     Renderer.show_error("Usage: /unloadmodel <model-id>")
+  end
+
+  defp show_acceleration_info() do
+    if Code.ensure_loaded?(MCPChat.LLM.EXLAConfig) do
+      acc_info = MCPChat.LLM.EXLAConfig.acceleration_info()
+
+      Renderer.show_info("Hardware Acceleration Info")
+      Renderer.show_text("  Type: #{acc_info.name}")
+
+      case acc_info.type do
+        :cuda ->
+          Renderer.show_text("  Devices: #{acc_info.device_count}")
+
+          if acc_info.memory do
+            Renderer.show_text("  Memory: #{acc_info.memory.total_gb} GB")
+          end
+
+        :cpu ->
+          Renderer.show_text("  Cores: #{acc_info.cores}")
+
+        _ ->
+          :ok
+      end
+
+      # Show if EXLA is loaded
+      if Code.ensure_loaded?(EXLA) do
+        Renderer.show_text("")
+        Renderer.show_text("  EXLA Status: ✓ Loaded")
+        Renderer.show_text("  Mixed Precision: Enabled")
+        Renderer.show_text("  Memory Optimization: Enabled")
+      else
+        Renderer.show_text("")
+        Renderer.show_text("  EXLA Status: Not loaded")
+        Renderer.show_text("  Install EXLA for GPU acceleration:")
+        Renderer.show_text("    XLA_TARGET=cuda12 mix deps.get  # For NVIDIA GPUs")
+        Renderer.show_text("    XLA_TARGET=cpu mix deps.get     # For CPU optimization")
+      end
+    else
+      Renderer.show_info("Acceleration info not available (local backend not initialized)")
+    end
   end
 
   defp normalize_server_config(config) do

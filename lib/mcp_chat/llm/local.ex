@@ -47,6 +47,7 @@ defmodule MCPChat.LLM.Local do
     # Return loaded models and available models in a structured format
     loaded = ModelLoader.list_loaded_models()
     available = available_models()
+    acceleration = ModelLoader.get_acceleration_info()
 
     # Convert to map format for consistency
     available_maps =
@@ -54,7 +55,8 @@ defmodule MCPChat.LLM.Local do
         %{
           id: model_id,
           name: humanize_model_name(model_id),
-          status: if(model_id in loaded, do: "loaded", else: "available")
+          status: if(model_id in loaded, do: "loaded", else: "available"),
+          acceleration: acceleration.name
         }
       end)
 
@@ -66,7 +68,8 @@ defmodule MCPChat.LLM.Local do
         %{
           id: model_id,
           name: humanize_model_name(model_id),
-          status: "loaded"
+          status: "loaded",
+          acceleration: acceleration.name
         }
       end)
 

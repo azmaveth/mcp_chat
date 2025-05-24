@@ -74,7 +74,7 @@ mcp_chat/
 - [x] Integrate Bumblebee for model loading
 - [x] Implement local model adapter
 - [x] Add model download/management commands
-- [ ] Optimize for CPU/GPU inference with EXLA
+- [x] Optimize for CPU/GPU inference with EXLA
 
 ### Phase 6: Advanced Features
 - [x] Add conversation persistence (save/load sessions with metadata)
