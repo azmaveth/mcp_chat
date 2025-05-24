@@ -94,11 +94,24 @@ mcp_chat/
   - [x] Config module (TOML loading, environment variables)
   - [x] Anthropic LLM adapter (basic tests, needs mocking for full coverage)
   - [x] OpenAI LLM adapter (basic tests, needs mocking for full coverage)
+  - [x] Ollama LLM adapter (basic tests)
+  - [x] AWS Bedrock LLM adapter (basic tests)
+  - [x] Google Gemini LLM adapter (basic tests)
+  - [ ] Local LLM adapter (needs Bumblebee mock tests)
+  - [x] Model Loader module (GenServer for model management)
+  - [x] EXLA/EMLX configuration module
   - [x] CLI Commands module (command handling, validation)
   - [x] CLI Chat module (basic tests with IO capture)
   - [x] CLI Renderer module
+  - [x] CLI SimpleLineReader module (line editing, history)
+  - [ ] CLI LineEditor module (complex line editing - deprecated)
   - [x] MCP client modules (Protocol, Client, ServerManager tests)
   - [x] MCP server modules (Handler, SSEServer, StdioServer)
+  - [x] MCP SSE client module
+  - [x] MCP Discovery module (server auto-discovery)
+  - [x] MCP ServerPersistence module (saved servers)
+  - [x] MCP BuiltinResources module
+  - [ ] MCP DemoServer module (example server)
   - [x] Application supervisor
 - [x] Add integration tests
   - [x] Basic integration tests (basic_integration_test.exs)
