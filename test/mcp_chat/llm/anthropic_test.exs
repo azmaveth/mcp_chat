@@ -144,16 +144,11 @@ defmodule MCPChat.LLM.AnthropicTest do
     end
 
     test "handles error events" do
-      _sse_data = ~s(data: {"type":"error","error":{"type":"invalid_request_error","message":"Test error"}})
+      sse_data = ~s(data: {"type":"error","error":{"type":"invalid_request_error","message":"Test error"}})
 
-      # Would test error handling and logging
-      output =
-        capture_io(fn ->
-          # parse_sse_event(sse_data)
-          IO.inspect(%{type: "invalid_request_error", message: "Test error"}, label: "Anthropic API Error")
-        end)
-
-      assert output =~ "Anthropic API Error"
+      # Test that parse_sse_event returns nil for errors
+      result = MCPChat.LLM.Anthropic.parse_sse_event(sse_data)
+      assert result == nil
     end
   end
 

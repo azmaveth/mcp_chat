@@ -233,7 +233,7 @@ defmodule MCPChat.Alias do
 
   defp validate_commands(commands) do
     cond do
-      length(commands) == 0 ->
+      commands == [] ->
         {:error, "Alias must contain at least one command"}
 
       Enum.any?(commands, &(not is_binary(&1))) ->

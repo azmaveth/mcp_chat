@@ -248,7 +248,7 @@ defmodule MCPChat.LLM.Anthropic do
 
       {:ok, %{"type" => "error", "error" => error}} ->
         # Log error and skip
-        IO.inspect(error, label: "Anthropic API Error")
+        Logger.error("Anthropic API Error: #{inspect(error)}")
         nil
 
       _ ->
