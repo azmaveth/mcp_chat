@@ -255,6 +255,16 @@ history_size = 1000
     - Each library can evolve independently
     - Better testing and documentation per component
 
+## Phase 11: Supervision Improvements
+- [ ] Enhance supervision tree for better fault tolerance
+  - [ ] Add supervision for Port processes (stdio connections)
+  - [ ] Create supervised wrapper for main chat loop
+  - [ ] Implement circuit breakers for LLM API calls
+  - [ ] Add connection pooling with supervision for HTTP clients
+  - [ ] Create health checks for supervised processes
+  - [ ] Add telemetry and monitoring hooks
+- [ ] See [SUPERVISION.md](SUPERVISION.md) for current supervision structure
+
 ## Development Notes
 
 - Use supervisor trees for fault tolerance
