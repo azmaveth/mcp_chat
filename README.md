@@ -78,6 +78,26 @@ MCP Chat is configured via TOML files and environment variables. See the [Config
 ./mcp_chat --config /path/to/config.toml
 ```
 
+### Running in Elixir Shell (with full readline support)
+
+For full command history with arrow keys and readline support, run the app in the Elixir shell:
+
+```bash
+# Start IEx with the project loaded
+iex -S mix
+
+# In the IEx shell, start the chat interface
+iex> MCPChat.main()
+```
+
+This provides:
+- Full arrow key support (↑/↓ for history, ←/→ for cursor movement)
+- Emacs keybindings (Ctrl-A/E, Ctrl-K/U, etc.)
+- Tab completion
+- All standard readline features
+
+To exit: type `/exit` in the chat, then `Ctrl-C` twice to exit IEx.
+
 ### Key Commands
 
 - `/help` - Show all available commands
@@ -243,7 +263,7 @@ The system automatically selects the best backend:
 
 - **Arrow Keys**: In escript mode, arrow keys for command history show escape sequences (^[[A, ^[[B) instead of navigating history. This is a limitation of running as an escript rather than in an Erlang shell.
 - **Emacs Keybindings**: Similar to arrow keys, Ctrl-P/N and other readline keybindings show as literal characters.
-- **Workaround**: Command history is still saved to `~/.config/mcp_chat/history` and can be accessed by running the app in the Elixir shell instead of as an escript.
+- **Workaround**: Run the app in the Elixir shell for full readline support (see "Running in Elixir Shell" section above).
 
 ## Development
 
