@@ -1,21 +1,39 @@
 # MCP Chat Configuration
 
 # LLM Provider Configuration
+
+# Anthropic Claude models
 [llm.anthropic]
 provider = "anthropic"
 model = "claude-sonnet-4-20250514"
 api_key = "" # Can also use ANTHROPIC_API_KEY environment variable
+# base_url = "https://api.anthropic.com/v1" # Optional: Use ANTHROPIC_API_BASE env var for custom endpoints
 
+# OpenAI GPT models (and OpenAI-compatible providers)
 [llm.openai]
 provider = "openai"
 model = "gpt-4-turbo-preview"
 api_key = "" # Can also use OPENAI_API_KEY environment variable
+# base_url = "https://api.openai.com/v1" # Optional: Use OPENAI_API_BASE env var for custom endpoints
 max_tokens = 4096
 temperature = 0.7
 
+# Examples of OpenAI-compatible providers:
+# - Venice.ai: Set base_url = "https://api.venice.ai/v1" and use your Venice API key
+# - OpenRouter: Set base_url = "https://openrouter.ai/api/v1" and use your OpenRouter API key
+# - Groq: Set base_url = "https://api.groq.com/openai/v1" and use your Groq API key
+# - Together.ai: Set base_url = "https://api.together.xyz/v1" and use your Together API key
+
+# Ollama local server
+[llm.ollama]
+provider = "ollama"
+model = "llama2" # Or any model you have pulled with ollama
+# base_url = "http://localhost:11434" # Optional: Use OLLAMA_API_BASE env var
+
+# Local models via Bumblebee
 # [llm.local]
 # provider = "local"
-# model = "llama-2-7b-chat"
+# model = "microsoft/phi-2"
 
 # MCP Client Configuration - servers to connect to
 

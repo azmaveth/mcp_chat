@@ -136,8 +136,8 @@ defmodule MCPChat.CLI.Chat do
 
   defp get_llm_adapter("anthropic"), do: MCPChat.LLM.Anthropic
   defp get_llm_adapter("openai"), do: MCPChat.LLM.OpenAI
-  # TODO: Implement local adapter
-  # defp get_llm_adapter("local"), do: MCPChat.LLM.Local
+  defp get_llm_adapter("local"), do: MCPChat.LLM.Local
+  defp get_llm_adapter("ollama"), do: MCPChat.LLM.Ollama
   defp get_llm_adapter(_), do: MCPChat.LLM.Anthropic
 
   defp stream_response(adapter, messages, options) do

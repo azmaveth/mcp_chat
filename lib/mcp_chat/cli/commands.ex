@@ -386,7 +386,7 @@ defmodule MCPChat.CLI.Commands do
   end
 
   defp switch_backend([backend]) do
-    backends = ["anthropic", "openai", "local"]
+    backends = ["anthropic", "openai", "local", "ollama"]
 
     if backend in backends do
       Session.new_session(backend)
@@ -703,6 +703,7 @@ defmodule MCPChat.CLI.Commands do
       "anthropic" -> Config.get([:llm, :anthropic, :model]) || "claude-sonnet-4-20_250_514"
       "openai" -> Config.get([:llm, :openai, :model]) || "gpt-4"
       "local" -> Config.get([:llm, :local, :model_path]) || "none"
+      "ollama" -> Config.get([:llm, :ollama, :model]) || "llama2"
       _ -> "unknown"
     end
   end
@@ -928,6 +929,9 @@ defmodule MCPChat.CLI.Commands do
 
       "local" ->
         fetch_and_display_local_models()
+
+      "ollama" ->
+        fetch_and_display_models(MCPChat.LLM.Ollama, backend)
 
       _ ->
         Renderer.show_error("Unknown backend: #{backend}")

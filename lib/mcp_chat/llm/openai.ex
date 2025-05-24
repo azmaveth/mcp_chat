@@ -4,7 +4,7 @@ defmodule MCPChat.LLM.OpenAI do
   """
   @behaviour MCPChat.LLM.Adapter
 
-  @base_url "https://api.openai.com/v1"
+  @default_base_url "https://api.openai.com/v1"
   @default_model "gpt-4-turbo-preview"
 
   @impl true
@@ -28,7 +28,7 @@ defmodule MCPChat.LLM.OpenAI do
       {"content-type", "application/json"}
     ]
 
-    case Req.post("#{@base_url}/chat/completions", json: body, headers: headers) do
+    case Req.post("#{get_base_url()}/chat/completions", json: body, headers: headers) do
       {:ok, %{status: 200, body: response}} ->
         {:ok, parse_response(response)}
 
@@ -66,7 +66,7 @@ defmodule MCPChat.LLM.OpenAI do
     parent = self()
 
     Task.start(fn ->
-      case Req.post("#{@base_url}/chat/completions",
+      case Req.post("#{get_base_url()}/chat/completions",
              json: body,
              headers: headers,
              receive_timeout: 60_000,
@@ -145,7 +145,7 @@ defmodule MCPChat.LLM.OpenAI do
       {"Content-Type", "application/json"}
     ]
 
-    case Req.get("#{@base_url}/models", headers: headers) do
+    case Req.get("#{get_base_url()}/models", headers: headers) do
       {:ok, %{status: 200, body: body}} ->
         models =
           body["data"]
@@ -197,6 +197,15 @@ defmodule MCPChat.LLM.OpenAI do
       "" -> System.get_env("OPENAI_API_KEY")
       key -> key
     end
+  end
+
+  defp get_base_url() do
+    config = get_config()
+
+    # Check environment variable first, then config, then default
+    System.get_env("OPENAI_API_BASE") ||
+      config[:base_url] ||
+      @default_base_url
   end
 
   defp format_messages(messages) do
