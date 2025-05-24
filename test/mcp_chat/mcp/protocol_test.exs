@@ -9,7 +9,7 @@ defmodule MCPChat.MCP.ProtocolTest do
 
       assert message.jsonrpc == "2.0"
       assert message.method == "initialize"
-      assert message.params.protocolVersion == "2_024-11-05"
+      assert message.params.protocolVersion == "2024-11-05"
       assert message.params.clientInfo == client_info
       assert message.params.capabilities == %{roots: %{}, sampling: %{}}
       assert is_integer(message.id)
@@ -252,7 +252,7 @@ defmodule MCPChat.MCP.ProtocolTest do
       # Check that initialize uses the correct version
       client_info = %{name: "test", version: "1.0"}
       message = Protocol.encode_initialize(client_info)
-      assert message.params.protocolVersion == "2_024-11-05"
+      assert message.params.protocolVersion == "2024-11-05"
     end
   end
 

@@ -121,6 +121,27 @@ defmodule MCPChat.LLM.Ollama do
     end
   end
 
+  def format_messages(messages) do
+    Enum.map(messages, fn msg ->
+      %{
+        role: msg["role"] || "user",
+        content: msg["content"] || ""
+      }
+    end)
+  end
+
+  def format_size(bytes) when is_integer(bytes) do
+    cond do
+      bytes >= 1_099_511_627_776 -> "#{Float.round(bytes / 1_099_511_627_776, 1)} TB"
+      bytes >= 1_073_741_824 -> "#{Float.round(bytes / 1_073_741_824, 1)} GB"
+      bytes >= 1_048_576 -> "#{Float.round(bytes / 1_048_576, 1)} MB"
+      bytes >= 1_024 -> "#{Float.round(bytes / 1_024, 1)} KB"
+      true -> "#{bytes} B"
+    end
+  end
+
+  def format_size(_), do: "Unknown"
+
   # Private functions
 
   defp get_config() do
@@ -151,14 +172,7 @@ defmodule MCPChat.LLM.Ollama do
     end
   end
 
-  defp format_messages(messages) do
-    Enum.map(messages, fn msg ->
-      %{
-        role: msg["role"] || "user",
-        content: msg["content"] || ""
-      }
-    end)
-  end
+  # Removed - now public function above
 
   defp parse_response(response) do
     %{
@@ -225,14 +239,5 @@ defmodule MCPChat.LLM.Ollama do
     )
   end
 
-  defp format_size(bytes) when is_integer(bytes) do
-    cond do
-      bytes >= 1_073_741_824 -> "#{Float.round(bytes / 1_073_741_824, 1)} GB"
-      bytes >= 1_048_576 -> "#{Float.round(bytes / 1_048_576, 1)} MB"
-      bytes >= 1_024 -> "#{Float.round(bytes / 1_024, 1)} KB"
-      true -> "#{bytes} B"
-    end
-  end
-
-  defp format_size(_), do: "Unknown"
+  # Removed - now public function above
 end

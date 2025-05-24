@@ -145,6 +145,31 @@ defmodule MCPChat.LLM.Local do
     }
   end
 
+  def loaded_models() do
+    ModelLoader.list_loaded_models()
+  end
+
+  def format_prompt(messages) do
+    if Enum.empty?(messages) do
+      "Assistant:"
+    else
+      messages
+      |> Enum.map(fn msg ->
+        role_name =
+          case msg["role"] do
+            "system" -> "System"
+            "user" -> "Human"
+            "assistant" -> "Assistant"
+            _ -> String.capitalize(to_string(msg["role"]))
+          end
+
+        "#{role_name}: #{msg["content"]}"
+      end)
+      |> Enum.join("\n\n")
+      |> Kernel.<>("\n\nAssistant:")
+    end
+  end
+
   # Private functions
 
   defp format_messages(messages, model) do

@@ -29,6 +29,14 @@ defmodule MCPChat.Config do
     GenServer.cast(__MODULE__, :reload)
   end
 
+  def config_dir() do
+    Path.expand("~/.config/mcp_chat")
+  end
+
+  def get_all() do
+    GenServer.call(__MODULE__, :get_all)
+  end
+
   # Server Callbacks
 
   @impl true
@@ -67,6 +75,11 @@ defmodule MCPChat.Config do
   def handle_call({:put, path, value}, _from, state) do
     new_config = put_in(state.config, path, value)
     {:reply, :ok, %{state | config: new_config}}
+  end
+
+  @impl true
+  def handle_call(:get_all, _from, state) do
+    {:reply, state.config, state}
   end
 
   @impl true
