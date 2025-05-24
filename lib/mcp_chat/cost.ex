@@ -3,6 +3,14 @@ defmodule MCPChat.Cost do
   Cost calculation for LLM API usage.
 
   Tracks token usage and calculates costs based on provider pricing.
+
+  Can be used with configuration injection for library usage:
+
+      # With default config
+      MCPChat.Cost.calculate_session_cost(session, token_usage)
+
+      # With injected config
+      MCPChat.Cost.calculate_session_cost(session, token_usage, config_provider: my_config)
   """
 
   # Pricing per 1M tokens (as of January 2_025)
@@ -66,9 +74,10 @@ defmodule MCPChat.Cost do
 
   Returns a map with detailed cost breakdown.
   """
-  def calculate_session_cost(session, token_usage) do
+  def calculate_session_cost(session, token_usage, opts \\ []) do
+    config_provider = Keyword.get(opts, :config_provider, MCPChat.ConfigProvider.Default)
     backend = session.llm_backend
-    model = get_model_for_session(session)
+    model = get_model_for_session(session, config_provider)
 
     pricing = get_pricing(backend, model)
 
@@ -166,7 +175,7 @@ defmodule MCPChat.Cost do
     tokens / 1_000_000 * price_per_million
   end
 
-  defp get_model_for_session(session) do
+  defp get_model_for_session(session, config_provider) do
     # Check if model is stored in context, otherwise use config default
     model = session.context[:model]
 
@@ -176,14 +185,29 @@ defmodule MCPChat.Cost do
       # Get default model from config based on backend
       case session.llm_backend do
         "anthropic" ->
-          MCPChat.Config.get([:llm, :anthropic, :model]) || "claude-sonnet-4-20_250_514"
+          get_config_value(config_provider, [:llm, :anthropic, :model]) || "claude-sonnet-4-20_250_514"
 
         "openai" ->
-          MCPChat.Config.get([:llm, :openai, :model]) || "gpt-4-turbo"
+          get_config_value(config_provider, [:llm, :openai, :model]) || "gpt-4-turbo"
 
         _ ->
           nil
       end
+    end
+  end
+
+  defp get_config_value(config_provider, path) do
+    case config_provider do
+      MCPChat.ConfigProvider.Default ->
+        MCPChat.Config.get(path)
+
+      provider when is_pid(provider) ->
+        # Static provider (Agent pid)
+        MCPChat.ConfigProvider.Static.get(provider, path)
+
+      provider ->
+        # Custom provider module
+        provider.get(path)
     end
   end
 end

@@ -3,7 +3,7 @@ defmodule MCPChat.Persistence do
   Handles saving and loading chat sessions to/from disk.
   """
 
-  alias MCPChat.Session
+  alias MCPChat.Types.Session
 
   @sessions_dir "~/.config/mcp_chat/sessions"
   @extension ".json"
@@ -12,10 +12,13 @@ defmodule MCPChat.Persistence do
 
   @doc """
   Save the current session to disk.
+
+  @deprecated "Use save_session/2 instead and pass the session explicitly"
   """
-  def save_current_session(name \\ nil) do
-    session = Session.get_current_session()
-    save_session(session, name)
+  def save_current_session(_name \\ nil) do
+    # This function creates a circular dependency and should not be used
+    # Instead, the caller should get the session and pass it to save_session/2
+    {:error, :deprecated_use_save_session_instead}
   end
 
   @doc """

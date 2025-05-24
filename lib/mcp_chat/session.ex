@@ -1,18 +1,13 @@
 defmodule MCPChat.Session do
   @moduledoc """
   Manages chat session state including conversation history and context.
+
+  This is a GenServer that maintains the current session state. The session
+  data structure is defined in MCPChat.Types.Session.
   """
   use GenServer
 
-  defstruct [
-    :id,
-    :llm_backend,
-    :messages,
-    :context,
-    :created_at,
-    :updated_at,
-    :token_usage
-  ]
+  alias MCPChat.Types.Session
 
   # Client API
 
@@ -126,10 +121,13 @@ defmodule MCPChat.Session do
   # Server Callbacks
 
   @impl true
-  def init(_opts) do
+  def init(opts) do
+    config_provider = Keyword.get(opts, :config_provider, MCPChat.ConfigProvider.Default)
+
     state = %{
-      current_session: create_new_session(),
-      sessions: []
+      current_session: create_new_session(nil, config_provider),
+      sessions: [],
+      config_provider: config_provider
     }
 
     {:ok, state}
@@ -137,7 +135,7 @@ defmodule MCPChat.Session do
 
   @impl true
   def handle_call({:new_session, backend}, _from, state) do
-    new_session = create_new_session(backend)
+    new_session = create_new_session(backend, state.config_provider)
     new_state = %{state | current_session: new_session, sessions: [state.current_session | state.sessions]}
     {:reply, {:ok, new_session}, new_state}
   end
@@ -286,9 +284,16 @@ defmodule MCPChat.Session do
     # Update or initialize token usage
     current_usage = state.current_session.token_usage || %{input_tokens: 0, output_tokens: 0}
 
+    # Handle both string and atom keys for compatibility
+    current_input = Map.get(current_usage, :input_tokens) || Map.get(current_usage, "input_tokens", 0)
+    current_output = Map.get(current_usage, :output_tokens) || Map.get(current_usage, "output_tokens", 0)
+
+    usage_input = Map.get(usage, :input_tokens) || Map.get(usage, "input_tokens", 0)
+    usage_output = Map.get(usage, :output_tokens) || Map.get(usage, "output_tokens", 0)
+
     updated_usage = %{
-      input_tokens: current_usage.input_tokens + usage.input_tokens,
-      output_tokens: current_usage.output_tokens + usage.output_tokens
+      input_tokens: current_input + usage_input,
+      output_tokens: current_output + usage_output
     }
 
     updated_session = %{state.current_session | token_usage: updated_usage, updated_at: DateTime.utc_now()}
@@ -331,10 +336,10 @@ defmodule MCPChat.Session do
 
   # Private Functions
 
-  defp create_new_session(backend \\ nil) do
-    backend = backend || get_default_backend()
+  defp create_new_session(backend, config_provider) do
+    backend = backend || get_default_backend(config_provider)
 
-    %__MODULE__{
+    %Session{
       id: generate_session_id(),
       llm_backend: backend,
       messages: [],
@@ -350,8 +355,19 @@ defmodule MCPChat.Session do
     |> Base.encode16(case: :lower)
   end
 
-  defp get_default_backend() do
-    MCPChat.Config.get([:llm, :default]) || "anthropic"
+  defp get_default_backend(config_provider) do
+    case config_provider do
+      MCPChat.ConfigProvider.Default ->
+        MCPChat.Config.get([:llm, :default]) || "anthropic"
+
+      provider when is_pid(provider) ->
+        # Static provider (Agent pid)
+        MCPChat.ConfigProvider.Static.get(provider, [:llm, :default]) || "anthropic"
+
+      provider ->
+        # Custom provider module
+        provider.get([:llm, :default]) || "anthropic"
+    end
   end
 
   defp maybe_limit(messages, nil), do: messages

@@ -156,7 +156,7 @@ defmodule MCPChat.BasicIntegrationTest do
       test_name = "integration_test_#{System.unique_integer([:positive])}"
 
       # Create a test session with proper structure
-      test_session = %MCPChat.Session{
+      test_session = %MCPChat.Types.Session{
         id: "test_#{System.unique_integer([:positive])}",
         messages: [
           %{role: :user, content: "Test message", timestamp: DateTime.utc_now()},

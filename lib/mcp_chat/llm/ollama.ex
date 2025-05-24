@@ -1,6 +1,22 @@
 defmodule MCPChat.LLM.Ollama do
   @moduledoc """
   Ollama LLM adapter for local model inference via Ollama server.
+
+  ## Configuration Injection
+
+  The adapter supports configuration injection through the `:config_provider` option:
+
+      # Use default configuration from application config
+      MCPChat.LLM.Ollama.chat(messages)
+
+      # Use custom configuration provider
+      custom_provider = %{
+        get_config: fn [:llm, :ollama] ->
+          %{base_url: "http://localhost:11_434", model: "llama2"}
+        end
+      }
+
+      MCPChat.LLM.Ollama.chat(messages, config_provider: custom_provider)
   """
 
   @behaviour MCPChat.LLM.Adapter
@@ -12,7 +28,8 @@ defmodule MCPChat.LLM.Ollama do
 
   @impl true
   def chat(messages, opts \\ []) do
-    model = Keyword.get(opts, :model, get_default_model())
+    config_provider = Keyword.get(opts, :config_provider, MCPChat.ConfigProvider.Default)
+    model = Keyword.get(opts, :model, get_default_model(config_provider))
     stream = Keyword.get(opts, :stream, false)
 
     body = %{
@@ -22,7 +39,7 @@ defmodule MCPChat.LLM.Ollama do
     }
 
     headers = [{"Content-Type", "application/json"}]
-    base_url = get_base_url()
+    base_url = get_base_url(config_provider)
 
     if stream do
       stream_chat(messages, opts)
@@ -42,7 +59,8 @@ defmodule MCPChat.LLM.Ollama do
 
   @impl true
   def stream_chat(messages, opts \\ []) do
-    model = Keyword.get(opts, :model, get_default_model())
+    config_provider = Keyword.get(opts, :config_provider, MCPChat.ConfigProvider.Default)
+    model = Keyword.get(opts, :model, get_default_model(config_provider))
 
     body = %{
       model: model,
@@ -51,7 +69,7 @@ defmodule MCPChat.LLM.Ollama do
     }
 
     headers = [{"Content-Type", "application/json"}]
-    base_url = get_base_url()
+    base_url = get_base_url(config_provider)
 
     parent = self()
 
@@ -94,12 +112,12 @@ defmodule MCPChat.LLM.Ollama do
 
   @impl true
   def default_model() do
-    get_config()[:model] || @default_model
+    get_config(MCPChat.ConfigProvider.Default)[:model] || @default_model
   end
 
   @impl true
   def list_models() do
-    base_url = get_base_url()
+    base_url = get_base_url(MCPChat.ConfigProvider.Default)
 
     case Req.get("#{base_url}/api/tags") do
       {:ok, %{status: 200, body: body}} ->
@@ -144,12 +162,23 @@ defmodule MCPChat.LLM.Ollama do
 
   # Private functions
 
-  defp get_config() do
-    MCPChat.Config.get([:llm, :ollama]) || %{}
+  defp get_config(config_provider) do
+    case config_provider do
+      MCPChat.ConfigProvider.Default ->
+        MCPChat.Config.get([:llm, :ollama]) || %{}
+
+      provider when is_pid(provider) ->
+        # Static provider (Agent pid)
+        MCPChat.ConfigProvider.Static.get(provider, [:llm, :ollama]) || %{}
+
+      provider ->
+        # Custom provider module
+        provider.get([:llm, :ollama]) || %{}
+    end
   end
 
-  defp get_base_url() do
-    config = get_config()
+  defp get_base_url(config_provider) do
+    config = get_config(config_provider)
 
     # Check environment variable first
     case System.get_env("OLLAMA_API_BASE") do
@@ -158,13 +187,13 @@ defmodule MCPChat.LLM.Ollama do
     end
   end
 
-  defp get_default_model() do
-    config = get_config()
+  defp get_default_model(config_provider) do
+    config = get_config(config_provider)
     config[:model] || @default_model
   end
 
   defp check_ollama_status() do
-    base_url = get_base_url()
+    base_url = get_base_url(MCPChat.ConfigProvider.Default)
 
     case Req.get("#{base_url}/api/tags", receive_timeout: 2000) do
       {:ok, %{status: 200}} -> :ok

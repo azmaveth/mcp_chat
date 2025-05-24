@@ -2,6 +2,27 @@ defmodule MCPChat.LLM.Bedrock do
   @moduledoc """
   AWS Bedrock adapter for multiple LLM providers.
   Supports Claude, Titan, Llama, Cohere, and others through Bedrock.
+
+  ## Configuration Injection
+
+  The adapter supports configuration injection through the `:config_provider` option:
+
+      # Use default configuration from application config
+      MCPChat.LLM.Bedrock.chat(messages)
+
+      # Use custom configuration provider
+      custom_provider = %{
+        get_config: fn [:llm, :bedrock] ->
+          %{
+            access_key_id: "custom-key",
+            secret_access_key: "custom-secret",
+            region: "us-east-1",
+            model: "claude-3-sonnet"
+          }
+        end
+      }
+
+      MCPChat.LLM.Bedrock.chat(messages, config_provider: custom_provider)
   """
   @behaviour MCPChat.LLM.Adapter
 
@@ -36,8 +57,10 @@ defmodule MCPChat.LLM.Bedrock do
 
   @impl true
   def chat(messages, options \\ []) do
-    with {:ok, client} <- get_bedrock_client(),
-         {:ok, model_id} <- get_model_id(options),
+    config_provider = Keyword.get(options, :config_provider, MCPChat.ConfigProvider.Default)
+
+    with {:ok, client} <- get_bedrock_client(config_provider),
+         {:ok, model_id} <- get_model_id(options, config_provider),
          {:ok, request_body} <- build_request_body(model_id, messages, options),
          {:ok, response} <- invoke_model(client, model_id, request_body) do
       parse_response(model_id, response)
@@ -46,8 +69,10 @@ defmodule MCPChat.LLM.Bedrock do
 
   @impl true
   def stream_chat(messages, options \\ []) do
-    with {:ok, client} <- get_bedrock_client(),
-         {:ok, model_id} <- get_model_id(options),
+    config_provider = Keyword.get(options, :config_provider, MCPChat.ConfigProvider.Default)
+
+    with {:ok, client} <- get_bedrock_client(config_provider),
+         {:ok, model_id} <- get_model_id(options, config_provider),
          {:ok, request_body} <- build_request_body(model_id, messages, options) do
       stream_model(client, model_id, request_body)
     end
@@ -55,7 +80,7 @@ defmodule MCPChat.LLM.Bedrock do
 
   @impl true
   def configured? do
-    case get_aws_credentials() do
+    case get_aws_credentials(MCPChat.ConfigProvider.Default) do
       {:ok, _} -> true
       _ -> false
     end
@@ -63,14 +88,14 @@ defmodule MCPChat.LLM.Bedrock do
 
   @impl true
   def default_model() do
-    config = get_config()
+    config = get_config(MCPChat.ConfigProvider.Default)
     config[:model] || "claude-3-sonnet"
   end
 
   @impl true
   def list_models() do
     # List available models from Bedrock
-    with {:ok, client} <- get_bedrock_client() do
+    with {:ok, client} <- get_bedrock_client(MCPChat.ConfigProvider.Default) do
       case list_foundation_models(client) do
         {:ok, models} -> {:ok, format_model_list(models)}
         error -> error
@@ -80,12 +105,23 @@ defmodule MCPChat.LLM.Bedrock do
 
   # Private functions
 
-  defp get_config() do
-    MCPChat.Config.get([:llm, :bedrock]) || %{}
+  defp get_config(config_provider) do
+    case config_provider do
+      MCPChat.ConfigProvider.Default ->
+        MCPChat.Config.get([:llm, :bedrock]) || %{}
+
+      provider when is_pid(provider) ->
+        # Static provider (Agent pid)
+        MCPChat.ConfigProvider.Static.get(provider, [:llm, :bedrock]) || %{}
+
+      provider ->
+        # Custom provider module
+        provider.get([:llm, :bedrock]) || %{}
+    end
   end
 
-  defp get_aws_credentials() do
-    config = get_config()
+  defp get_aws_credentials(config_provider) do
+    config = get_config(config_provider)
 
     cond do
       # Check for explicit credentials in config
@@ -116,11 +152,11 @@ defmodule MCPChat.LLM.Bedrock do
     end
   end
 
-  defp get_bedrock_client() do
-    config = get_config()
+  defp get_bedrock_client(config_provider) do
+    config = get_config(config_provider)
     region = config[:region] || System.get_env("AWS_REGION") || @default_region
 
-    case get_aws_credentials() do
+    case get_aws_credentials(config_provider) do
       {:ok, credentials} ->
         client =
           AWS.Client.create(
@@ -137,8 +173,8 @@ defmodule MCPChat.LLM.Bedrock do
     end
   end
 
-  defp get_model_id(options) do
-    config = get_config()
+  defp get_model_id(options, config_provider) do
+    config = get_config(config_provider)
     model = Keyword.get(options, :model, config[:model] || default_model())
 
     # Map friendly names to Bedrock model IDs

@@ -1,6 +1,14 @@
 defmodule MCPChat.LLM.Anthropic do
   @moduledoc """
   Anthropic Claude API adapter.
+
+  Can be used with configuration injection for library usage:
+
+      # With default config (reads from MCPChat.Config)
+      MCPChat.LLM.Anthropic.chat(messages)
+
+      # With injected config
+      MCPChat.LLM.Anthropic.chat(messages, config_provider: my_config)
   """
   @behaviour MCPChat.LLM.Adapter
   require Logger
@@ -10,7 +18,8 @@ defmodule MCPChat.LLM.Anthropic do
 
   @impl true
   def chat(messages, options \\ []) do
-    config = get_config()
+    config_provider = Keyword.get(options, :config_provider, MCPChat.ConfigProvider.Default)
+    config = get_config(config_provider)
     model = Keyword.get(options, :model, config.model || @default_model)
     max_tokens = Keyword.get(options, :max_tokens, config.max_tokens || 4_096)
 
@@ -26,12 +35,12 @@ defmodule MCPChat.LLM.Anthropic do
       |> maybe_add_system(options)
 
     headers = [
-      {"x-api-key", get_api_key()},
+      {"x-api-key", get_api_key(config_provider)},
       {"anthropic-version", "2023-06-01"},
       {"content-type", "application/json"}
     ]
 
-    case Req.post("#{get_base_url()}/messages", json: body, headers: headers) do
+    case Req.post("#{get_base_url(config_provider)}/messages", json: body, headers: headers) do
       {:ok, %{status: 200, body: response}} ->
         {:ok, parse_response(response)}
 
@@ -45,7 +54,8 @@ defmodule MCPChat.LLM.Anthropic do
 
   @impl true
   def stream_chat(messages, options \\ []) do
-    config = get_config()
+    config_provider = Keyword.get(options, :config_provider, MCPChat.ConfigProvider.Default)
+    config = get_config(config_provider)
     model = Keyword.get(options, :model, config.model || @default_model)
     max_tokens = Keyword.get(options, :max_tokens, config.max_tokens || 4_096)
 
@@ -62,16 +72,17 @@ defmodule MCPChat.LLM.Anthropic do
       |> maybe_add_system(options)
 
     headers = [
-      {"x-api-key", get_api_key()},
+      {"x-api-key", get_api_key(config_provider)},
       {"anthropic-version", "2023-06-01"},
       {"content-type", "application/json"}
     ]
 
     # Create a simple streaming implementation
     parent = self()
+    base_url = get_base_url(config_provider)
 
     Task.start(fn ->
-      case Req.post("#{get_base_url()}/messages",
+      case Req.post("#{base_url}/messages",
              json: body,
              headers: headers,
              receive_timeout: 60_000,
@@ -110,13 +121,13 @@ defmodule MCPChat.LLM.Anthropic do
 
   @impl true
   def configured? do
-    api_key = get_api_key()
+    api_key = get_api_key(MCPChat.ConfigProvider.Default)
     api_key != nil and api_key != ""
   end
 
   @impl true
   def default_model() do
-    config = get_config()
+    config = get_config(MCPChat.ConfigProvider.Default)
     config.model || @default_model
   end
 
@@ -151,12 +162,12 @@ defmodule MCPChat.LLM.Anthropic do
 
   defp fetch_models_from_api() do
     headers = [
-      {"x-api-key", get_api_key()},
+      {"x-api-key", get_api_key(MCPChat.ConfigProvider.Default)},
       {"anthropic-version", "2023-06-01"},
       {"Content-Type", "application/json"}
     ]
 
-    case Req.get("#{get_base_url()}/models", headers: headers) do
+    case Req.get("#{get_base_url(MCPChat.ConfigProvider.Default)}/models", headers: headers) do
       {:ok, %{status: 200, body: body}} ->
         models =
           body["data"]
@@ -206,12 +217,23 @@ defmodule MCPChat.LLM.Anthropic do
 
   # Private Functions
 
-  defp get_config() do
-    MCPChat.Config.get([:llm, :anthropic]) || %{}
+  defp get_config(config_provider) do
+    case config_provider do
+      MCPChat.ConfigProvider.Default ->
+        MCPChat.Config.get([:llm, :anthropic]) || %{}
+
+      provider when is_pid(provider) ->
+        # Static provider (Agent pid)
+        MCPChat.ConfigProvider.Static.get(provider, [:llm, :anthropic]) || %{}
+
+      provider ->
+        # Custom provider module
+        provider.get([:llm, :anthropic]) || %{}
+    end
   end
 
-  defp get_api_key() do
-    config = get_config()
+  defp get_api_key(config_provider) do
+    config = get_config(config_provider)
 
     # First try config file
     case Map.get(config, :api_key) do
@@ -221,8 +243,8 @@ defmodule MCPChat.LLM.Anthropic do
     end
   end
 
-  defp get_base_url() do
-    config = get_config()
+  defp get_base_url(config_provider) do
+    config = get_config(config_provider)
 
     # Check environment variable first, then config, then default
     System.get_env("ANTHROPIC_API_BASE") ||

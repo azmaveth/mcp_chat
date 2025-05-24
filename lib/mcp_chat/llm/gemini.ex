@@ -2,6 +2,22 @@ defmodule MCPChat.LLM.Gemini do
   @moduledoc """
   Google Gemini API adapter.
   Supports Gemini Pro, Pro Vision, and other variants.
+
+  ## Configuration Injection
+
+  The adapter supports configuration injection through the `:config_provider` option:
+
+      # Use default configuration from application config
+      MCPChat.LLM.Gemini.chat(messages)
+
+      # Use custom configuration provider
+      custom_provider = %{
+        get_config: fn [:llm, :gemini] ->
+          %{api_key: "custom-key", model: "gemini-pro"}
+        end
+      }
+
+      MCPChat.LLM.Gemini.chat(messages, config_provider: custom_provider)
   """
   @behaviour MCPChat.LLM.Adapter
 
@@ -37,10 +53,11 @@ defmodule MCPChat.LLM.Gemini do
 
   @impl true
   def chat(messages, options \\ []) do
-    config = get_config()
+    config_provider = Keyword.get(options, :config_provider, MCPChat.ConfigProvider.Default)
+    config = get_config(config_provider)
     model = Keyword.get(options, :model, config[:model] || @default_model)
 
-    with {:ok, api_key} <- get_api_key(),
+    with {:ok, api_key} <- get_api_key(config_provider),
          {:ok, request_body} <- build_request_body(messages, options),
          {:ok, response} <- call_gemini_api(model, request_body, api_key) do
       parse_response(response)
@@ -49,10 +66,11 @@ defmodule MCPChat.LLM.Gemini do
 
   @impl true
   def stream_chat(messages, options \\ []) do
-    config = get_config()
+    config_provider = Keyword.get(options, :config_provider, MCPChat.ConfigProvider.Default)
+    config = get_config(config_provider)
     model = Keyword.get(options, :model, config[:model] || @default_model)
 
-    with {:ok, api_key} <- get_api_key(),
+    with {:ok, api_key} <- get_api_key(config_provider),
          {:ok, request_body} <- build_request_body(messages, options) do
       stream_gemini_api(model, request_body, api_key)
     end
@@ -60,7 +78,7 @@ defmodule MCPChat.LLM.Gemini do
 
   @impl true
   def configured? do
-    case get_api_key() do
+    case get_api_key(MCPChat.ConfigProvider.Default) do
       {:ok, _} -> true
       _ -> false
     end
@@ -68,7 +86,7 @@ defmodule MCPChat.LLM.Gemini do
 
   @impl true
   def default_model() do
-    config = get_config()
+    config = get_config(MCPChat.ConfigProvider.Default)
     config[:model] || @default_model
   end
 
@@ -91,12 +109,23 @@ defmodule MCPChat.LLM.Gemini do
 
   # Private functions
 
-  defp get_config() do
-    MCPChat.Config.get([:llm, :gemini]) || %{}
+  defp get_config(config_provider) do
+    case config_provider do
+      MCPChat.ConfigProvider.Default ->
+        MCPChat.Config.get([:llm, :gemini]) || %{}
+
+      provider when is_pid(provider) ->
+        # Static provider (Agent pid)
+        MCPChat.ConfigProvider.Static.get(provider, [:llm, :gemini]) || %{}
+
+      provider ->
+        # Custom provider module
+        provider.get([:llm, :gemini]) || %{}
+    end
   end
 
-  defp get_api_key() do
-    config = get_config()
+  defp get_api_key(config_provider) do
+    config = get_config(config_provider)
 
     case config[:api_key] || System.get_env("GOOGLE_API_KEY") do
       nil -> {:error, "Google API key not configured"}

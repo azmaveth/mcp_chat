@@ -1,12 +1,16 @@
 defmodule MCPChat.CostTest do
   use ExUnit.Case
-  alias MCPChat.{Cost, Session}
+  alias MCPChat.Cost
+  alias MCPChat.Types.Session
 
   describe "calculate_session_cost/2" do
     test "calculates cost for Anthropic Claude model" do
       session = %Session{
+        id: "test-session",
         llm_backend: "anthropic",
-        context: %{model: "claude-3-haiku-20240307"}
+        context: %{model: "claude-3-haiku-20240307"},
+        created_at: DateTime.utc_now(),
+        updated_at: DateTime.utc_now()
       }
 
       token_usage = %{input_tokens: 1_000, output_tokens: 500}
@@ -27,8 +31,11 @@ defmodule MCPChat.CostTest do
 
     test "calculates cost for OpenAI GPT model" do
       session = %Session{
+        id: "test-session-2",
         llm_backend: "openai",
-        context: %{model: "gpt-3.5-turbo"}
+        context: %{model: "gpt-3.5-turbo"},
+        created_at: DateTime.utc_now(),
+        updated_at: DateTime.utc_now()
       }
 
       token_usage = %{input_tokens: 2_000, output_tokens: 1_000}
@@ -46,8 +53,11 @@ defmodule MCPChat.CostTest do
 
     test "handles unknown model" do
       session = %Session{
+        id: "test-session-3",
         llm_backend: "unknown",
-        context: %{model: "unknown-model"}
+        context: %{model: "unknown-model"},
+        created_at: DateTime.utc_now(),
+        updated_at: DateTime.utc_now()
       }
 
       token_usage = %{input_tokens: 1_000, output_tokens: 500}
