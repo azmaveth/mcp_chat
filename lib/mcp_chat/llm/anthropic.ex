@@ -3,6 +3,7 @@ defmodule MCPChat.LLM.Anthropic do
   Anthropic Claude API adapter.
   """
   @behaviour MCPChat.LLM.Adapter
+  require Logger
 
   @default_base_url "https://api.anthropic.com/v1"
   @default_model "claude-sonnet-4-20_250_514"

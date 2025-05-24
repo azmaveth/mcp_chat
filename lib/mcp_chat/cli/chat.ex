@@ -11,6 +11,9 @@ defmodule MCPChat.CLI.Chat do
     Renderer.clear_screen()
     Renderer.show_welcome()
 
+    # Set up command completion
+    MCPChat.CLI.LineEditor.set_completion_fn(&Commands.get_completions/1)
+
     # Start the chat loop
     chat_loop()
   end
@@ -18,14 +21,10 @@ defmodule MCPChat.CLI.Chat do
   defp chat_loop() do
     prompt = Renderer.format_prompt()
 
-    case IO.gets(prompt) do
+    case MCPChat.CLI.LineEditor.read_line(prompt) do
       :eof ->
         Renderer.show_goodbye()
         :ok
-
-      {:error, reason} ->
-        Renderer.show_error("Input error: #{inspect(reason)}")
-        chat_loop()
 
       input ->
         input = String.trim(input)

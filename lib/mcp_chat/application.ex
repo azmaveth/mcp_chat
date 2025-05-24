@@ -16,6 +16,8 @@ defmodule MCPChat.Application do
         MCPChat.Alias,
         # Model loader for local LLMs
         MCPChat.LLM.ModelLoader,
+        # Line editor for CLI input
+        MCPChat.CLI.LineEditor,
         # MCP server manager (handles the dynamic supervisor internally)
         MCPChat.MCP.ServerManager
       ] ++ mcp_server_children()

@@ -43,6 +43,25 @@ defmodule MCPChat.CLI.Commands do
     "alias" => "Manage command aliases (usage: /alias [add|remove|list] ...)"
   }
 
+  @doc """
+  Get command completions for a partial command string.
+  """
+  def get_completions(partial) do
+    # Get built-in commands
+    commands = Map.keys(@commands)
+
+    # Add aliases
+    aliases = MCPChat.Alias.list_aliases() |> Map.keys()
+
+    # Add exit/quit
+    all_commands = commands ++ aliases ++ ["exit", "quit"]
+
+    # Filter by prefix
+    all_commands
+    |> Enum.filter(&String.starts_with?(&1, partial))
+    |> Enum.sort()
+  end
+
   def handle_command(command) do
     [cmd | args] = String.split(command, " ", parts: 2)
     args = List.wrap(args)
