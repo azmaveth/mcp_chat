@@ -307,7 +307,30 @@ history_size = 1000
     - [ ] Prompt user to resume on reconnection
     - [ ] Show estimated tokens/cost saved by resuming
 
-## Phase 13: Default Resources and Prompts
+## Phase 13: CLI Commands Refactoring
+- [ ] Refactor monolithic CLI commands module (in progress)
+  - [x] Create base behavior for command modules
+  - [x] Split commands into logical modules:
+    - [x] Session commands (new, save, load, sessions, history)
+    - [x] Utility commands (help, clear, config, cost, export)
+    - [x] LLM commands (backend, model, models, loadmodel, unloadmodel, acceleration)
+    - [x] MCP commands (servers, discover, connect, disconnect, tools, resources, prompts)
+    - [x] Context commands (context, system, tokens, strategy)
+    - [x] Alias commands (alias add/remove/list)
+  - [ ] Fix compilation issues with refactored modules
+    - [x] Update function references to use correct module names
+    - [x] Fix renderer function calls (render_* -> show_*)
+    - [x] Fix config get calls
+    - [x] Fix cost/context data structure references
+    - [ ] Fix remaining compilation error in utility module
+  - [ ] Update tests for refactored command structure
+  - [ ] Benefits:
+    - Reduced cyclomatic complexity (from 37 to <10 per module)
+    - Better code organization and maintainability
+    - Easier to add new commands
+    - Follows single responsibility principle
+
+## Phase 14: Default Resources and Prompts
 - [ ] Add built-in MCP resources for better user experience
   - [ ] Default resources to include:
     - [ ] Project documentation links

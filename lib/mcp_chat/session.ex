@@ -102,6 +102,27 @@ defmodule MCPChat.Session do
     GenServer.call(__MODULE__, :get_session_cost)
   end
 
+  @doc """
+  Set the current session to the provided session.
+  """
+  def set_current_session(session) do
+    GenServer.call(__MODULE__, {:set_current_session, session})
+  end
+
+  @doc """
+  Update specific fields of the current session.
+  """
+  def update_session(updates) do
+    GenServer.cast(__MODULE__, {:update_session, updates})
+  end
+
+  @doc """
+  Set the system prompt for the current session.
+  """
+  def set_system_prompt(prompt) do
+    GenServer.cast(__MODULE__, {:set_system_prompt, prompt})
+  end
+
   # Server Callbacks
 
   @impl true
@@ -230,6 +251,12 @@ defmodule MCPChat.Session do
     {:reply, cost_info, state}
   end
 
+  def handle_call({:set_current_session, session}, _from, state) do
+    # Save current session to history
+    new_state = %{state | current_session: session, sessions: [state.current_session | state.sessions]}
+    {:reply, :ok, new_state}
+  end
+
   @impl true
   def handle_cast(:clear_session, state) do
     updated_session = %{state.current_session | messages: [], context: %{}, updated_at: DateTime.utc_now()}
@@ -265,6 +292,38 @@ defmodule MCPChat.Session do
     }
 
     updated_session = %{state.current_session | token_usage: updated_usage, updated_at: DateTime.utc_now()}
+
+    new_state = %{state | current_session: updated_session}
+    {:noreply, new_state}
+  end
+
+  def handle_cast({:update_session, updates}, state) do
+    updated_session = struct(state.current_session, Map.put(updates, :updated_at, DateTime.utc_now()))
+    new_state = %{state | current_session: updated_session}
+    {:noreply, new_state}
+  end
+
+  def handle_cast({:set_system_prompt, prompt}, state) do
+    # Add or update system message at the beginning of messages
+    messages = state.current_session.messages
+
+    # Remove existing system message if present
+    filtered_messages = Enum.reject(messages, fn msg -> msg.role == "system" end)
+
+    # Add new system message
+    system_message = %{
+      role: "system",
+      content: prompt,
+      timestamp: DateTime.utc_now()
+    }
+
+    updated_messages = [system_message | filtered_messages]
+
+    updated_session = %{
+      state.current_session
+      | messages: updated_messages,
+        updated_at: DateTime.utc_now()
+    }
 
     new_state = %{state | current_session: updated_session}
     {:noreply, new_state}
