@@ -209,6 +209,52 @@ history_size = 1000
     - Distributed MCP servers across Erlang cluster
     - High-performance local tool execution
 
+## Phase 10: Library Extraction
+- [ ] Extract reusable components into standalone Hex packages
+  - [ ] **ex_mcp** - Model Context Protocol client/server library
+    - [ ] All MCP protocol implementation
+    - [ ] Stdio, SSE, and BEAM transports
+    - [ ] Server manager and discovery
+    - [ ] Client connection handling
+    - [ ] Would enable any Elixir app to add MCP support
+  - [ ] **ex_llm** - Unified LLM adapter library
+    - [ ] Adapter behaviour definition
+    - [ ] Anthropic, OpenAI, Ollama adapters
+    - [ ] Streaming support
+    - [ ] Model listing and management
+    - [ ] Standardized response format
+  - [ ] **ex_llm_local** - Local model support via Bumblebee
+    - [ ] Model loading/unloading
+    - [ ] EXLA/EMLX configuration
+    - [ ] Hardware acceleration detection
+    - [ ] Optimized inference settings
+  - [ ] **ex_context** - LLM context management library
+    - [ ] Token counting for various models
+    - [ ] Context truncation strategies (sliding window, smart)
+    - [ ] Message prioritization
+    - [ ] Token limit handling
+  - [ ] **ex_llm_cost** - LLM cost tracking library
+    - [ ] Pricing data for all major models
+    - [ ] Token usage tracking
+    - [ ] Cost calculation and reporting
+    - [ ] Multiple currency support
+  - [ ] **ex_cmd_alias** - Command alias system
+    - [ ] Alias definition and storage
+    - [ ] Parameter substitution
+    - [ ] Command expansion
+    - [ ] Circular reference detection
+  - [ ] **ex_readline** - Better line editing for Elixir
+    - [ ] Proper terminal handling
+    - [ ] Command history
+    - [ ] Keybinding support
+    - [ ] Tab completion framework
+  - [ ] Benefits of extraction:
+    - Other Elixir apps can use MCP without the chat interface
+    - LLM adapters become reusable across projects
+    - Context management can be shared between different AI apps
+    - Each library can evolve independently
+    - Better testing and documentation per component
+
 ## Development Notes
 
 - Use supervisor trees for fault tolerance
