@@ -119,6 +119,17 @@ defmodule MCPChat.LLM.Anthropic do
     config.model || @default_model
   end
 
+  def available_models() do
+    [
+      "claude-sonnet-4-20250514",
+      "claude-opus-3-20240229",
+      "claude-sonnet-3.5-20241022",
+      "claude-sonnet-3.5-20240620",
+      "claude-3-5-haiku-20241022",
+      "claude-haiku-3-20240307"
+    ]
+  end
+
   @impl true
   def list_models() do
     {:ok,

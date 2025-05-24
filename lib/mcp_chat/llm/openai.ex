@@ -115,6 +115,17 @@ defmodule MCPChat.LLM.OpenAI do
     Map.get(config, :model, @default_model)
   end
 
+  def available_models() do
+    [
+      "gpt-4-turbo-preview",
+      "gpt-4-turbo",
+      "gpt-4",
+      "gpt-4-32k",
+      "gpt-3.5-turbo",
+      "gpt-3.5-turbo-16k"
+    ]
+  end
+
   @impl true
   def list_models() do
     # We could fetch this from the API, but for now return common models

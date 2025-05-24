@@ -59,6 +59,10 @@ defmodule MCPChat.MCP.StdioClient do
     GenServer.call(client, {:set_port, port})
   end
 
+  def start_port(client, command, env \\ %{}) do
+    GenServer.call(client, {:start_port, command, env})
+  end
+
   # Server Callbacks
 
   @impl true
@@ -81,7 +85,19 @@ defmodule MCPChat.MCP.StdioClient do
 
   @impl true
   def handle_call({:set_port, port}, _from, state) do
+    Logger.warning("set_port is deprecated, use start_port instead")
     {:reply, :ok, %{state | port: port}}
+  end
+
+  @impl true
+  def handle_call({:start_port, command, env}, _from, state) do
+    case start_port_process(command, env) do
+      {:ok, port} ->
+        {:reply, :ok, %{state | port: port}}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
   end
 
   @impl true
@@ -459,5 +475,36 @@ defmodule MCPChat.MCP.StdioClient do
 
   defp process_result(_, result, state) do
     {{:ok, result}, state}
+  end
+
+  defp start_port_process([cmd | args], env) do
+    # Convert env map to list of {"KEY", "VALUE"} tuples
+    env_list = Enum.map(env, fn {k, v} -> {to_string(k), to_string(v)} end)
+
+    # Find the executable
+    case System.find_executable(cmd) do
+      nil ->
+        {:error, {:executable_not_found, cmd}}
+
+      executable ->
+        # Start the port
+        port_opts = [
+          :binary,
+          :exit_status,
+          :stream,
+          :stderr_to_stdout,
+          {:env, env_list},
+          {:args, args}
+        ]
+
+        try do
+          port = Port.open({:spawn_executable, executable}, port_opts)
+          Logger.debug("Started port process for #{cmd}")
+          {:ok, port}
+        catch
+          :error, reason ->
+            {:error, reason}
+        end
+    end
   end
 end

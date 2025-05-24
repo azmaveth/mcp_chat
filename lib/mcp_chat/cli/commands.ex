@@ -3,6 +3,8 @@ defmodule MCPChat.CLI.Commands do
   CLI command handling for the chat interface.
   """
 
+  require Logger
+
   alias MCPChat.{Session, Config}
   alias MCPChat.CLI.Renderer
 
@@ -27,6 +29,9 @@ defmodule MCPChat.CLI.Commands do
     "prompt" => "Get an MCP prompt (usage: /prompt <server> <name>)",
     "backend" => "Switch LLM backend (usage: /backend <name>)",
     "model" => "Switch model (usage: /model <name>)",
+    "models" => "List available models for current backend",
+    "loadmodel" => "Load a local model (usage: /loadmodel <model-id|path>)",
+    "unloadmodel" => "Unload a local model (usage: /unloadmodel <model-id>)",
     "export" => "Export conversation (usage: /export [format] [path])",
     "context" => "Show context statistics",
     "system" => "Set system prompt (usage: /system <prompt>)",
@@ -65,6 +70,9 @@ defmodule MCPChat.CLI.Commands do
         "prompt" -> get_prompt(args)
         "backend" -> switch_backend(args)
         "model" -> switch_model(args)
+        "models" -> list_models()
+        "loadmodel" -> load_model(args)
+        "unloadmodel" -> unload_model(args)
         "export" -> export_conversation(args)
         "context" -> show_context_stats()
         "system" -> set_system_prompt(args)
@@ -319,16 +327,23 @@ defmodule MCPChat.CLI.Commands do
     if Enum.empty?(tools) do
       Renderer.show_info("No MCP tools available")
     else
-      rows =
-        Enum.map(tools, fn tool ->
-          %{
-            "Server" => Map.get(tool, :server, "unknown"),
-            "Tool" => Map.get(tool, "name", "unnamed"),
-            "Description" => Map.get(tool, "description", "")
-          }
-        end)
+      # Group tools by server for better display
+      tools_by_server = Enum.group_by(tools, &Map.get(&1, :server, "unknown"))
 
-      Renderer.show_table(["Server", "Tool", "Description"], rows)
+      Enum.each(tools_by_server, fn {server, server_tools} ->
+        Renderer.show_info("Server: #{server}")
+
+        # Display tools in a more readable format
+        Enum.each(server_tools, fn tool ->
+          name = Map.get(tool, "name", "unnamed")
+          desc = Map.get(tool, "description", "")
+
+          # Format as a definition list with colored name
+          IO.puts("")
+          IO.puts("  " <> IO.ANSI.cyan() <> name <> IO.ANSI.reset())
+          IO.puts("    #{desc}")
+        end)
+      end)
     end
   end
 
@@ -899,5 +914,100 @@ defmodule MCPChat.CLI.Commands do
       diff < 604_800 -> "#{div(diff, 86_400)} days ago"
       true -> DateTime.to_date(datetime) |> Date.to_string()
     end
+  end
+
+  defp list_models() do
+    backend = Session.get_current_session().llm_backend
+
+    models =
+      case backend do
+        "anthropic" ->
+          MCPChat.LLM.Anthropic.available_models()
+
+        "openai" ->
+          MCPChat.LLM.OpenAI.available_models()
+
+        "local" ->
+          # Show both available models and loaded models
+          available = MCPChat.LLM.Local.available_models()
+          loaded = MCPChat.LLM.ModelLoader.list_loaded_models()
+
+          Renderer.show_info("Available models:")
+          Enum.each(available, fn model -> IO.puts("  #{model}") end)
+
+          if not Enum.empty?(loaded) do
+            Renderer.show_info("\nLoaded models:")
+            Enum.each(loaded, fn model -> IO.puts("  #{model}") end)
+          end
+
+          # Return empty to skip the table rendering below
+          []
+
+        _ ->
+          []
+      end
+
+    if models != [] do
+      current_model = get_current_model()
+
+      rows =
+        Enum.map(models, fn model ->
+          %{
+            "Model" => model,
+            "Current" => if(model == current_model, do: "✓", else: "")
+          }
+        end)
+
+      Renderer.show_table(["Model", "Current"], rows)
+    end
+  end
+
+  defp load_model([model_id]) do
+    backend = Session.get_current_session().llm_backend
+
+    if backend != "local" do
+      Renderer.show_error("Model loading is only available for the local backend")
+    else
+      Renderer.show_thinking()
+      Renderer.show_info("Loading model: #{model_id}")
+
+      case MCPChat.LLM.ModelLoader.load_model(model_id) do
+        {:ok, _model_info} ->
+          Renderer.show_success("Model loaded successfully: #{model_id}")
+          # Update current model in config
+          Config.put([:llm, :local, :model_path], model_id)
+          Session.set_context(%{model: model_id})
+
+        {:error, reason} ->
+          Renderer.show_error("Failed to load model: #{inspect(reason)}")
+      end
+    end
+  end
+
+  defp load_model(_) do
+    Renderer.show_error("Usage: /loadmodel <model-id|path>")
+  end
+
+  defp unload_model([model_id]) do
+    backend = Session.get_current_session().llm_backend
+
+    if backend != "local" do
+      Renderer.show_error("Model unloading is only available for the local backend")
+    else
+      case MCPChat.LLM.ModelLoader.unload_model(model_id) do
+        :ok ->
+          Renderer.show_info("Model unloaded: #{model_id}")
+
+        {:error, :not_loaded} ->
+          Renderer.show_error("Model not loaded: #{model_id}")
+
+        {:error, reason} ->
+          Renderer.show_error("Failed to unload model: #{inspect(reason)}")
+      end
+    end
+  end
+
+  defp unload_model(_) do
+    Renderer.show_error("Usage: /unloadmodel <model-id>")
   end
 end

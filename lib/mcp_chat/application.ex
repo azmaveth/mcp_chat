@@ -14,6 +14,8 @@ defmodule MCPChat.Application do
         MCPChat.Session,
         # Alias manager
         MCPChat.Alias,
+        # Model loader for local LLMs
+        MCPChat.LLM.ModelLoader,
         # MCP server manager (handles the dynamic supervisor internally)
         MCPChat.MCP.ServerManager
       ] ++ mcp_server_children()

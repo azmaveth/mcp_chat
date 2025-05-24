@@ -40,6 +40,12 @@ defmodule McpChat.MixProject do
       {:plug, "~> 1.15"},
       {:plug_cowboy, "~> 2.7"},
 
+      # Local model support with Bumblebee
+      {:bumblebee, "~> 0.5"},
+      {:nx, "~> 0.7"},
+      # {:exla, "~> 0.7", optional: true},  # Temporarily disabled due to compilation issues
+      {:ortex, "~> 0.1", optional: true},
+
       # Development dependencies
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},

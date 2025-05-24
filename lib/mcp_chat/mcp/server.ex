@@ -250,6 +250,12 @@ defmodule MCPChat.MCP.Server do
   end
 
   @impl true
+  def handle_info({:mcp_initialized, client}, %{client_pid: client} = state) do
+    Logger.info("MCP server #{state.name} initialized successfully")
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_info({:mcp_disconnected, client, reason}, %{client_pid: client} = state) do
     Logger.warning("MCP server #{state.name} disconnected: #{inspect(reason)}")
     new_state = stop_server_process(state)
@@ -323,14 +329,9 @@ defmodule MCPChat.MCP.Server do
       {:ok, client_pid} ->
         Process.monitor(client_pid)
 
-        # Start the server process
-        case start_server_command(state.command, state.env) do
-          {:ok, port} ->
-            # Ports don't need explicit monitoring - they send exit_status messages
-
-            # Connect the port to the client
-            StdioClient.set_port(client_pid, port)
-
+        # Start the port in the client process
+        case StdioClient.start_port(client_pid, state.command, state.env) do
+          :ok ->
             # Initialize the connection
             client_info = %{
               name: "mcp_chat",
@@ -342,20 +343,15 @@ defmodule MCPChat.MCP.Server do
               {:ok, init_result} ->
                 new_state = %{
                   state
-                  | port: port,
-                    # We don't have OS PID easily
-                    pid: nil,
-                    client_pid: client_pid,
+                  | client_pid: client_pid,
                     status: :connected,
-                    server_info: init_result.server_info,
-                    capabilities: init_result.capabilities
+                    capabilities: init_result[:capabilities] || %{}
                 }
 
                 {:ok, new_state}
 
               {:error, reason} ->
                 # Clean up
-                Port.close(port)
                 Process.exit(client_pid, :shutdown)
                 {:error, {:initialization_failed, reason}}
             end
@@ -363,7 +359,7 @@ defmodule MCPChat.MCP.Server do
           {:error, reason} ->
             # Clean up the client
             Process.exit(client_pid, :shutdown)
-            {:error, {:server_start_failed, reason}}
+            {:error, {:port_start_failed, reason}}
         end
 
       {:error, reason} ->
@@ -400,42 +396,6 @@ defmodule MCPChat.MCP.Server do
       Process.exit(state.client_pid, :shutdown)
     end
 
-    # Stop the server process (stdio only)
-    if state.port do
-      Port.close(state.port)
-    end
-
-    %{state | port: nil, pid: nil, client_pid: nil, status: :disconnected, capabilities: %{}}
-  end
-
-  defp start_server_command([cmd | args], env) do
-    # Convert env map to list of {"KEY", "VALUE"} tuples
-    env_list = Enum.map(env, fn {k, v} -> {to_string(k), to_string(v)} end)
-
-    # Find the executable
-    case System.find_executable(cmd) do
-      nil ->
-        {:error, {:executable_not_found, cmd}}
-
-      executable ->
-        # Start the port
-        port_opts = [
-          :binary,
-          :exit_status,
-          :stream,
-          # Capture stderr as well
-          :stderr_to_stdout,
-          {:env, env_list},
-          {:args, args}
-        ]
-
-        try do
-          port = Port.open({:spawn_executable, executable}, port_opts)
-          {:ok, port}
-        catch
-          :error, reason ->
-            {:error, reason}
-        end
-    end
+    %{state | pid: nil, client_pid: nil, status: :disconnected, capabilities: %{}}
   end
 end

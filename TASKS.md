@@ -71,9 +71,9 @@ mcp_chat/
 - [x] Create rich terminal UI with Owl
 
 ### Phase 5: Local Model Support
-- [ ] Integrate Bumblebee for model loading
-- [ ] Implement local model adapter
-- [ ] Add model download/management commands
+- [x] Integrate Bumblebee for model loading
+- [x] Implement local model adapter
+- [x] Add model download/management commands
 - [ ] Optimize for CPU/GPU inference with EXLA
 
 ### Phase 6: Advanced Features
