@@ -64,13 +64,22 @@ defmodule MCPChat.Config do
         nil ->
           case path_provider do
             MCPChat.PathProvider.Default ->
-              MCPChat.PathProvider.Default.get_path(:config_file)
+              case MCPChat.PathProvider.Default.get_path(:config_file) do
+                {:ok, path} -> path
+                {:error, _} -> Path.expand("~/.config/mcp_chat/config.toml")  # fallback
+              end
 
             provider when is_pid(provider) ->
-              MCPChat.PathProvider.Static.get_path(provider, :config_file)
+              case MCPChat.PathProvider.Static.get_path(provider, :config_file) do
+                {:ok, path} -> path
+                {:error, _} -> "/tmp/mcp_chat_test/config.toml"  # fallback
+              end
 
             provider ->
-              provider.get_path(:config_file)
+              case provider.get_path(:config_file) do
+                {:ok, path} -> path
+                {:error, _} -> Path.expand("~/.config/mcp_chat/config.toml")  # fallback
+              end
           end
 
         path ->

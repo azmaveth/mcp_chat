@@ -20,6 +20,9 @@ defmodule MCPChat.LLM.OpenAI do
   """
   @behaviour MCPChat.LLM.Adapter
 
+  alias MCPChat.ConfigProvider
+  alias MCPChat.Error
+
   @default_base_url "https://api.openai.com/v1"
   @default_model "gpt-4-turbo-preview"
 
@@ -50,7 +53,7 @@ defmodule MCPChat.LLM.OpenAI do
         {:ok, parse_response(response)}
 
       {:ok, %{status: status, body: body}} ->
-        {:error, {:api_error, status, body}}
+        Error.api_error(status, body)
 
       {:error, reason} ->
         {:error, reason}

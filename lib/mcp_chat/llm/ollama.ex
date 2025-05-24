@@ -21,6 +21,9 @@ defmodule MCPChat.LLM.Ollama do
 
   @behaviour MCPChat.LLM.Adapter
 
+  alias MCPChat.ConfigProvider
+  alias MCPChat.Error
+
   require Logger
 
   @default_base_url "http://localhost:11_434"
@@ -49,10 +52,10 @@ defmodule MCPChat.LLM.Ollama do
           {:ok, parse_response(response)}
 
         {:ok, %{status: status, body: body}} ->
-          {:error, "Ollama API error (#{status}): #{inspect(body)}"}
+          Error.api_error(status, body)
 
         {:error, reason} ->
-          {:error, "Failed to connect to Ollama: #{inspect(reason)}"}
+          Error.connection_error(reason)
       end
     end
   end
@@ -86,7 +89,7 @@ defmodule MCPChat.LLM.Ollama do
           receive_loop(parent, ref, response)
 
         {:error, reason} ->
-          send(parent, {:error, "Failed to connect to Ollama: #{inspect(reason)}"})
+          send(parent, Error.connection_error(reason))
       end
     end)
 
@@ -97,7 +100,7 @@ defmodule MCPChat.LLM.Ollama do
       {:error, reason} ->
         {:error, reason}
     after
-      5_000 -> {:error, "Stream start timeout"}
+      5_000 -> {:error, :timeout}
     end
   end
 
@@ -135,7 +138,7 @@ defmodule MCPChat.LLM.Ollama do
         {:ok, models}
 
       {:error, reason} ->
-        {:error, "Failed to fetch models: #{inspect(reason)}"}
+        Error.connection_error(reason)
     end
   end
 

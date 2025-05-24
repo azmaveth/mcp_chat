@@ -84,13 +84,22 @@ defmodule MCPChat.MCP.Discovery do
     locations =
       case path_provider do
         MCPChat.PathProvider.Default ->
-          MCPChat.PathProvider.Default.get_path(:mcp_discovery_dirs)
+          case MCPChat.PathProvider.Default.get_path(:mcp_discovery_dirs) do
+            {:ok, dirs} -> dirs
+            {:error, _} -> [Path.expand("~/.mcp/servers")]  # fallback
+          end
 
         provider when is_pid(provider) ->
-          MCPChat.PathProvider.Static.get_path(provider, :mcp_discovery_dirs)
+          case MCPChat.PathProvider.Static.get_path(provider, :mcp_discovery_dirs) do
+            {:ok, dirs} -> dirs
+            {:error, _} -> ["/tmp/mcp_chat_test/mcp_servers"]  # fallback
+          end
 
         provider ->
-          provider.get_path(:mcp_discovery_dirs)
+          case provider.get_path(:mcp_discovery_dirs) do
+            {:ok, dirs} -> dirs
+            {:error, _} -> [Path.expand("~/.mcp/servers")]  # fallback
+          end
       end
 
     locations

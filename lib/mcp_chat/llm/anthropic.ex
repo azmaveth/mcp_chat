@@ -11,6 +11,10 @@ defmodule MCPChat.LLM.Anthropic do
       MCPChat.LLM.Anthropic.chat(messages, config_provider: my_config)
   """
   @behaviour MCPChat.LLM.Adapter
+  
+  alias MCPChat.ConfigProvider
+  alias MCPChat.Error
+  
   require Logger
 
   @default_base_url "https://api.anthropic.com/v1"
@@ -45,7 +49,7 @@ defmodule MCPChat.LLM.Anthropic do
         {:ok, parse_response(response)}
 
       {:ok, %{status: status, body: body}} ->
-        {:error, {:api_error, status, body}}
+        Error.api_error(status, body)
 
       {:error, reason} ->
         {:error, reason}
@@ -194,7 +198,7 @@ defmodule MCPChat.LLM.Anthropic do
         {:error, reason}
 
       {:ok, %{status: status}} ->
-        {:error, "API returned status #{status}"}
+        Error.api_error(status, "Unexpected API response")
     end
   end
 

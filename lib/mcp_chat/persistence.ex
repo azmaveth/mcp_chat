@@ -118,13 +118,22 @@ defmodule MCPChat.Persistence do
   defp get_sessions_dir(path_provider) do
     case path_provider do
       MCPChat.PathProvider.Default ->
-        MCPChat.PathProvider.Default.get_path(:sessions_dir)
+        case MCPChat.PathProvider.Default.get_path(:sessions_dir) do
+          {:ok, path} -> path
+          {:error, _} -> Path.expand("~/.config/mcp_chat/sessions")  # fallback
+        end
 
       provider when is_pid(provider) ->
-        MCPChat.PathProvider.Static.get_path(provider, :sessions_dir)
+        case MCPChat.PathProvider.Static.get_path(provider, :sessions_dir) do
+          {:ok, path} -> path
+          {:error, _} -> "/tmp/mcp_chat_test/sessions"  # fallback
+        end
 
       provider ->
-        provider.get_path(:sessions_dir)
+        case provider.get_path(:sessions_dir) do
+          {:ok, path} -> path
+          {:error, _} -> Path.expand("~/.config/mcp_chat/sessions")  # fallback
+        end
     end
   end
 
