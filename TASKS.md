@@ -265,6 +265,35 @@ history_size = 1000
   - [ ] Add telemetry and monitoring hooks
 - [ ] See [SUPERVISION.md](SUPERVISION.md) for current supervision structure
 
+## Phase 12: Interrupted Response Recovery
+- [ ] Implement resumable LLM streaming responses
+  - [ ] Save partial responses during streaming
+    - [ ] Store response chunks with timestamps
+    - [ ] Track token count of partial response
+    - [ ] Save request context (messages, model, parameters)
+  - [ ] Detect interruptions (network, user-initiated, errors)
+    - [ ] Distinguish between recoverable and non-recoverable errors
+    - [ ] Implement timeout detection for stalled streams
+    - [ ] Handle Ctrl-C gracefully during streaming
+  - [ ] Resume mechanisms
+    - [ ] `/resume` command to continue last interrupted response
+    - [ ] Show partial response and continuation point
+    - [ ] Adjust token count to account for already-received content
+    - [ ] Support different resumption strategies:
+      - Continue from exact cutoff
+      - Regenerate last paragraph for coherence
+      - Summarize and continue
+  - [ ] Storage considerations
+    - [ ] Save interrupted streams to session
+    - [ ] Persist across application restarts
+    - [ ] Clean up old interrupted responses
+    - [ ] Handle multiple interrupted responses per session
+  - [ ] UI/UX improvements
+    - [ ] Show indicator when response is resumable
+    - [ ] Display partial response differently (e.g., dimmed or italic)
+    - [ ] Prompt user to resume on reconnection
+    - [ ] Show estimated tokens/cost saved by resuming
+
 ## Development Notes
 
 - Use supervisor trees for fault tolerance
