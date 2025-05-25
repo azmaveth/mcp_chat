@@ -58,14 +58,9 @@ defmodule MCPChat.CLI.Commands.MCP do
     else
       show_info("Connected MCP servers:")
 
-      Enum.each(servers, fn {name, info} ->
-        status = if info.connected, do: "✓", else: "✗"
-        IO.puts("  #{status} #{name}")
-
-        if info.connected and info.capabilities do
-          caps = format_capabilities(info.capabilities)
-          if caps != "", do: IO.puts("    #{caps}")
-        end
+      Enum.each(servers, fn %{name: name, status: status} ->
+        status_icon = if status == :connected, do: "✓", else: "✗"
+        IO.puts("  #{status_icon} #{name}")
       end)
     end
 
@@ -170,8 +165,8 @@ defmodule MCPChat.CLI.Commands.MCP do
     else
       all_tools =
         servers
-        |> Enum.filter(fn {_, info} -> info.connected end)
-        |> Enum.flat_map(fn {server_name, _} ->
+        |> Enum.filter(fn %{status: status} -> status == :connected end)
+        |> Enum.flat_map(fn %{name: server_name} ->
           # Get tools for this server
           case get_server_tools(server_name) do
             {:ok, tools} ->
@@ -225,8 +220,8 @@ defmodule MCPChat.CLI.Commands.MCP do
     else
       all_resources =
         servers
-        |> Enum.filter(fn {_, info} -> info.connected end)
-        |> Enum.flat_map(fn {server_name, _} ->
+        |> Enum.filter(fn %{status: status} -> status == :connected end)
+        |> Enum.flat_map(fn %{name: server_name} ->
           # Get resources for this server
           case get_server_resources(server_name) do
             {:ok, resources} ->
@@ -292,8 +287,8 @@ defmodule MCPChat.CLI.Commands.MCP do
     else
       all_prompts =
         servers
-        |> Enum.filter(fn {_, info} -> info.connected end)
-        |> Enum.flat_map(fn {server_name, _} ->
+        |> Enum.filter(fn %{status: status} -> status == :connected end)
+        |> Enum.flat_map(fn %{name: server_name} ->
           # Get prompts for this server
           case get_server_prompts(server_name) do
             {:ok, prompts} ->
