@@ -323,7 +323,7 @@ history_size = 1000
     - [x] Configuration injection pattern
     - [x] Comprehensive error handling
     - [x] Full test coverage
-    - [x] Published to local directory: `/Users/azmaveth/code/ex_llm/ex_llm`
+    - [x] Published to local directory: `/Users/azmaveth/code/ex_llm`
     - [x] Added instructor_ex support for structured outputs
       - [x] Integrated ExLLM.Instructor module
       - [x] Support for Ecto schemas and simple type specs

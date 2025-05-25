@@ -25,7 +25,7 @@ defmodule McpChat.MixProject do
     [
       # Extracted libraries
       {:ex_mcp, path: "../ex_mcp"},
-      {:ex_llm, path: "../ex_llm/ex_llm"},
+      {:ex_llm, path: "../ex_llm"},
       {:ex_alias, path: "../ex_alias"},
       {:ex_readline, path: "../ex_readline"},
 
