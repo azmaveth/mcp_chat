@@ -60,7 +60,10 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
   @impl true
   def handle_call({:read_line, prompt, _opts}, _from, state) do
     case ExReadline.read_line(prompt) do
-      {:ok, line} ->
+      :eof ->
+        {:reply, :eof, state}
+
+      line when is_binary(line) ->
         # Add to history if not empty
         if line != "" and String.trim(line) != "" do
           ExReadline.add_to_history(line)
@@ -68,13 +71,6 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
         end
 
         {:reply, line, state}
-
-      :eof ->
-        {:reply, :eof, state}
-
-      {:error, reason} ->
-        Logger.warning("ExReadline error: #{inspect(reason)}")
-        {:reply, :eof, state}
     end
   end
 
