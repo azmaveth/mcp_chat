@@ -105,10 +105,11 @@ defmodule MCPChat.MCP.ServerManager.Core do
   @spec list_servers(server_state()) :: list()
   def list_servers(state) do
     state.servers
-    |> Enum.map(fn {name, _pid} ->
-      case Server.get_status(name) do
+    |> Enum.map(fn {name, pid} ->
+      case Server.get_status(pid) do
         {:error, _} -> nil
-        status -> status
+        {:ok, status} -> %{name: name, status: status}
+        status -> %{name: name, status: status}
       end
     end)
     |> Enum.reject(&is_nil/1)
@@ -123,8 +124,8 @@ defmodule MCPChat.MCP.ServerManager.Core do
       nil ->
         {:error, :not_found}
 
-      _pid ->
-        case Server.get_status(name) do
+      pid ->
+        case Server.get_status(pid) do
           {:error, reason} -> {:error, reason}
           status -> {:ok, status}
         end
@@ -137,8 +138,8 @@ defmodule MCPChat.MCP.ServerManager.Core do
   @spec list_all_tools(server_state()) :: list()
   def list_all_tools(state) do
     state.servers
-    |> Enum.map(fn {name, _pid} ->
-      case Server.get_tools(name) do
+    |> Enum.map(fn {name, pid} ->
+      case Server.get_tools(pid) do
         {:ok, tools} -> Enum.map(tools, &Map.put(&1, :server, name))
         _ -> []
       end
@@ -151,10 +152,12 @@ defmodule MCPChat.MCP.ServerManager.Core do
   """
   @spec call_tool(server_state(), String.t(), String.t(), map()) :: {:ok, term()} | {:error, term()}
   def call_tool(state, server_name, tool_name, arguments) do
-    if Map.has_key?(state.servers, server_name) do
-      Server.call_tool(server_name, tool_name, arguments)
-    else
-      {:error, :server_not_found}
+    case Map.get(state.servers, server_name) do
+      nil ->
+        {:error, :server_not_found}
+      
+      pid ->
+        Server.call_tool(pid, tool_name, arguments)
     end
   end
 
@@ -164,8 +167,8 @@ defmodule MCPChat.MCP.ServerManager.Core do
   @spec list_all_resources(server_state()) :: list()
   def list_all_resources(state) do
     state.servers
-    |> Enum.map(fn {name, _pid} ->
-      case Server.get_resources(name) do
+    |> Enum.map(fn {name, pid} ->
+      case Server.get_resources(pid) do
         {:ok, resources} -> Enum.map(resources, &Map.put(&1, :server, name))
         _ -> []
       end
@@ -178,10 +181,12 @@ defmodule MCPChat.MCP.ServerManager.Core do
   """
   @spec read_resource(server_state(), String.t(), String.t()) :: {:ok, term()} | {:error, term()}
   def read_resource(state, server_name, uri) do
-    if Map.has_key?(state.servers, server_name) do
-      Server.read_resource(server_name, uri)
-    else
-      {:error, :server_not_found}
+    case Map.get(state.servers, server_name) do
+      nil ->
+        {:error, :server_not_found}
+      
+      pid ->
+        Server.read_resource(pid, uri)
     end
   end
 
@@ -191,8 +196,8 @@ defmodule MCPChat.MCP.ServerManager.Core do
   @spec list_all_prompts(server_state()) :: list()
   def list_all_prompts(state) do
     state.servers
-    |> Enum.map(fn {name, _pid} ->
-      case Server.get_prompts(name) do
+    |> Enum.map(fn {name, pid} ->
+      case Server.get_prompts(pid) do
         {:ok, prompts} -> Enum.map(prompts, &Map.put(&1, :server, name))
         _ -> []
       end
@@ -205,10 +210,12 @@ defmodule MCPChat.MCP.ServerManager.Core do
   """
   @spec get_prompt(server_state(), String.t(), String.t(), map()) :: {:ok, term()} | {:error, term()}
   def get_prompt(state, server_name, prompt_name, arguments) do
-    if Map.has_key?(state.servers, server_name) do
-      Server.get_prompt(server_name, prompt_name, arguments)
-    else
-      {:error, :server_not_found}
+    case Map.get(state.servers, server_name) do
+      nil ->
+        {:error, :server_not_found}
+      
+      pid ->
+        Server.get_prompt(pid, prompt_name, arguments)
     end
   end
 
