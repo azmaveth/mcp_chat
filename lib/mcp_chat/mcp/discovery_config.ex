@@ -1,75 +1,27 @@
 defmodule MCPChat.MCP.DiscoveryConfig do
   @moduledoc """
   Known MCP server configurations for quick setup.
+
+  Loads server configurations from priv/known_servers.json at compile time.
   """
 
-  @known_servers [
-    %{
-      id: "filesystem",
-      name: "filesystem",
-      package: "@modelcontextprotocol/server-filesystem",
-      description: "Access and manage local files",
-      command: ["npx", "-y", "@modelcontextprotocol/server-filesystem", "$HOME"],
-      requires: []
-    },
-    %{
-      id: "github",
-      name: "github",
-      package: "@modelcontextprotocol/server-github",
-      description: "Interact with GitHub repositories",
-      command: ["npx", "-y", "@modelcontextprotocol/server-github"],
-      requires: ["GITHUB_TOKEN"],
-      env_keys: ["GITHUB_TOKEN"]
-    },
-    %{
-      id: "postgres",
-      name: "postgres",
-      package: "@modelcontextprotocol/server-postgres",
-      description: "Query PostgreSQL databases",
-      command: ["npx", "-y", "@modelcontextprotocol/server-postgres", "$DATABASE_URL"],
-      requires: ["DATABASE_URL"]
-    },
-    %{
-      id: "sqlite",
-      name: "sqlite",
-      package: "@modelcontextprotocol/server-sqlite",
-      description: "Query SQLite databases",
-      command: ["npx", "-y", "@modelcontextprotocol/server-sqlite", "*.db"],
-      requires: []
-    },
-    %{
-      id: "google-drive",
-      name: "google-drive",
-      package: "@modelcontextprotocol/server-google-drive",
-      description: "Access Google Drive files",
-      command: ["npx", "-y", "@modelcontextprotocol/server-google-drive"],
-      requires: ["GOOGLE_DRIVE_API_KEY"]
-    },
-    %{
-      id: "memory",
-      name: "memory",
-      package: "@modelcontextprotocol/server-memory",
-      description: "Persistent memory/knowledge base",
-      command: ["npx", "-y", "@modelcontextprotocol/server-memory"],
-      requires: []
-    },
-    %{
-      id: "puppeteer",
-      name: "puppeteer",
-      package: "@modelcontextprotocol/server-puppeteer",
-      description: "Browser automation and web scraping",
-      command: ["npx", "-y", "@modelcontextprotocol/server-puppeteer"],
-      requires: []
-    },
-    %{
-      id: "playwright",
-      name: "playwright",
-      package: "@modelcontextprotocol/server-playwright",
-      description: "Browser automation and testing",
-      command: ["npx", "-y", "@modelcontextprotocol/server-playwright"],
-      requires: []
-    }
-  ]
+  # Load the JSON file at compile time
+  @external_resource Path.join([__DIR__, "..", "..", "..", "priv", "known_servers.json"])
+
+  @known_servers_json File.read!(@external_resource)
+  @known_servers (case Jason.decode(@known_servers_json) do
+                    {:ok, %{"servers" => servers}} ->
+                      # Convert string keys to atoms for easier access
+                      Enum.map(servers, fn server ->
+                        server
+                        |> Enum.map(fn {k, v} -> {String.to_atom(k), v} end)
+                        |> Map.new()
+                      end)
+
+                    _ ->
+                      # Fallback to empty list if parsing fails
+                      []
+                  end)
 
   @doc """
   Get all known server configurations.
@@ -136,5 +88,12 @@ defmodule MCPChat.MCP.DiscoveryConfig do
     else
       base
     end
+  end
+
+  @doc """
+  Get the path to the known servers configuration file.
+  """
+  def config_file_path() do
+    Application.app_dir(:mcp_chat, ["priv", "known_servers.json"])
   end
 end
