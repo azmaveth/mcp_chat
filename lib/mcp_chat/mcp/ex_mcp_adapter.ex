@@ -209,7 +209,8 @@ defmodule MCPChat.MCP.ExMCPAdapter do
   def handle_call(:get_tools, _from, state) do
     result = if state.ex_mcp_client do
       case ExMCP.Client.list_tools(state.ex_mcp_client) do
-        {:ok, tools} -> {:ok, tools}
+        {:ok, {"tools", tools}} -> {:ok, tools}
+        {:ok, tools} when is_list(tools) -> {:ok, tools}
         error -> error
       end
     else
@@ -230,7 +231,8 @@ defmodule MCPChat.MCP.ExMCPAdapter do
   def handle_call(:get_resources, _from, state) do
     result = if state.ex_mcp_client do
       case ExMCP.Client.list_resources(state.ex_mcp_client) do
-        {:ok, resources} -> {:ok, resources}
+        {:ok, {"resources", resources}} -> {:ok, resources}
+        {:ok, resources} when is_list(resources) -> {:ok, resources}
         error -> error
       end
     else
@@ -251,7 +253,8 @@ defmodule MCPChat.MCP.ExMCPAdapter do
   def handle_call(:get_prompts, _from, state) do
     result = if state.ex_mcp_client do
       case ExMCP.Client.list_prompts(state.ex_mcp_client) do
-        {:ok, prompts} -> {:ok, prompts}
+        {:ok, {"prompts", prompts}} -> {:ok, prompts}
+        {:ok, prompts} when is_list(prompts) -> {:ok, prompts}
         error -> error
       end
     else
