@@ -17,7 +17,9 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # For ExLLM, configuration is handled through environment variables
     # or config providers, so we just validate that the config is reasonable
     case validate_config(config) do
-      :ok -> :ok
+      :ok ->
+        :ok
+
       {:error, reason} ->
         Logger.error("Invalid configuration: #{inspect(reason)}")
         {:error, reason}
@@ -118,68 +120,80 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     adapters = []
 
     # Add Anthropic adapter if configured
-    adapters = if Map.has_key?(llm_config, "anthropic") do
-      anthropic_config = Map.get(llm_config, "anthropic", %{})
-      anthropic_adapter = %{
-        adapter: ExLLM.Adapters.Anthropic,
-        config: %{
-          api_key: Map.get(anthropic_config, "api_key") || System.get_env("ANTHROPIC_API_KEY"),
-          model: Map.get(anthropic_config, "model", "claude-sonnet-4-20250514"),
-          max_tokens: Map.get(anthropic_config, "max_tokens", 4_096)
+    adapters =
+      if Map.has_key?(llm_config, "anthropic") do
+        anthropic_config = Map.get(llm_config, "anthropic", %{})
+
+        anthropic_adapter = %{
+          adapter: ExLLM.Adapters.Anthropic,
+          config: %{
+            api_key: Map.get(anthropic_config, "api_key") || System.get_env("ANTHROPIC_API_KEY"),
+            model: Map.get(anthropic_config, "model", "claude-sonnet-4-20250514"),
+            max_tokens: Map.get(anthropic_config, "max_tokens", 4_096)
+          }
         }
-      }
-      [anthropic_adapter | adapters]
-    else
-      adapters
-    end
+
+        [anthropic_adapter | adapters]
+      else
+        adapters
+      end
 
     # Add OpenAI adapter if configured
-    adapters = if Map.has_key?(llm_config, "openai") do
-      openai_config = Map.get(llm_config, "openai", %{})
-      openai_adapter = %{
-        adapter: ExLLM.Adapters.OpenAI,
-        config: %{
-          api_key: Map.get(openai_config, "api_key") || System.get_env("OPENAI_API_KEY"),
-          model: Map.get(openai_config, "model", "gpt-4"),
-          max_tokens: Map.get(openai_config, "max_tokens", 4_096)
+    adapters =
+      if Map.has_key?(llm_config, "openai") do
+        openai_config = Map.get(llm_config, "openai", %{})
+
+        openai_adapter = %{
+          adapter: ExLLM.Adapters.OpenAI,
+          config: %{
+            api_key: Map.get(openai_config, "api_key") || System.get_env("OPENAI_API_KEY"),
+            model: Map.get(openai_config, "model", "gpt-4"),
+            max_tokens: Map.get(openai_config, "max_tokens", 4_096)
+          }
         }
-      }
-      [openai_adapter | adapters]
-    else
-      adapters
-    end
+
+        [openai_adapter | adapters]
+      else
+        adapters
+      end
 
     # Add Ollama adapter if configured
-    adapters = if Map.has_key?(llm_config, "ollama") do
-      ollama_config = Map.get(llm_config, "ollama", %{})
-      ollama_adapter = %{
-        adapter: ExLLM.Adapters.Ollama,
-        config: %{
-          base_url: Map.get(ollama_config, "base_url", "http://localhost:11_434"),
-          model: Map.get(ollama_config, "model", "llama3"),
-          timeout: Map.get(ollama_config, "timeout", 60_000)
+    adapters =
+      if Map.has_key?(llm_config, "ollama") do
+        ollama_config = Map.get(llm_config, "ollama", %{})
+
+        ollama_adapter = %{
+          adapter: ExLLM.Adapters.Ollama,
+          config: %{
+            base_url: Map.get(ollama_config, "base_url", "http://localhost:11_434"),
+            model: Map.get(ollama_config, "model", "llama3"),
+            timeout: Map.get(ollama_config, "timeout", 60_000)
+          }
         }
-      }
-      [ollama_adapter | adapters]
-    else
-      adapters
-    end
+
+        [ollama_adapter | adapters]
+      else
+        adapters
+      end
 
     # Add Local adapter if configured
-    adapters = if Map.has_key?(llm_config, "local") do
-      local_config = Map.get(llm_config, "local", %{})
-      local_adapter = %{
-        adapter: ExLLM.Adapters.Local,
-        config: %{
-          model_path: Map.get(local_config, "model_path"),
-          device: Map.get(local_config, "device", "cpu"),
-          max_tokens: Map.get(local_config, "max_tokens", 2048)
+    adapters =
+      if Map.has_key?(llm_config, "local") do
+        local_config = Map.get(llm_config, "local", %{})
+
+        local_adapter = %{
+          adapter: ExLLM.Adapters.Local,
+          config: %{
+            model_path: Map.get(local_config, "model_path"),
+            device: Map.get(local_config, "device", "cpu"),
+            max_tokens: Map.get(local_config, "max_tokens", 2048)
+          }
         }
-      }
-      [local_adapter | adapters]
-    else
-      adapters
-    end
+
+        [local_adapter | adapters]
+      else
+        adapters
+      end
 
     %{
       adapters: adapters,
@@ -230,14 +244,15 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     %{
       content: ex_llm_response.content,
       finish_reason: ex_llm_response.finish_reason,
-      usage: if ex_llm_response.usage do
-        %{
-          input_tokens: ex_llm_response.usage.input_tokens,
-          output_tokens: ex_llm_response.usage.output_tokens
-        }
-      else
-        nil
-      end
+      usage:
+        if ex_llm_response.usage do
+          %{
+            input_tokens: ex_llm_response.usage.input_tokens,
+            output_tokens: ex_llm_response.usage.output_tokens
+          }
+        else
+          nil
+        end
     }
   end
 

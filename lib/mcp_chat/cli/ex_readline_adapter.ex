@@ -46,11 +46,12 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
         # Load history
         load_history()
 
-        {:ok, %{
-          ex_readline_pid: ex_readline_pid,
-          implementation: implementation,
-          completion_fn: nil
-        }}
+        {:ok,
+         %{
+           ex_readline_pid: ex_readline_pid,
+           implementation: implementation,
+           completion_fn: nil
+         }}
 
       error ->
         error
@@ -86,6 +87,7 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
     case state.implementation do
       :advanced ->
         ExReadline.set_completion_fn(fun)
+
       _ ->
         # Simple implementation doesn't support completion
         :ok

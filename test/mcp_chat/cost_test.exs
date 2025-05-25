@@ -3,6 +3,11 @@ defmodule MCPChat.CostTest do
   alias MCPChat.Cost
   alias MCPChat.Types.Session
 
+  # NOTE: The Elixir formatter automatically adds underscores to numeric literals
+  # for readability (e.g., 0.000_875 becomes 0.000_875). To avoid this breaking
+  # our cost formatting tests, we use arithmetic expressions or module attributes
+  # to construct the expected values without underscores.
+
   describe "calculate_session_cost/2" do
     test "calculates cost for Anthropic Claude model" do
       session = %Session{
@@ -24,9 +29,12 @@ defmodule MCPChat.CostTest do
       assert cost_info.total_tokens == 1_500
 
       # Haiku pricing: $0.25/1M input, $1.25/1M output
-      assert cost_info.input_cost == 0.00_025
-      assert cost_info.output_cost == 0.000_625
-      assert cost_info.total_cost == 0.000_875
+      # 0.00_025
+      assert cost_info.input_cost == 25 / 100_000
+      # 0.000_625
+      assert cost_info.output_cost == 625 / 1_000_000
+      # 0.000_875
+      assert cost_info.total_cost == 875 / 1_000_000
     end
 
     test "calculates cost for OpenAI GPT model" do
@@ -46,9 +54,12 @@ defmodule MCPChat.CostTest do
       assert cost_info.model == "gpt-3.5-turbo"
 
       # GPT-3.5 pricing: $0.50/1M input, $1.50/1M output
-      assert cost_info.input_cost == 0.001
-      assert cost_info.output_cost == 0.0_015
-      assert cost_info.total_cost == 0.0_025
+      # 0.001
+      assert cost_info.input_cost == 1 / 1_000
+      # 0.0_015
+      assert cost_info.output_cost == 15 / 10_000
+      # 0.0_025
+      assert cost_info.total_cost == 25 / 10_000
     end
 
     test "handles unknown model" do
@@ -89,9 +100,12 @@ defmodule MCPChat.CostTest do
 
   describe "format_cost/1" do
     test "formats very small costs in cents" do
-      assert Cost.format_cost(0.00_001) == "$0.001¢"
-      assert Cost.format_cost(0.0_005) == "$0.050¢"
-      assert Cost.format_cost(0.009) == "$0.900¢"
+      # 0.00_001
+      assert Cost.format_cost(1 / 100_000) == "$0.001¢"
+      # 0.0_005
+      assert Cost.format_cost(5 / 10_000) == "$0.050¢"
+      # 0.009
+      assert Cost.format_cost(9 / 1_000) == "$0.900¢"
     end
 
     test "formats small costs with 4 decimals" do

@@ -195,7 +195,12 @@ defmodule MCPChat.CLI.Commands.LLM do
 
       :metal ->
         IO.puts("Memory: #{info.memory.total_gb} GB (unified)")
-        IO.puts("Optimizations: EMLX (Elixir Metal)")
+        # Only show EMLX if it's actually available
+        if info.backend == "EMLX" do
+          IO.puts("Optimizations: EMLX (Elixir Metal)")
+        else
+          IO.puts("Hardware: Apple Metal (EMLX not loaded)")
+        end
 
       :cpu ->
         IO.puts("Cores: #{info.cores}")
@@ -221,8 +226,23 @@ defmodule MCPChat.CLI.Commands.LLM do
         end
 
       _ ->
-        IO.puts("  ⚠ No hardware acceleration available")
-        IO.puts("  Consider installing EXLA or EMLX for better performance")
+        # Show more specific guidance based on hardware
+        case info.type do
+          :metal ->
+            IO.puts("  ⚠ Apple Metal detected but EMLX not loaded")
+            IO.puts("  Consider adding {:emlx, \"~> 0.5\"} to your mix.exs dependencies")
+            IO.puts("  Alternatively, add {:exla, \"~> 0.6\"} for XLA acceleration")
+
+          :cuda ->
+            IO.puts("  ⚠ CUDA capable GPU detected but EXLA not loaded")
+            IO.puts("  Consider adding {:exla, \"~> 0.6\"} to your mix.exs dependencies")
+            IO.puts("  Ensure CUDA toolkit is installed and XLA_TARGET=cuda120 is set")
+
+          _ ->
+            IO.puts("  ⚠ No hardware acceleration libraries loaded")
+            IO.puts("  Binary backend will be used (slower performance)")
+            IO.puts("  Consider installing EXLA for CPU optimizations")
+        end
     end
 
     :ok

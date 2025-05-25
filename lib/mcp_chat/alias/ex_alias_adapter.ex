@@ -107,12 +107,15 @@ defmodule MCPChat.Alias.ExAliasAdapter do
         # Clear existing aliases and load new ones
         # Note: ExAlias doesn't have clear_aliases, we'll need to remove individually
         {:ok, current_aliases} = GenServer.call(state.ex_alias_pid, :list_aliases)
+
         Enum.each(Map.keys(current_aliases), fn name ->
           GenServer.call(state.ex_alias_pid, {:remove_alias, name})
         end)
+
         Enum.each(aliases, fn {name, commands} ->
           GenServer.call(state.ex_alias_pid, {:define_alias, name, commands})
         end)
+
         {:reply, :ok, state}
 
       error ->
@@ -145,6 +148,7 @@ defmodule MCPChat.Alias.ExAliasAdapter do
     case alias_data do
       {:ok, json} ->
         file_path = get_mcp_chat_alias_file()
+
         case File.write(file_path, json) do
           :ok -> :ok
           {:error, reason} -> {:error, reason}
@@ -163,9 +167,11 @@ defmodule MCPChat.Alias.ExAliasAdapter do
         case Jason.decode(content) do
           {:ok, aliases_map} ->
             # Convert from map to list of {name, commands} tuples
-            aliases = Enum.map(aliases_map, fn {name, commands} ->
-              {name, commands}
-            end)
+            aliases =
+              Enum.map(aliases_map, fn {name, commands} ->
+                {name, commands}
+              end)
+
             {:ok, aliases}
 
           {:error, reason} ->

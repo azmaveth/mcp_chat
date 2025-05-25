@@ -63,7 +63,26 @@ defmodule MCPChat.LLM.ModelLoader do
 
     # Log acceleration info
     acc_info = EXLAConfig.acceleration_info()
-    Logger.info("Model loader initialized with #{acc_info.name} acceleration")
+
+    # Show accurate initialization message based on what's actually available
+    case acc_info.backend do
+      "EMLX" ->
+        Logger.info("Model loader initialized with Apple Metal acceleration (EMLX)")
+
+      "EXLA" ->
+        Logger.info("Model loader initialized with #{acc_info.name} acceleration (EXLA)")
+
+      "Binary" ->
+        # Only show hardware info if we have acceleration hardware but no libraries
+        if acc_info.type in [:metal, :cuda] do
+          Logger.info("Model loader initialized (#{acc_info.name} detected but acceleration libraries not loaded)")
+        else
+          Logger.info("Model loader initialized with CPU backend")
+        end
+
+      _ ->
+        Logger.info("Model loader initialized without acceleration")
+    end
 
     state = %{
       models: %{},

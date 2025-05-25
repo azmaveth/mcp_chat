@@ -69,29 +69,33 @@ defmodule MCPChat.MCPClientIntegrationTest do
     end
   end
 
-  describe "MCP Client state management" do
-    test "client request tracking" do
-      # Test the client's ability to track pending requests
-      client_state = %MCPChat.MCP.Client{
-        pending_requests: %{},
-        capabilities: %{},
-        server_info: nil
+  describe "MCP Client adapter functionality" do
+    test "adapter properly wraps ExMCP client" do
+      # Since we're now using ExMCP through an adapter,
+      # we test that the adapter is available and works
+
+      # The adapter is a GenServer that wraps ExMCP.Client
+      assert Code.ensure_loaded?(MCPChat.MCP.ExMCPAdapter)
+
+      # Test that we can start an adapter with minimal config
+      config = %{
+        name: "test-server",
+        command: ["echo", "test"],
+        transport: :stdio
       }
 
-      # Simulate adding a request
-      request_id = 123
+      {:ok, adapter} =
+        MCPChat.MCP.ExMCPAdapter.start_link(
+          server_config: config,
+          callback_pid: self()
+        )
 
-      updated_state = %{
-        client_state
-        | pending_requests:
-            Map.put(client_state.pending_requests, request_id, %{
-              method: "tools/list",
-              timestamp: DateTime.utc_now()
-            })
-      }
+      # Test basic status check
+      status = MCPChat.MCP.ExMCPAdapter.get_status(adapter)
+      assert status == :disconnected
 
-      assert Map.has_key?(updated_state.pending_requests, request_id)
-      assert updated_state.pending_requests[request_id].method == "tools/list"
+      # Clean up
+      GenServer.stop(adapter)
     end
   end
 

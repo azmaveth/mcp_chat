@@ -28,27 +28,27 @@ defmodule MCPChat.AliasTest do
     end
 
     test "rejects empty alias name" do
-      assert {:error, "Alias name cannot be empty"} =
+      assert {:error, {:validation, :name, "cannot be empty"}} =
                Alias.define_alias("", ["/help"])
     end
 
     test "rejects alias name with spaces" do
-      assert {:error, "Alias name cannot contain spaces"} =
+      assert {:error, {:validation, :name, "cannot contain spaces"}} =
                Alias.define_alias("my alias", ["/help"])
     end
 
     test "rejects reserved command names" do
-      assert {:error, "Cannot override built-in command 'help'"} =
+      assert {:error, {:validation, :name, "cannot override built-in command 'help'"}} =
                Alias.define_alias("help", ["/config"])
     end
 
     test "rejects empty command list" do
-      assert {:error, "Alias must contain at least one command"} =
+      assert {:error, {:validation, :commands, "cannot be empty"}} =
                Alias.define_alias("test", [])
     end
 
     test "rejects non-string commands" do
-      assert {:error, "All commands must be strings"} =
+      assert {:error, {:validation, :commands, "must all be strings"}} =
                Alias.define_alias("test", ["/help", 123])
     end
   end
@@ -61,7 +61,7 @@ defmodule MCPChat.AliasTest do
     end
 
     test "returns error for non-existent alias" do
-      assert {:error, "Alias 'nonexistent' not found"} =
+      assert {:error, :not_found} =
                Alias.remove_alias("nonexistent")
     end
   end
@@ -74,7 +74,7 @@ defmodule MCPChat.AliasTest do
     end
 
     test "returns error for non-existent alias" do
-      assert {:error, "Alias 'nonexistent' not found"} =
+      assert {:error, :not_found} =
                Alias.get_alias("nonexistent")
     end
   end
@@ -110,23 +110,23 @@ defmodule MCPChat.AliasTest do
 
     test "expands nested aliases" do
       :ok = Alias.define_alias("inner", ["/help"])
-      :ok = Alias.define_alias("outer", ["/inner", "/config"])
+      :ok = Alias.define_alias("outer", ["inner", "/config"])
 
       assert {:ok, ["/help", "/config"]} = Alias.expand_alias("outer")
     end
 
     test "prevents circular references" do
-      :ok = Alias.define_alias("a", ["/b"])
-      :ok = Alias.define_alias("b", ["/a"])
+      :ok = Alias.define_alias("a", ["b"])
+      :ok = Alias.define_alias("b", ["a"])
 
       # Should not expand infinitely - when circular reference is detected,
       # it stops expansion and returns the command that would cause the cycle
-      assert {:ok, ["/a"]} = Alias.expand_alias("a")
-      assert {:ok, ["/b"]} = Alias.expand_alias("b")
+      assert {:ok, ["a"]} = Alias.expand_alias("a")
+      assert {:ok, ["b"]} = Alias.expand_alias("b")
     end
 
     test "returns error for non-existent alias" do
-      assert {:error, "Alias 'nonexistent' not found"} =
+      assert {:error, :not_found} =
                Alias.expand_alias("nonexistent")
     end
   end

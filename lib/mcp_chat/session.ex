@@ -150,8 +150,7 @@ defmodule MCPChat.Session do
   @impl true
   def handle_call({:get_messages, limit}, _from, state) do
     messages = SessionCore.get_messages(state.current_session, limit)
-    # Keep original behavior of reversing messages for GenServer API
-    {:reply, Enum.reverse(messages), state}
+    {:reply, messages, state}
   end
 
   def handle_call(:get_current_session, _from, state) do

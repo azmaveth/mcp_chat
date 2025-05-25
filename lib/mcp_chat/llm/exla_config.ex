@@ -27,7 +27,8 @@ defmodule MCPChat.LLM.EXLAConfig do
         {:ok, backend_opts}
 
       true ->
-        Logger.warn("EXLA/EMLX not available, falling back to binary backend")
+        # Only log at debug level to avoid noise during startup
+        Logger.debug("Hardware acceleration libraries not loaded, using binary backend")
         {:ok, :binary}
     end
   end

@@ -155,7 +155,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
     case Map.get(state.servers, server_name) do
       nil ->
         {:error, :server_not_found}
-      
+
       pid ->
         Server.call_tool(pid, tool_name, arguments)
     end
@@ -184,7 +184,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
     case Map.get(state.servers, server_name) do
       nil ->
         {:error, :server_not_found}
-      
+
       pid ->
         Server.read_resource(pid, uri)
     end
@@ -213,7 +213,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
     case Map.get(state.servers, server_name) do
       nil ->
         {:error, :server_not_found}
-      
+
       pid ->
         Server.get_prompt(pid, prompt_name, arguments)
     end

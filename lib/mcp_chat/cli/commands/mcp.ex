@@ -169,7 +169,12 @@ defmodule MCPChat.CLI.Commands.MCP do
         |> Enum.flat_map(fn %{name: server_name} ->
           # Get tools for this server
           case get_server_tools(server_name) do
-            {:ok, tools} ->
+            {:ok, %{"tools" => tool_list}} when is_list(tool_list) ->
+              # Extract the tools list from the map
+              Enum.map(tool_list, &{server_name, &1})
+
+            {:ok, tools} when is_list(tools) ->
+              # Already a list (for backward compatibility)
               Enum.map(tools, &{server_name, &1})
 
             _ ->

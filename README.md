@@ -308,6 +308,29 @@ The system automatically selects the best backend:
 
 ## Development
 
+### Testing
+
+Run the test suite:
+
+```bash
+mix test
+```
+
+Run specific test files:
+
+```bash
+mix test test/mcp_chat/cli/commands/mcp_basic_test.exs
+```
+
+The test suite includes:
+- Unit tests for all major modules
+- Integration tests for LLM backends and MCP functionality
+- CLI command tests ensuring commands continue to work as expected
+
+See [NUMERIC_FORMATTING_NOTES.md](NUMERIC_FORMATTING_NOTES.md) for information about handling numeric formatting in tests.
+
+### Roadmap
+
 See [TASKS.md](TASKS.md) for the development roadmap and task list.
 
 ## License

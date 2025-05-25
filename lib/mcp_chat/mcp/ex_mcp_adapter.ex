@@ -96,10 +96,7 @@ defmodule MCPChat.MCP.ExMCPAdapter do
         # Send initialization complete message to callback
         send(state.callback_pid, {:mcp_initialized, server_info})
 
-        new_state = %{state |
-          server_info: server_info,
-          capabilities: Map.get(server_info, "capabilities", %{})
-        }
+        new_state = %{state | server_info: server_info, capabilities: Map.get(server_info, "capabilities", %{})}
         {:noreply, new_state}
 
       {:error, reason} ->
@@ -173,94 +170,94 @@ defmodule MCPChat.MCP.ExMCPAdapter do
   end
 
   # Additional functions for ServerManager compatibility
-  
+
   def get_status(server_ref) when is_pid(server_ref) do
     GenServer.call(server_ref, :get_status)
   end
-  
+
   def get_status(server_name) when is_binary(server_name) do
     # For string names, we need to look up the PID from the ServerManager
     {:error, :invalid_server_reference}
   end
-  
+
   def handle_call(:get_status, _from, state) do
-    status = if state.ex_mcp_client do
-      # Check if the ExMCP client process is alive
-      if Process.alive?(state.ex_mcp_client) do
-        :connected
+    status =
+      if state.ex_mcp_client do
+        # Check if the ExMCP client process is alive
+        if Process.alive?(state.ex_mcp_client) do
+          :connected
+        else
+          :disconnected
+        end
       else
         :disconnected
       end
-    else
-      :disconnected
-    end
-    
+
     {:reply, {:ok, status}, state}
   end
-  
+
   def get_tools(server_ref) when is_pid(server_ref) do
     GenServer.call(server_ref, :get_tools)
   end
-  
+
   def get_tools(server_name) when is_binary(server_name) do
     {:error, :invalid_server_reference}
   end
-  
+
   def handle_call(:get_tools, _from, state) do
-    result = if state.ex_mcp_client do
-      case ExMCP.Client.list_tools(state.ex_mcp_client) do
-        {:ok, {"tools", tools}} -> {:ok, tools}
-        {:ok, tools} when is_list(tools) -> {:ok, tools}
-        error -> error
+    result =
+      if state.ex_mcp_client do
+        ExMCP.Client.list_tools(state.ex_mcp_client)
+      else
+        {:error, :not_connected}
       end
-    else
-      {:error, :not_connected}
-    end
-    
+
     {:reply, result, state}
   end
-  
+
   def get_resources(server_ref) when is_pid(server_ref) do
     GenServer.call(server_ref, :get_resources)
   end
-  
+
   def get_resources(server_name) when is_binary(server_name) do
     {:error, :invalid_server_reference}
   end
-  
+
   def handle_call(:get_resources, _from, state) do
-    result = if state.ex_mcp_client do
-      case ExMCP.Client.list_resources(state.ex_mcp_client) do
-        {:ok, {"resources", resources}} -> {:ok, resources}
-        {:ok, resources} when is_list(resources) -> {:ok, resources}
-        error -> error
+    result =
+      if state.ex_mcp_client do
+        case ExMCP.Client.list_resources(state.ex_mcp_client) do
+          {:ok, {"resources", resources}} -> {:ok, resources}
+          {:ok, resources} when is_list(resources) -> {:ok, resources}
+          error -> error
+        end
+      else
+        {:error, :not_connected}
       end
-    else
-      {:error, :not_connected}
-    end
-    
+
     {:reply, result, state}
   end
-  
+
   def get_prompts(server_ref) when is_pid(server_ref) do
     GenServer.call(server_ref, :get_prompts)
   end
-  
+
   def get_prompts(server_name) when is_binary(server_name) do
     {:error, :invalid_server_reference}
   end
-  
+
   def handle_call(:get_prompts, _from, state) do
-    result = if state.ex_mcp_client do
-      case ExMCP.Client.list_prompts(state.ex_mcp_client) do
-        {:ok, {"prompts", prompts}} -> {:ok, prompts}
-        {:ok, prompts} when is_list(prompts) -> {:ok, prompts}
-        error -> error
+    result =
+      if state.ex_mcp_client do
+        case ExMCP.Client.list_prompts(state.ex_mcp_client) do
+          {:ok, {"prompts", prompts}} -> {:ok, prompts}
+          {:ok, prompts} when is_list(prompts) -> {:ok, prompts}
+          error -> error
+        end
+      else
+        {:error, :not_connected}
       end
-    else
-      {:error, :not_connected}
-    end
-    
+
     {:reply, result, state}
   end
 
@@ -269,6 +266,7 @@ defmodule MCPChat.MCP.ExMCPAdapter do
     if state.ex_mcp_client do
       GenServer.stop(state.ex_mcp_client)
     end
+
     :ok
   end
 
@@ -291,7 +289,7 @@ defmodule MCPChat.MCP.ExMCPAdapter do
     # Convert MCPChat MCP configuration to ExMCP format
     # Ensure config is a map
     config_map = if is_list(config), do: Enum.into(config, %{}), else: config
-    
+
     case determine_transport(config_map) do
       {:websocket, url} ->
         # ExMCP doesn't have WebSocket transport, so we'd need to implement it
@@ -301,7 +299,7 @@ defmodule MCPChat.MCP.ExMCPAdapter do
       {:stdio, command_config} ->
         # ExMCP expects command to be a list with [executable | args]
         command_list = [command_config.command | command_config.args || []]
-        
+
         [
           transport: ExMCP.Transport.Stdio,
           command: command_list,
@@ -331,6 +329,7 @@ defmodule MCPChat.MCP.ExMCPAdapter do
       # Check for WebSocket URL
       Map.has_key?(config, :url) or Map.has_key?(config, "url") ->
         url = Map.get(config, :url) || Map.get(config, "url")
+
         if String.starts_with?(url, "ws://") or String.starts_with?(url, "wss://") do
           {:websocket, url}
         else
@@ -341,23 +340,26 @@ defmodule MCPChat.MCP.ExMCPAdapter do
       Map.has_key?(config, :command) or Map.has_key?(config, "command") ->
         command = Map.get(config, :command) || Map.get(config, "command")
         # If command is a list, it contains the command and args
-        {cmd, args} = case command do
-          [cmd | args] when is_list(args) -> {cmd, args}
-          cmd when is_binary(cmd) -> {cmd, Map.get(config, :args, [])}
-          _ -> {command, []}
-        end
-        
-        {:stdio, %{
-          command: cmd,
-          args: args,
-          env: Map.get(config, :env, %{}) || Map.get(config, "env", %{})
-        }}
+        {cmd, args} =
+          case command do
+            [cmd | args] when is_list(args) -> {cmd, args}
+            cmd when is_binary(cmd) -> {cmd, Map.get(config, :args, [])}
+            _ -> {command, []}
+          end
+
+        {:stdio,
+         %{
+           command: cmd,
+           args: args,
+           env: Map.get(config, :env, %{}) || Map.get(config, "env", %{})
+         }}
 
       # Check for BEAM target
       Map.has_key?(config, :target) or Map.has_key?(config, "target") ->
-        {:beam, %{
-          target: Map.get(config, :target) || Map.get(config, "target")
-        }}
+        {:beam,
+         %{
+           target: Map.get(config, :target) || Map.get(config, "target")
+         }}
 
       true ->
         {:error, :unknown_transport}
