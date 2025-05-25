@@ -23,6 +23,47 @@ An Elixir-based CLI chat client with support for the Model Context Protocol (MCP
 - 🔧 TOML-based configuration
 - 🔑 Environment variable support for API keys
 
+## Architecture
+
+MCP Chat is built on a modular architecture using extracted Elixir libraries:
+
+### 📦 Extracted Libraries
+
+- **[ex_llm](../ex_llm/)** - All-in-one LLM library with support for multiple providers
+  - Unified API for Anthropic, OpenAI, Ollama, Bedrock, Gemini, and local models
+  - Automatic cost tracking and context window management
+  - Streaming support with configurable options
+  
+- **[ex_mcp](../ex_mcp/)** - Model Context Protocol implementation
+  - Full MCP client and server functionality
+  - Multiple transports: stdio, WebSocket, and BEAM
+  - Server discovery and connection management
+  
+- **[ex_alias](../ex_alias/)** - Command alias system
+  - Define custom command shortcuts
+  - Parameter substitution and command chaining
+  - Circular reference detection
+  
+- **[ex_readline](../ex_readline/)** - Enhanced line editing
+  - Command history with persistence
+  - Tab completion framework
+  - Emacs-style keybindings and arrow key support
+
+### 🔄 Adapter Pattern
+
+MCP Chat uses adapter modules to maintain backward compatibility while leveraging the extracted libraries:
+
+- `MCPChat.LLM.ExLLMAdapter` - Bridges mcp_chat's LLM interface with ex_llm
+- `MCPChat.MCP.ExMCPAdapter` - Bridges mcp_chat's MCP client with ex_mcp  
+- `MCPChat.Alias.ExAliasAdapter` - Bridges mcp_chat's alias system with ex_alias
+- `MCPChat.CLI.ExReadlineAdapter` - Bridges mcp_chat's line reading with ex_readline
+
+This architecture provides:
+- ✅ **Modularity** - Each library handles one responsibility
+- ✅ **Reusability** - Libraries can be used in other projects
+- ✅ **Maintainability** - Clean separation of concerns
+- ✅ **Backward Compatibility** - Existing functionality preserved
+
 ## Installation
 
 ### Prerequisites

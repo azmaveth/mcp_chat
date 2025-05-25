@@ -23,33 +23,17 @@ defmodule McpChat.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # MCP and WebSocket support
-      {:websockex, "~> 0.4.3"},
-      {:jason, "~> 1.4"},
+      # Extracted libraries
+      {:ex_mcp, path: "../ex_mcp"},
+      {:ex_llm, path: "../ex_llm/ex_llm"},
+      {:ex_alias, path: "../ex_alias"},
+      {:ex_readline, path: "../ex_readline"},
 
       # CLI interface
       {:owl, "~> 0.12"},
 
-      # HTTP client for LLM APIs
-      {:req, "~> 0.5"},
-
       # Configuration
       {:toml, "~> 0.7"},
-
-      # AWS SDK for Bedrock
-      {:aws, "~> 1.0"},
-      {:hackney, "~> 1.18"},
-
-      # HTTP server for SSE support
-      {:plug, "~> 1.15"},
-      {:plug_cowboy, "~> 2.7"},
-
-      # Local model support with Bumblebee
-      {:bumblebee, "~> 0.5"},
-      {:nx, "~> 0.7"},
-      # {:exla, "~> 0.9", optional: true},  # Commented out due to compilation issues on macOS
-      {:emlx, github: "elixir-nx/emlx", branch: "main", optional: true},
-      {:ortex, "~> 0.1", optional: true},
 
       # Development dependencies
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

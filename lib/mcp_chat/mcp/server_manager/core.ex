@@ -4,7 +4,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
   Contains pure functions without GenServer state management.
   """
 
-  alias MCPChat.MCP.Server
+  alias MCPChat.MCP.ExMCPAdapter, as: Server
   alias MCPChat.ConfigProvider
   alias MCPChat.LoggerProvider
 

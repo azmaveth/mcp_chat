@@ -12,12 +12,12 @@ An Elixir-based MCP (Model Context Protocol) client that provides a CLI chat int
 ## Architecture
 
 ```
-mcp_chat/
+mcp_chat/                        # Main application (refactored to use extracted libraries)
 ├── lib/
 │   ├── mcp_chat/
 │   │   ├── application.ex      # OTP application supervisor
 │   │   ├── cli/                # CLI interface modules
-│   │   │   ├── chat.ex         # Main chat loop
+│   │   │   ├── chat.ex         # Main chat loop (uses ExLLMAdapter)
 │   │   │   ├── commands/       # Refactored command modules
 │   │   │   │   ├── alias.ex   # Alias management commands
 │   │   │   │   ├── context.ex  # Context management commands
@@ -25,19 +25,17 @@ mcp_chat/
 │   │   │   │   ├── mcp.ex     # MCP server commands
 │   │   │   │   ├── session.ex # Session management commands
 │   │   │   │   └── utility.ex # General utility commands
-│   │   │   └── renderer.ex     # Terminal UI rendering
-│   │   ├── mcp/                # MCP protocol implementation
-│   │   │   ├── client.ex       # MCP client connection
-│   │   │   ├── protocol.ex     # Protocol messages
-│   │   │   └── server.ex       # Server connection manager
-│   │   ├── llm/                # LLM backend adapters
-│   │   │   ├── adapter.ex      # Common adapter behaviour
-│   │   │   ├── openai.ex       # OpenAI API adapter
-│   │   │   ├── anthropic.ex    # Anthropic API adapter
-│   │   │   ├── bedrock.ex      # AWS Bedrock adapter
-│   │   │   ├── gemini.ex       # Google Gemini adapter
-│   │   │   ├── ollama.ex       # Ollama adapter
-│   │   │   └── local.ex        # Bumblebee/Nx local models
+│   │   │   ├── renderer.ex     # Terminal UI rendering
+│   │   │   └── ex_readline_adapter.ex # Adapter for ex_readline
+│   │   ├── mcp/                # Legacy MCP modules (being phased out)
+│   │   │   ├── ex_mcp_adapter.ex      # Adapter for ex_mcp
+│   │   │   ├── server_manager/ # Uses ExMCPAdapter
+│   │   │   └── ... (other legacy modules)
+│   │   ├── llm/                # Legacy LLM modules (being phased out)
+│   │   │   ├── ex_llm_adapter.ex      # Adapter for ex_llm
+│   │   │   └── ... (other legacy modules)
+│   │   ├── alias/              # Alias adapter
+│   │   │   └── ex_alias_adapter.ex    # Adapter for ex_alias
 │   │   ├── config.ex           # Configuration management
 │   │   └── session.ex          # Chat session state
 │   └── mcp_chat.ex             # Main module
@@ -45,20 +43,57 @@ mcp_chat/
 ├── test/                        # Test files
 └── priv/                        # Static assets
 
-Extracted Libraries:
-├── ex_llm/                     # All-in-one LLM library (COMPLETED)
+Extracted Libraries (COMPLETED):
+├── ex_mcp/                     # Model Context Protocol library
+│   ├── lib/
+│   │   ├── ex_mcp.ex          # Main API module
+│   │   ├── ex_mcp/
+│   │   │   ├── client.ex      # MCP client functionality
+│   │   │   ├── server.ex      # MCP server functionality  
+│   │   │   ├── transports/    # Transport implementations
+│   │   │   │   ├── stdio.ex   # Stdio transport
+│   │   │   │   ├── websocket.ex # WebSocket transport
+│   │   │   │   └── beam.ex    # BEAM transport (in progress)
+│   │   │   ├── protocol/      # Protocol implementation
+│   │   │   └── types.ex       # Shared types
+│   └── test/                   # Comprehensive test suite
+├── ex_llm/                     # All-in-one LLM library 
 │   ├── lib/
 │   │   ├── ex_llm.ex          # Main API module
 │   │   ├── ex_llm/
 │   │   │   ├── adapters/      # Provider adapters
+│   │   │   │   ├── anthropic.ex # Anthropic Claude
+│   │   │   │   ├── openai.ex    # OpenAI GPT
+│   │   │   │   ├── ollama.ex    # Ollama local
+│   │   │   │   ├── bedrock.ex   # AWS Bedrock
+│   │   │   │   ├── gemini.ex    # Google Gemini
+│   │   │   │   └── local.ex     # Bumblebee/Nx
 │   │   │   ├── context.ex     # Context window management
 │   │   │   ├── cost.ex        # Cost calculation
-│   │   │   ├── session.ex     # Session management (integrated)
+│   │   │   ├── session.ex     # Session management
 │   │   │   └── types.ex       # Shared types
 │   └── test/                   # Comprehensive test suite
+├── ex_alias/                   # Command alias system
+│   ├── lib/
+│   │   ├── ex_alias.ex        # Main API module
+│   │   ├── ex_alias/
+│   │   │   ├── core.ex        # Pure functional core
+│   │   │   └── persistence.ex # JSON persistence
+│   └── test/                   # Test suite
+└── ex_readline/                # Line editing library
+    ├── lib/
+    │   ├── ex_readline.ex     # Main API module
+    │   ├── ex_readline/
+    │   │   ├── simple_reader.ex  # Simple IO-based reader
+    │   │   └── line_editor.ex    # Advanced readline features
+    └── test/                   # Test suite
 
-Note: ex_session was integrated into ex_llm for a complete all-in-one solution
-Note: ex_alias has not been extracted yet - still exists as MCPChat.Alias
+Architecture Benefits (ACHIEVED):
+✅ Modular design - Each library handles one responsibility
+✅ Reusable components - Libraries can be used in other projects  
+✅ Adapter pattern - Maintains backward compatibility
+✅ Reduced dependencies - Removed WebSockex, AWS, Req, Plug deps
+✅ Clean separation - LLM, MCP, Alias, and Readline concerns separated
 ```
 
 ## Tasks
@@ -246,14 +281,32 @@ history_size = 1000
     - Distributed MCP servers across Erlang cluster
     - High-performance local tool execution
 
-## Phase 10: Library Extraction (COMPLETED)
-- [x] Extract reusable components into standalone Hex packages
-  - [ ] **ex_mcp** - Model Context Protocol client/server library
-    - [ ] All MCP protocol implementation
-    - [ ] Stdio, SSE, and BEAM transports
-    - [ ] Server manager and discovery
-    - [ ] Client connection handling
-    - [ ] Would enable any Elixir app to add MCP support
+## Phase 10: Library Extraction and Refactoring (COMPLETED)
+- [x] Extract reusable components into standalone libraries
+- [x] Refactor mcp_chat to use extracted libraries
+  - [x] Update dependencies in mix.exs to use path dependencies
+  - [x] Remove external dependencies (websockex, aws, req, plug)
+  - [x] Create adapter modules to bridge API differences
+    - [x] MCPChat.LLM.ExLLMAdapter - Unified LLM interface
+    - [x] MCPChat.Alias.ExAliasAdapter - Command alias management
+    - [x] MCPChat.CLI.ExReadlineAdapter - Line reading with history
+    - [x] MCPChat.MCP.ExMCPAdapter - MCP client functionality
+  - [x] Update application supervision tree
+  - [x] Fix API compatibility issues between old and new interfaces
+  - [x] Update imports throughout codebase
+  - [x] Successfully test refactored application startup
+  - [x] **ex_mcp** - Model Context Protocol client/server library (COMPLETED)
+    - [x] All MCP protocol implementation
+    - [x] Stdio, SSE, and BEAM transports (stdio and SSE completed)
+    - [x] Server manager and discovery
+    - [x] Client connection handling
+    - [x] Would enable any Elixir app to add MCP support
+    - [x] Full protocol encoder/decoder with JSON-RPC support
+    - [x] Transport behaviour for extensibility
+    - [x] Automatic reconnection with exponential backoff
+    - [x] Server discovery from environment, config files, and well-known locations
+    - [x] Comprehensive test coverage
+    - [x] Published to local directory: `/Users/azmaveth/code/ex_mcp`
   - [x] **ex_llm** - All-in-one Elixir LLM library (COMPLETED)
     - [x] Unified adapter interface for multiple providers
     - [x] Anthropic, OpenAI (planned), Ollama (planned) adapters
@@ -271,31 +324,46 @@ history_size = 1000
     - [x] Comprehensive error handling
     - [x] Full test coverage
     - [x] Published to local directory: `/Users/azmaveth/code/ex_llm/ex_llm`
-  - [ ] **ex_llm_local** - Local model support via Bumblebee
-    - [ ] Model loading/unloading
-    - [ ] EXLA/EMLX configuration
-    - [ ] Hardware acceleration detection
-    - [ ] Optimized inference settings
-    - Note: May be integrated into ex_llm in the future
+    - [x] Added instructor_ex support for structured outputs
+      - [x] Integrated ExLLM.Instructor module
+      - [x] Support for Ecto schemas and simple type specs
+      - [x] Automatic validation and retry logic
+      - [x] JSON extraction from markdown-wrapped responses
+      - [x] Compatible with Anthropic, OpenAI, Ollama, and Gemini adapters
+  - [x] **ex_llm_local** - Local model support via Bumblebee (INTEGRATED INTO ex_llm)
+    - [x] Model loading/unloading (via ExLLM.Adapters.Local.ModelLoader)
+    - [x] EXLA/EMLX configuration (via ExLLM.Adapters.Local.EXLAConfig)
+    - [x] Hardware acceleration detection (Metal, CUDA, ROCm support)
+    - [x] Optimized inference settings
+    - [x] Integrated into ex_llm as ExLLM.Adapters.Local module
   - [x] **ex_session** - Pure functional session management (INTEGRATED INTO ex_llm)
     - [x] Message history management
     - [x] Token usage tracking
     - [x] JSON persistence
     - [x] Metadata handling (timestamps, etc.)
     - [x] Integrated into ex_llm as ExLLM.Session module
-  - [ ] **ex_alias** - Command alias system (NOT YET EXTRACTED)
-    - [x] Alias definition and storage (exists in mcp_chat)
-    - [x] Parameter substitution (exists in mcp_chat)
-    - [x] Command expansion (exists in mcp_chat)
-    - [x] Circular reference detection (exists in mcp_chat)
-    - [x] JSON persistence (exists in mcp_chat)
-    - [ ] Extract to standalone library
-    - Note: Currently exists as MCPChat.Alias in the main project
-  - [ ] **ex_readline** - Better line editing for Elixir
-    - [ ] Proper terminal handling
-    - [ ] Command history
-    - [ ] Keybinding support
-    - [ ] Tab completion framework
+  - [x] **ex_alias** - Command alias system (COMPLETED)
+    - [x] Alias definition and storage
+    - [x] Parameter substitution
+    - [x] Command expansion with recursive support
+    - [x] Circular reference detection
+    - [x] JSON persistence
+    - [x] Pure functional core (ExAlias.Core)
+    - [x] GenServer wrapper for stateful usage
+    - [x] Reserved command protection
+    - [x] Comprehensive test coverage
+    - [x] Published to local directory: `/Users/azmaveth/code/ex_alias`
+  - [x] **ex_readline** - Better line editing for Elixir (COMPLETED)
+    - [x] Two implementations: simple (Erlang IO) and advanced (full readline)
+    - [x] Proper terminal handling with raw mode support
+    - [x] Command history with persistence
+    - [x] Emacs-style keybindings and arrow key support
+    - [x] Tab completion framework
+    - [x] Word-based movement and editing
+    - [x] Kill ring (cut/paste) functionality
+    - [x] GenServer-based architecture
+    - [x] Comprehensive test coverage
+    - [x] Published to local directory: `/Users/azmaveth/code/ex_readline`
   - [x] Design decisions made:
     - Combined ex_llm, ex_context, and ex_llm_cost into single ex_llm library
     - Created ex_llm as comprehensive all-in-one solution for Elixir LLM needs

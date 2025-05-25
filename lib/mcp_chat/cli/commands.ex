@@ -73,7 +73,7 @@ defmodule MCPChat.CLI.Commands do
       @command_handlers
       |> Map.keys()
       |> Kernel.++(["exit", "quit"])
-      |> Kernel.++(Map.keys(MCPChat.Alias.list_aliases()))
+      |> Kernel.++(Map.keys(MCPChat.Alias.ExAliasAdapter.list_aliases()))
 
     # Filter by prefix
     all_commands
@@ -90,7 +90,7 @@ defmodule MCPChat.CLI.Commands do
     args = List.wrap(args) |> List.flatten()
 
     # Check if it's an alias first
-    if MCPChat.Alias.is_alias?(cmd) do
+    if MCPChat.Alias.ExAliasAdapter.is_alias?(cmd) do
       case Alias.execute_alias(cmd, args) do
         {:execute, expanded_command} ->
           # Recursively handle the expanded command

@@ -11,7 +11,7 @@ defmodule MCPChat.CLI.Commands.Alias do
 
   use MCPChat.CLI.Commands.Base
 
-  alias MCPChat.Alias
+  alias MCPChat.Alias.ExAliasAdapter, as: Alias
 
   @impl true
   def commands() do

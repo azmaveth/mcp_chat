@@ -12,7 +12,7 @@ defmodule MCPChat.CLI.Chat do
     Renderer.show_welcome()
 
     # Set up command completion
-    MCPChat.CLI.SimpleLineReader.set_completion_fn(&Commands.get_completions/1)
+    MCPChat.CLI.ExReadlineAdapter.set_completion_fn(&Commands.get_completions/1)
 
     # Start the chat loop
     chat_loop()
@@ -23,7 +23,7 @@ defmodule MCPChat.CLI.Chat do
     IO.write("\n")
     prompt = Renderer.format_prompt()
 
-    case MCPChat.CLI.SimpleLineReader.read_line(prompt) do
+    case MCPChat.CLI.ExReadlineAdapter.read_line(prompt) do
       :eof ->
         Renderer.show_goodbye()
         :ok
@@ -94,7 +94,7 @@ defmodule MCPChat.CLI.Chat do
     adapter = get_llm_adapter(session.llm_backend)
 
     # Build options from session context
-    options = []
+    options = [{:provider, session.llm_backend}]
     options = if session.context[:model], do: [{:model, session.context[:model]} | options], else: options
 
     options =
@@ -103,7 +103,7 @@ defmodule MCPChat.CLI.Chat do
         else: options
 
     # Check if adapter is configured
-    if not adapter.configured?() do
+    if not adapter.configured?(session.llm_backend) do
       backend_name = session.llm_backend
 
       env_var =
@@ -137,13 +137,7 @@ defmodule MCPChat.CLI.Chat do
     end
   end
 
-  defp get_llm_adapter("anthropic"), do: MCPChat.LLM.Anthropic
-  defp get_llm_adapter("openai"), do: MCPChat.LLM.OpenAI
-  defp get_llm_adapter("local"), do: MCPChat.LLM.Local
-  defp get_llm_adapter("ollama"), do: MCPChat.LLM.Ollama
-  defp get_llm_adapter("bedrock"), do: MCPChat.LLM.Bedrock
-  defp get_llm_adapter("gemini"), do: MCPChat.LLM.Gemini
-  defp get_llm_adapter(_), do: MCPChat.LLM.Anthropic
+  defp get_llm_adapter(_), do: MCPChat.LLM.ExLLMAdapter
 
   defp stream_response(adapter, messages, options) do
     case adapter.stream_chat(messages, options) do

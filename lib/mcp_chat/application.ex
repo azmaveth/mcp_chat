@@ -13,11 +13,11 @@ defmodule MCPChat.Application do
         # Session manager
         MCPChat.Session,
         # Alias manager
-        MCPChat.Alias,
+        MCPChat.Alias.ExAliasAdapter,
         # Model loader for local LLMs
         MCPChat.LLM.ModelLoader,
         # Line editor for CLI input
-        MCPChat.CLI.SimpleLineReader,
+        MCPChat.CLI.ExReadlineAdapter,
         # MCP server manager (handles the dynamic supervisor internally)
         MCPChat.MCP.ServerManager
       ] ++ mcp_server_children()
@@ -38,29 +38,30 @@ defmodule MCPChat.Application do
 
     children = []
 
+    # TODO: Update MCP server components to use ex_mcp
     # Add stdio server if enabled
-    children =
-      if config[:stdio_enabled] do
-        [MCPChat.MCPServer.StdioServer | children]
-      else
-        children
-      end
+    # children =
+    #   if config[:stdio_enabled] do
+    #     [MCPChat.MCPServer.StdioServer | children]
+    #   else
+    #     children
+    #   end
 
     # Add SSE server if enabled
-    children =
-      if config[:sse_enabled] do
-        port = config[:sse_port] || 8_080
+    # children =
+    #   if config[:sse_enabled] do
+    #     port = config[:sse_port] || 8_080
 
-        [
-          %{
-            id: MCPChat.MCPServer.SSEServer,
-            start: {MCPChat.MCPServer.SSEServer, :start_link, [[port: port]]}
-          }
-          | children
-        ]
-      else
-        children
-      end
+    #     [
+    #       %{
+    #         id: MCPChat.MCPServer.SSEServer,
+    #         start: {MCPChat.MCPServer.SSEServer, :start_link, [[port: port]]}
+    #       }
+    #       | children
+    #     ]
+    #   else
+    #     children
+    #   end
 
     children
   end
