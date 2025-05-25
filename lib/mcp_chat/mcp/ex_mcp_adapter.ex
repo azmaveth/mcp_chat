@@ -207,10 +207,12 @@ defmodule MCPChat.MCP.ExMCPAdapter do
         {:error, :websocket_not_supported}
 
       {:stdio, command_config} ->
+        # ExMCP expects command to be a list with [executable | args]
+        command_list = [command_config.command | command_config.args || []]
+        
         [
           transport: ExMCP.Transport.Stdio,
-          command: command_config.command,
-          args: command_config.args || [],
+          command: command_list,
           env: command_config.env || %{}
         ]
 
