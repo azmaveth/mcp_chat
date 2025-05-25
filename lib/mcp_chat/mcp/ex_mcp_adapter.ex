@@ -274,14 +274,18 @@ defmodule MCPChat.MCP.ExMCPAdapter do
 
   defp start_ex_mcp_client(config) do
     # Convert MCPChat config format to ExMCP format
-    ex_mcp_config = convert_config(config)
+    case convert_config(config) do
+      {:error, reason} ->
+        {:error, reason}
 
-    case ExMCP.Client.start_link(ex_mcp_config) do
-      {:ok, client} ->
-        {:ok, client}
+      ex_mcp_config ->
+        case ExMCP.Client.start_link(ex_mcp_config) do
+          {:ok, client} ->
+            {:ok, client}
 
-      error ->
-        error
+          error ->
+            error
+        end
     end
   end
 
@@ -326,6 +330,38 @@ defmodule MCPChat.MCP.ExMCPAdapter do
 
   defp determine_transport(config) do
     cond do
+      # Check for explicit transport type
+      Map.has_key?(config, :transport) or Map.has_key?(config, "transport") ->
+        transport = Map.get(config, :transport) || Map.get(config, "transport")
+
+        case transport do
+          :stdio ->
+            command = Map.get(config, :command) || Map.get(config, "command")
+            # If command is a list, it contains the command and args
+            {cmd, args} =
+              case command do
+                [cmd | args] when is_list(args) -> {cmd, args}
+                cmd when is_binary(cmd) -> {cmd, Map.get(config, :args, [])}
+                _ -> {command, []}
+              end
+
+            {:stdio,
+             %{
+               command: cmd,
+               args: args,
+               env: Map.get(config, :env, %{}) || Map.get(config, "env", %{})
+             }}
+
+          :sse ->
+            {:sse, %{url: Map.get(config, :url) || Map.get(config, "url"), headers: Map.get(config, :headers, %{})}}
+
+          :beam ->
+            {:beam, %{target: Map.get(config, :target) || Map.get(config, "target")}}
+
+          _ ->
+            {:error, :unknown_transport}
+        end
+
       # Check for WebSocket URL
       Map.has_key?(config, :url) or Map.has_key?(config, "url") ->
         url = Map.get(config, :url) || Map.get(config, "url")

@@ -76,7 +76,7 @@ defmodule MCPChat.MCP.ServerManager do
   @impl true
   def init(_opts) do
     # Start the registry for MCP servers
-    {:ok, _} = Registry.start_link(keys: :unique, name: MCPChat.MCP.ServerRegistry)
+    # Registry no longer needed - ExMCPAdapter manages its own process references
 
     state = Core.new_state()
 

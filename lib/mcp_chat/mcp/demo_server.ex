@@ -4,7 +4,6 @@ defmodule MCPChat.MCP.DemoServer do
   """
 
   use GenServer
-  alias MCPChat.MCP.Protocol
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)

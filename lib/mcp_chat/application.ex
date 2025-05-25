@@ -12,7 +12,9 @@ defmodule MCPChat.Application do
         MCPChat.Config,
         # Session manager
         MCPChat.Session,
-        # Alias manager
+        # ExAlias server (must be started before the adapter)
+        ExAlias,
+        # Alias manager adapter
         MCPChat.Alias.ExAliasAdapter,
         # Line editor for CLI input
         MCPChat.CLI.ExReadlineAdapter,
@@ -36,30 +38,52 @@ defmodule MCPChat.Application do
 
     children = []
 
-    # TODO: Update MCP server components to use ex_mcp
-    # Add stdio server if enabled
-    # children =
-    #   if config[:stdio_enabled] do
-    #     [MCPChat.MCPServer.StdioServer | children]
-    #   else
-    #     children
-    #   end
+    # Add MCP server using ex_mcp if enabled
+    children =
+      if config[:stdio_enabled] do
+        [
+          %{
+            id: MCPChat.MCPServer.Stdio,
+            start:
+              {ExMCP.Server, :start_link,
+               [
+                 [
+                   handler: MCPChat.MCPServerHandler,
+                   transport: :stdio,
+                   name: {:local, MCPChat.MCPServer.Stdio}
+                 ]
+               ]}
+          }
+          | children
+        ]
+      else
+        children
+      end
 
     # Add SSE server if enabled
-    # children =
-    #   if config[:sse_enabled] do
-    #     port = config[:sse_port] || 8_080
+    children =
+      if config[:sse_enabled] do
+        port = config[:sse_port] || 8_080
 
-    #     [
-    #       %{
-    #         id: MCPChat.MCPServer.SSEServer,
-    #         start: {MCPChat.MCPServer.SSEServer, :start_link, [[port: port]]}
-    #       }
-    #       | children
-    #     ]
-    #   else
-    #     children
-    #   end
+        [
+          %{
+            id: MCPChat.MCPServer.SSE,
+            start:
+              {ExMCP.Server, :start_link,
+               [
+                 [
+                   handler: MCPChat.MCPServerHandler,
+                   transport: :sse,
+                   transport_opts: [port: port],
+                   name: {:local, MCPChat.MCPServer.SSE}
+                 ]
+               ]}
+          }
+          | children
+        ]
+      else
+        children
+      end
 
     children
   end

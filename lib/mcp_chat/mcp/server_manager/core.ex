@@ -276,18 +276,16 @@ defmodule MCPChat.MCP.ServerManager.Core do
     cond do
       name && command ->
         # Stdio transport
+        server_config = %{
+          name: name,
+          command: command,
+          env: env,
+          transport: :stdio
+        }
+
         child_spec = %{
           id: {Server, name},
-          start:
-            {Server, :start_link,
-             [
-               [
-                 name: name,
-                 command: command,
-                 env: env,
-                 auto_connect: true
-               ]
-             ]},
+          start: {Server, :start_link, [server_config, []]},
           restart: :temporary
         }
 
@@ -302,17 +300,15 @@ defmodule MCPChat.MCP.ServerManager.Core do
 
       name && url ->
         # SSE transport
+        server_config = %{
+          name: name,
+          url: url,
+          transport: :sse
+        }
+
         child_spec = %{
           id: {Server, name},
-          start:
-            {Server, :start_link,
-             [
-               [
-                 name: name,
-                 url: url,
-                 auto_connect: true
-               ]
-             ]},
+          start: {Server, :start_link, [server_config, []]},
           restart: :temporary
         }
 

@@ -54,48 +54,42 @@ defmodule MCPChat.Alias.ExAliasAdapter do
 
   @impl true
   def init(opts) do
-    # Initialize ExAlias
-    case ExAlias.start_link(opts) do
-      {:ok, ex_alias_pid} ->
-        # Load existing aliases if available
-        load_mcp_chat_aliases(ex_alias_pid)
+    # Load existing aliases if available
+    load_mcp_chat_aliases()
 
-        {:ok, %{ex_alias_pid: ex_alias_pid}}
-
-      error ->
-        error
-    end
+    # Use ExAlias as the name - it should already be started by the supervision tree
+    {:ok, %{ex_alias_name: ExAlias}}
   end
 
   @impl true
   def handle_call({:define_alias, name, commands}, _from, state) do
-    result = GenServer.call(state.ex_alias_pid, {:define_alias, name, commands})
+    result = GenServer.call(state.ex_alias_name, {:define_alias, name, commands})
     {:reply, result, state}
   end
 
   def handle_call({:remove_alias, name}, _from, state) do
-    result = GenServer.call(state.ex_alias_pid, {:remove_alias, name})
+    result = GenServer.call(state.ex_alias_name, {:remove_alias, name})
     {:reply, result, state}
   end
 
   def handle_call({:get_alias, name}, _from, state) do
-    result = GenServer.call(state.ex_alias_pid, {:get_alias, name})
+    result = GenServer.call(state.ex_alias_name, {:get_alias, name})
     {:reply, result, state}
   end
 
   def handle_call(:list_aliases, _from, state) do
-    result = GenServer.call(state.ex_alias_pid, :list_aliases)
+    result = GenServer.call(state.ex_alias_name, :list_aliases)
     {:reply, result, state}
   end
 
   def handle_call({:expand_alias, input}, _from, state) do
-    result = GenServer.call(state.ex_alias_pid, {:expand_alias, input})
+    result = GenServer.call(state.ex_alias_name, {:expand_alias, input})
     {:reply, result, state}
   end
 
   def handle_call(:save, _from, state) do
     # Save to mcp_chat's expected location
-    aliases = GenServer.call(state.ex_alias_pid, :list_aliases)
+    aliases = GenServer.call(state.ex_alias_name, :list_aliases)
     result = save_to_mcp_chat_format(aliases)
     {:reply, result, state}
   end
@@ -106,14 +100,14 @@ defmodule MCPChat.Alias.ExAliasAdapter do
       {:ok, aliases} ->
         # Clear existing aliases and load new ones
         # Note: ExAlias doesn't have clear_aliases, we'll need to remove individually
-        {:ok, current_aliases} = GenServer.call(state.ex_alias_pid, :list_aliases)
+        current_aliases = GenServer.call(state.ex_alias_name, :list_aliases)
 
-        Enum.each(Map.keys(current_aliases), fn name ->
-          GenServer.call(state.ex_alias_pid, {:remove_alias, name})
+        Enum.each(current_aliases, fn %{name: name} ->
+          GenServer.call(state.ex_alias_name, {:remove_alias, name})
         end)
 
         Enum.each(aliases, fn {name, commands} ->
-          GenServer.call(state.ex_alias_pid, {:define_alias, name, commands})
+          GenServer.call(state.ex_alias_name, {:define_alias, name, commands})
         end)
 
         {:reply, :ok, state}
@@ -125,11 +119,11 @@ defmodule MCPChat.Alias.ExAliasAdapter do
 
   # Private helper functions
 
-  defp load_mcp_chat_aliases(ex_alias_pid) do
+  defp load_mcp_chat_aliases() do
     case load_from_mcp_chat_format() do
       {:ok, aliases} ->
         Enum.each(aliases, fn {name, commands} ->
-          GenServer.call(ex_alias_pid, {:define_alias, name, commands})
+          GenServer.call(ExAlias, {:define_alias, name, commands})
         end)
 
       {:error, _reason} ->
@@ -139,13 +133,13 @@ defmodule MCPChat.Alias.ExAliasAdapter do
   end
 
   defp save_to_mcp_chat_format(aliases) do
-    # Convert ExAlias format to MCPChat's expected JSON format
-    alias_data =
+    # Convert ExAlias format (list of maps) to MCPChat's expected JSON format (map)
+    alias_map =
       aliases
+      |> Enum.map(fn %{name: name, commands: commands} -> {name, commands} end)
       |> Enum.into(%{})
-      |> Jason.encode()
 
-    case alias_data do
+    case Jason.encode(alias_map) do
       {:ok, json} ->
         file_path = get_mcp_chat_alias_file()
 
