@@ -535,35 +535,14 @@ defmodule MCPChat.CLI.Commands.MCP do
   # Helper functions to get server-specific data
 
   defp get_server_tools(server_name) do
-    case ServerManager.get_server(server_name) do
-      {:ok, server_info} ->
-        tools = Map.get(server_info.capabilities || %{}, "tools", [])
-        {:ok, tools}
-
-      {:error, _} = error ->
-        error
-    end
+    ServerManager.get_tools(server_name)
   end
 
   defp get_server_resources(server_name) do
-    case ServerManager.get_server(server_name) do
-      {:ok, server_info} ->
-        resources = Map.get(server_info.capabilities || %{}, "resources", [])
-        {:ok, resources}
-
-      {:error, _} = error ->
-        error
-    end
+    ServerManager.get_resources(server_name)
   end
 
   defp get_server_prompts(server_name) do
-    case ServerManager.get_server(server_name) do
-      {:ok, server_info} ->
-        prompts = Map.get(server_info.capabilities || %{}, "prompts", [])
-        {:ok, prompts}
-
-      {:error, _} = error ->
-        error
-    end
+    ServerManager.get_prompts(server_name)
   end
 end

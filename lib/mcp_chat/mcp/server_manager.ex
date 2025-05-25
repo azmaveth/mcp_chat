@@ -58,6 +58,18 @@ defmodule MCPChat.MCP.ServerManager do
   def get_prompt(server_name, prompt_name, arguments \\ %{}) do
     GenServer.call(__MODULE__, {:get_prompt, server_name, prompt_name, arguments})
   end
+  
+  def get_tools(server_name) do
+    GenServer.call(__MODULE__, {:get_tools, server_name})
+  end
+  
+  def get_resources(server_name) do
+    GenServer.call(__MODULE__, {:get_resources, server_name})
+  end
+  
+  def get_prompts(server_name) do
+    GenServer.call(__MODULE__, {:get_prompts, server_name})
+  end
 
   # Server Callbacks
 
@@ -147,6 +159,30 @@ defmodule MCPChat.MCP.ServerManager do
   def handle_call({:get_prompt, server_name, prompt_name, arguments}, _from, state) do
     result = Core.get_prompt(state, server_name, prompt_name, arguments)
     {:reply, result, state}
+  end
+  
+  @impl true
+  def handle_call({:get_tools, server_name}, _from, state) do
+    case Map.get(state.servers, server_name) do
+      nil -> {:reply, {:error, :not_found}, state}
+      pid -> {:reply, MCPChat.MCP.ExMCPAdapter.get_tools(pid), state}
+    end
+  end
+  
+  @impl true
+  def handle_call({:get_resources, server_name}, _from, state) do
+    case Map.get(state.servers, server_name) do
+      nil -> {:reply, {:error, :not_found}, state}
+      pid -> {:reply, MCPChat.MCP.ExMCPAdapter.get_resources(pid), state}
+    end
+  end
+  
+  @impl true
+  def handle_call({:get_prompts, server_name}, _from, state) do
+    case Map.get(state.servers, server_name) do
+      nil -> {:reply, {:error, :not_found}, state}
+      pid -> {:reply, MCPChat.MCP.ExMCPAdapter.get_prompts(pid), state}
+    end
   end
 
   @impl true
