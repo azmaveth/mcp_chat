@@ -55,8 +55,8 @@ defmodule MCPChat.MCPServer.Handler do
             },
             backend: %{
               type: "string",
-              description: "Optional: LLM backend to use (anthropic, openai, local)",
-              enum: ["anthropic", "openai", "local"]
+              description: "Optional: LLM backend to use (anthropic, openai, local, ollama, bedrock, gemini)",
+              enum: ["anthropic", "openai", "local", "ollama", "bedrock", "gemini"]
             }
           },
           required: ["message"]
@@ -71,7 +71,7 @@ defmodule MCPChat.MCPServer.Handler do
             backend: %{
               type: "string",
               description: "Optional: LLM backend to use",
-              enum: ["anthropic", "openai", "local"]
+              enum: ["anthropic", "openai", "local", "ollama", "bedrock", "gemini"]
             }
           }
         }
@@ -240,10 +240,20 @@ defmodule MCPChat.MCPServer.Handler do
 
     adapter = get_llm_adapter(session.llm_backend)
 
-    case adapter.chat(messages) do
+    # Pass the provider as an option
+    options = [{:provider, String.to_atom(session.llm_backend)}]
+
+    case adapter.chat(messages, options) do
       {:ok, response} ->
-        Session.add_message("assistant", response)
-        {:ok, %{content: [%{type: "text", text: response}]}}
+        content =
+          case response do
+            %{content: content} -> content
+            content when is_binary(content) -> content
+            _ -> "No response"
+          end
+
+        Session.add_message("assistant", content)
+        {:ok, %{content: [%{type: "text", text: content}]}}
 
       {:error, reason} ->
         {:error, reason}
@@ -341,13 +351,7 @@ defmodule MCPChat.MCPServer.Handler do
 
   # Helper functions
 
-  defp get_llm_adapter("anthropic"), do: MCPChat.LLM.Anthropic
-  defp get_llm_adapter("openai"), do: MCPChat.LLM.OpenAI
-  defp get_llm_adapter("local"), do: MCPChat.LLM.Local
-  defp get_llm_adapter("ollama"), do: MCPChat.LLM.Ollama
-  defp get_llm_adapter("bedrock"), do: MCPChat.LLM.Bedrock
-  defp get_llm_adapter("gemini"), do: MCPChat.LLM.Gemini
-  defp get_llm_adapter(_), do: MCPChat.LLM.Anthropic
+  defp get_llm_adapter(_backend), do: MCPChat.LLM.ExLLMAdapter
 
   defp format_history(messages) do
     messages

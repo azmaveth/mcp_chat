@@ -34,6 +34,9 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Extract provider and options
     {provider, ex_llm_options} = extract_options(options)
 
+    # Add config provider to options
+    ex_llm_options = [{:config_provider, ExLLM.ConfigProvider.Env} | ex_llm_options]
+
     # Call ExLLM
     case ExLLM.chat(provider, ex_llm_messages, ex_llm_options) do
       {:ok, response} ->
@@ -52,6 +55,9 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Extract provider and options
     {provider, ex_llm_options} = extract_options(options)
 
+    # Add config provider to options
+    ex_llm_options = [{:config_provider, ExLLM.ConfigProvider.Env} | ex_llm_options]
+
     # Call ExLLM streaming
     case ExLLM.stream_chat(provider, ex_llm_messages, ex_llm_options) do
       {:ok, stream} ->
@@ -67,12 +73,14 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   @impl MCPChat.LLM.Adapter
   def configured?() do
     # Check if at least one provider is configured
-    ExLLM.configured?(:anthropic) or ExLLM.configured?(:openai) or ExLLM.configured?(:ollama)
+    options = [{:config_provider, ExLLM.ConfigProvider.Env}]
+    ExLLM.configured?(:anthropic, options) or ExLLM.configured?(:openai, options) or ExLLM.configured?(:ollama, options)
   end
 
   def configured?(provider_name) when is_binary(provider_name) do
     provider_atom = String.to_atom(provider_name)
-    ExLLM.configured?(provider_atom)
+    options = [{:config_provider, ExLLM.ConfigProvider.Env}]
+    ExLLM.configured?(provider_atom, options)
   end
 
   @impl MCPChat.LLM.Adapter
@@ -84,19 +92,45 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   @impl MCPChat.LLM.Adapter
   def list_models() do
     # Try to list models from configured providers
-    providers = [:anthropic, :openai, :ollama]
+    providers = [:anthropic, :openai, :ollama, :bedrock, :gemini, :local]
+    options = [{:config_provider, ExLLM.ConfigProvider.Env}]
 
     models =
       providers
-      |> Enum.filter(&ExLLM.configured?/1)
+      |> Enum.filter(&ExLLM.configured?(&1, options))
       |> Enum.flat_map(fn provider ->
-        case ExLLM.list_models(provider) do
+        case ExLLM.list_models(provider, options) do
           {:ok, models} -> Enum.map(models, & &1.name)
           {:error, _} -> []
         end
       end)
 
     {:ok, models}
+  end
+
+  def list_models(options) when is_list(options) do
+    # Handle provider-specific listing
+    provider = Keyword.get(options, :provider, :anthropic)
+
+    # Add config provider
+    ex_llm_options = [{:config_provider, ExLLM.ConfigProvider.Env}]
+
+    case ExLLM.list_models(provider, ex_llm_options) do
+      {:ok, models} ->
+        # Convert ExLLM model format to MCPChat format
+        converted_models =
+          Enum.map(models, fn model ->
+            %{
+              id: model.id,
+              name: model.name
+            }
+          end)
+
+        {:ok, converted_models}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   # Private helper functions
@@ -195,6 +229,44 @@ defmodule MCPChat.LLM.ExLLMAdapter do
         adapters
       end
 
+    # Add Bedrock adapter if configured
+    adapters =
+      if Map.has_key?(llm_config, "bedrock") do
+        bedrock_config = Map.get(llm_config, "bedrock", %{})
+
+        bedrock_adapter = %{
+          adapter: ExLLM.Adapters.Bedrock,
+          config: %{
+            access_key_id: Map.get(bedrock_config, "access_key_id") || System.get_env("AWS_ACCESS_KEY_ID"),
+            secret_access_key: Map.get(bedrock_config, "secret_access_key") || System.get_env("AWS_SECRET_ACCESS_KEY"),
+            region: Map.get(bedrock_config, "region", "us-east-1"),
+            model: Map.get(bedrock_config, "model", "claude-3-sonnet")
+          }
+        }
+
+        [bedrock_adapter | adapters]
+      else
+        adapters
+      end
+
+    # Add Gemini adapter if configured
+    adapters =
+      if Map.has_key?(llm_config, "gemini") do
+        gemini_config = Map.get(llm_config, "gemini", %{})
+
+        gemini_adapter = %{
+          adapter: ExLLM.Adapters.Gemini,
+          config: %{
+            api_key: Map.get(gemini_config, "api_key") || System.get_env("GOOGLE_API_KEY"),
+            model: Map.get(gemini_config, "model", "gemini-pro")
+          }
+        }
+
+        [gemini_adapter | adapters]
+      else
+        adapters
+      end
+
     %{
       adapters: adapters,
       default_adapter: default_backend,
@@ -262,5 +334,66 @@ defmodule MCPChat.LLM.ExLLMAdapter do
       delta: ex_llm_chunk.content || "",
       finish_reason: ex_llm_chunk.finish_reason
     }
+  end
+
+  # Model loader functions for local model support
+
+  @doc """
+  Load a model for local inference.
+  Delegates to ExLLM.Local.ModelLoader if available.
+  """
+  def load_model(model_id) do
+    if model_loader_available?() do
+      ExLLM.Local.ModelLoader.load_model(model_id)
+    else
+      {:error, "Model loader not available. Ensure ex_llm is properly configured."}
+    end
+  end
+
+  @doc """
+  Unload a model from memory.
+  Delegates to ExLLM.Local.ModelLoader if available.
+  """
+  def unload_model(model_id) do
+    if model_loader_available?() do
+      ExLLM.Local.ModelLoader.unload_model(model_id)
+    else
+      {:error, "Model loader not available. Ensure ex_llm is properly configured."}
+    end
+  end
+
+  @doc """
+  List loaded models.
+  Delegates to ExLLM.Local.ModelLoader if available.
+  """
+  def list_loaded_models() do
+    if model_loader_available?() do
+      ExLLM.Local.ModelLoader.list_loaded_models()
+    else
+      []
+    end
+  end
+
+  @doc """
+  Get hardware acceleration info.
+  Delegates to ExLLM.Local.EXLAConfig if available.
+  """
+  def acceleration_info() do
+    if Code.ensure_loaded?(ExLLM.Local.EXLAConfig) do
+      ExLLM.Local.EXLAConfig.acceleration_info()
+    else
+      %{
+        type: :cpu,
+        name: "CPU",
+        backend: "Not available"
+      }
+    end
+  end
+
+  defp model_loader_available?() do
+    case Process.whereis(ExLLM.Local.ModelLoader) do
+      nil -> false
+      _pid -> true
+    end
   end
 end

@@ -74,12 +74,13 @@ defmodule MCPChat.CLI.Commands.LLM do
           adapter = get_adapter_module(backend)
 
           # Check if it's configured
-          if adapter && function_exported?(adapter, :configured?, 0) && adapter.configured?() do
+          if adapter && function_exported?(adapter, :configured?, 1) && adapter.configured?(backend) do
             MCPChat.Session.update_session(%{llm_backend: backend})
             show_success("Switched to #{backend} backend")
 
             # Show available models for this backend
-            case adapter && function_exported?(adapter, :list_models, 0) && adapter.list_models() do
+            case adapter && function_exported?(adapter, :list_models, 1) &&
+                   adapter.list_models([{:provider, String.to_atom(backend)}]) do
               {:ok, models} when is_list(models) and length(models) > 0 ->
                 show_info("Available models: #{format_model_list(models)}")
 
@@ -121,7 +122,8 @@ defmodule MCPChat.CLI.Commands.LLM do
     show_info("Current backend: #{backend}")
     show_info("Current model: #{current_model}")
 
-    case adapter && function_exported?(adapter, :list_models, 0) && adapter.list_models() do
+    case adapter && function_exported?(adapter, :list_models, 1) &&
+           adapter.list_models([{:provider, String.to_atom(backend)}]) do
       {:ok, models} ->
         show_info("\nAvailable models:")
         display_models(models, backend)
@@ -143,7 +145,7 @@ defmodule MCPChat.CLI.Commands.LLM do
         show_info("Loading model: #{model_id}")
         show_info("This may take a while for first-time downloads...")
 
-        case MCPChat.LLM.ModelLoader.load_model(model_id) do
+        case MCPChat.LLM.ExLLMAdapter.load_model(model_id) do
           {:ok, info} ->
             show_success("Model loaded: #{info.name}")
             show_info("Parameters: #{format_number(info.parameters)}")
@@ -158,7 +160,7 @@ defmodule MCPChat.CLI.Commands.LLM do
     case args do
       [] ->
         show_error("Usage: /unloadmodel <model-id>")
-        models = MCPChat.LLM.ModelLoader.list_loaded_models()
+        models = MCPChat.LLM.ExLLMAdapter.list_loaded_models()
 
         if Enum.empty?(models) do
           show_info("No models currently loaded")
@@ -170,7 +172,7 @@ defmodule MCPChat.CLI.Commands.LLM do
       _ ->
         model_id = parse_args(args)
 
-        case MCPChat.LLM.ModelLoader.unload_model(model_id) do
+        case MCPChat.LLM.ExLLMAdapter.unload_model(model_id) do
           :ok ->
             show_success("Model unloaded: #{model_id}")
 
@@ -181,7 +183,7 @@ defmodule MCPChat.CLI.Commands.LLM do
   end
 
   defp show_acceleration_info() do
-    info = MCPChat.LLM.EXLAConfig.acceleration_info()
+    info = MCPChat.LLM.ExLLMAdapter.acceleration_info()
 
     MCPChat.CLI.Renderer.show_text("## Hardware Acceleration Info\n")
 
@@ -251,15 +253,8 @@ defmodule MCPChat.CLI.Commands.LLM do
   # Helper functions
 
   defp get_adapter_module(backend) do
-    case backend do
-      "anthropic" -> MCPChat.LLM.Anthropic
-      "openai" -> MCPChat.LLM.OpenAI
-      "ollama" -> MCPChat.LLM.Ollama
-      "local" -> MCPChat.LLM.Local
-      "bedrock" -> MCPChat.LLM.Bedrock
-      "gemini" -> MCPChat.LLM.Gemini
-      _ -> nil
-    end
+    # Always use ExLLMAdapter with the provider option
+    MCPChat.LLM.ExLLMAdapter
   end
 
   defp format_model_list(models) when is_list(models) do
@@ -311,7 +306,7 @@ defmodule MCPChat.CLI.Commands.LLM do
   end
 
   defp fetch_and_display_local_models() do
-    case MCPChat.LLM.Local.list_models() do
+    case MCPChat.LLM.ExLLMAdapter.list_models(provider: :local) do
       {:ok, models} ->
         show_info("\nAvailable models to load:")
 

@@ -111,6 +111,11 @@ Architecture Benefits (ACHIEVED):
 ### Phase 3: LLM Backend Integration (COMPLETED - See ex_llm)
 - [x] LLM functionality extracted to ex_llm library
 - [x] All provider adapters moved to [/Users/azmaveth/code/ex_llm/TASKS.md]
+- [ ] TODO: Migrate mcp_chat to use ExLLMAdapter exclusively
+  - [ ] Update CLI commands to use ExLLMAdapter with provider parameter
+  - [ ] Update MCP server handler to use ExLLMAdapter
+  - [ ] Remove redundant adapter files from mcp_chat/lib/mcp_chat/llm/
+  - [ ] Update tests to use ExLLMAdapter
 
 ### Phase 4: CLI Chat Interface
 - [x] Build interactive chat loop

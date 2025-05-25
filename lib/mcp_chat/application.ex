@@ -14,8 +14,6 @@ defmodule MCPChat.Application do
         MCPChat.Session,
         # Alias manager
         MCPChat.Alias.ExAliasAdapter,
-        # Model loader for local LLMs
-        MCPChat.LLM.ModelLoader,
         # Line editor for CLI input
         MCPChat.CLI.ExReadlineAdapter,
         # MCP server manager (handles the dynamic supervisor internally)
