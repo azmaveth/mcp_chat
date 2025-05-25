@@ -53,10 +53,12 @@ Extracted Libraries:
 │   │   │   ├── adapters/      # Provider adapters
 │   │   │   ├── context.ex     # Context window management
 │   │   │   ├── cost.ex        # Cost calculation
+│   │   │   ├── session.ex     # Session management (integrated)
 │   │   │   └── types.ex       # Shared types
 │   └── test/                   # Comprehensive test suite
-├── ex_session/                 # Session management (COMPLETED)
-└── ex_alias/                   # Command aliases (COMPLETED)
+
+Note: ex_session was integrated into ex_llm for a complete all-in-one solution
+Note: ex_alias has not been extracted yet - still exists as MCPChat.Alias
 ```
 
 ## Tasks
@@ -275,19 +277,20 @@ history_size = 1000
     - [ ] Hardware acceleration detection
     - [ ] Optimized inference settings
     - Note: May be integrated into ex_llm in the future
-  - [x] **ex_session** - Pure functional session management (COMPLETED)
+  - [x] **ex_session** - Pure functional session management (INTEGRATED INTO ex_llm)
     - [x] Message history management
     - [x] Token usage tracking
     - [x] JSON persistence
     - [x] Metadata handling (timestamps, etc.)
-    - [x] Published to local directory: `/Users/azmaveth/code/ex_session/ex_session`
-  - [x] **ex_alias** - Command alias system (COMPLETED)
-    - [x] Alias definition and storage
-    - [x] Parameter substitution
-    - [x] Command expansion
-    - [x] Circular reference detection
-    - [x] JSON persistence
-    - [x] Published to local directory: `/Users/azmaveth/code/ex_alias/ex_alias`
+    - [x] Integrated into ex_llm as ExLLM.Session module
+  - [ ] **ex_alias** - Command alias system (NOT YET EXTRACTED)
+    - [x] Alias definition and storage (exists in mcp_chat)
+    - [x] Parameter substitution (exists in mcp_chat)
+    - [x] Command expansion (exists in mcp_chat)
+    - [x] Circular reference detection (exists in mcp_chat)
+    - [x] JSON persistence (exists in mcp_chat)
+    - [ ] Extract to standalone library
+    - Note: Currently exists as MCPChat.Alias in the main project
   - [ ] **ex_readline** - Better line editing for Elixir
     - [ ] Proper terminal handling
     - [ ] Command history
