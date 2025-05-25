@@ -197,7 +197,10 @@ defmodule MCPChat.MCP.ExMCPAdapter do
 
   defp convert_config(config) do
     # Convert MCPChat MCP configuration to ExMCP format
-    case determine_transport(config) do
+    # Ensure config is a map
+    config_map = if is_list(config), do: Enum.into(config, %{}), else: config
+    
+    case determine_transport(config_map) do
       {:websocket, url} ->
         # ExMCP doesn't have WebSocket transport, so we'd need to implement it
         # For now, we'll fall back to a different transport or error
@@ -242,10 +245,18 @@ defmodule MCPChat.MCP.ExMCPAdapter do
 
       # Check for stdio command
       Map.has_key?(config, :command) or Map.has_key?(config, "command") ->
+        command = Map.get(config, :command) || Map.get(config, "command")
+        # If command is a list, it contains the command and args
+        {cmd, args} = case command do
+          [cmd | args] when is_list(args) -> {cmd, args}
+          cmd when is_binary(cmd) -> {cmd, Map.get(config, :args, [])}
+          _ -> {command, []}
+        end
+        
         {:stdio, %{
-          command: Map.get(config, :command) || Map.get(config, "command"),
-          args: Map.get(config, :args) || Map.get(config, "args"),
-          env: Map.get(config, :env) || Map.get(config, "env")
+          command: cmd,
+          args: args,
+          env: Map.get(config, :env, %{}) || Map.get(config, "env", %{})
         }}
 
       # Check for BEAM target
