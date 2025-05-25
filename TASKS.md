@@ -104,23 +104,13 @@ Architecture Benefits (ACHIEVED):
 - [x] Set up basic CLI interface with Owl
 - [x] Create session state management
 
-### Phase 2: MCP Protocol Implementation
-- [x] Implement MCP client WebSocket connection
-- [x] Create protocol message encoding/decoding
-- [x] Build server connection manager
-- [x] Add tool discovery and execution with request/response correlation
-- [x] Implement resource handling with CLI commands
-- [x] Add prompt management with CLI commands
-- [x] Implement stdio transport for MCP client
-- [x] Implement SSE transport for MCP client
+### Phase 2: MCP Protocol Implementation (COMPLETED - See ex_mcp)
+- [x] Core MCP functionality extracted to ex_mcp library
+- [x] All protocol implementation moved to [/Users/azmaveth/code/ex_mcp/TASKS.md]
 
-### Phase 3: LLM Backend Integration
-- [x] Define LLM adapter behaviour
-- [x] Implement OpenAI adapter (GPT-4 and GPT-3.5 support)
-- [x] Implement Anthropic adapter (with Claude 4 support)
-- [x] Add streaming response support
-- [x] Create backend configuration system
-- [x] Add environment variable support for API keys
+### Phase 3: LLM Backend Integration (COMPLETED - See ex_llm)
+- [x] LLM functionality extracted to ex_llm library
+- [x] All provider adapters moved to [/Users/azmaveth/code/ex_llm/TASKS.md]
 
 ### Phase 4: CLI Chat Interface
 - [x] Build interactive chat loop
@@ -129,11 +119,9 @@ Architecture Benefits (ACHIEVED):
 - [x] Add context management
 - [x] Create rich terminal UI with Owl
 
-### Phase 5: Local Model Support
-- [x] Integrate Bumblebee for model loading
-- [x] Implement local model adapter
-- [x] Add model download/management commands
-- [x] Optimize for CPU/GPU inference with EXLA
+### Phase 5: Local Model Support (COMPLETED - See ex_llm)
+- [x] Local model support integrated into ex_llm library
+- [x] See [/Users/azmaveth/code/ex_llm/TASKS.md] for local model features
 
 ### Phase 6: Advanced Features
 - [x] Add conversation persistence (save/load sessions with metadata)
@@ -261,25 +249,9 @@ history_size = 1000
   - [ ] Currently showing escape sequences (^[[A, ^P, etc) instead of working
   - [ ] Need proper terminal input handling for SimpleLineReader
 
-## Phase 9: BEAM-Native MCP Transport
-- [ ] Create custom MCP transport using BEAM message passing
-  - [ ] Implement transport that uses Erlang processes instead of stdio/SSE
-  - [ ] Support connecting MCP servers as supervised GenServers
-  - [ ] Enable direct message passing between Elixir MCP clients/servers
-  - [ ] Benefits:
-    - No serialization overhead for local connections
-    - Built-in supervision and fault tolerance
-    - Native distributed support (connect to remote BEAM nodes)
-    - Better performance for Elixir-based MCP tools
-  - [ ] Implementation:
-    - Create MCPChat.MCP.BeamTransport behaviour
-    - Implement client and server sides
-    - Support both local and distributed (node-to-node) connections
-    - Maintain compatibility with JSON-RPC protocol structure
-  - [ ] Use cases:
-    - Running MCP servers as part of the same BEAM VM
-    - Distributed MCP servers across Erlang cluster
-    - High-performance local tool execution
+## Phase 9: BEAM-Native MCP Transport (MOVED to ex_mcp)
+- [ ] BEAM transport implementation tracked in [/Users/azmaveth/code/ex_mcp/TASKS.md]
+- [x] Initial BEAM transport completed in ex_mcp library
 
 ## Phase 10: Library Extraction and Refactoring (COMPLETED)
 - [x] Extract reusable components into standalone libraries
@@ -295,87 +267,12 @@ history_size = 1000
   - [x] Fix API compatibility issues between old and new interfaces
   - [x] Update imports throughout codebase
   - [x] Successfully test refactored application startup
-  - [x] **ex_mcp** - Model Context Protocol client/server library (COMPLETED)
-    - [x] All MCP protocol implementation
-    - [x] Stdio, SSE, and BEAM transports (stdio and SSE completed)
-    - [x] Server manager and discovery
-    - [x] Client connection handling
-    - [x] Would enable any Elixir app to add MCP support
-    - [x] Full protocol encoder/decoder with JSON-RPC support
-    - [x] Transport behaviour for extensibility
-    - [x] Automatic reconnection with exponential backoff
-    - [x] Server discovery from environment, config files, and well-known locations
-    - [x] Comprehensive test coverage
-    - [x] Published to local directory: `/Users/azmaveth/code/ex_mcp`
-  - [x] **ex_llm** - All-in-one Elixir LLM library (COMPLETED)
-    - [x] Unified adapter interface for multiple providers
-    - [x] Anthropic, OpenAI (planned), Ollama (planned) adapters
-    - [x] Streaming support with SSE parsing
-    - [x] Model listing and management
-    - [x] Standardized response format
-    - [x] Integrated cost tracking and calculation
-    - [x] Token estimation functionality
-    - [x] Context window management
-      - [x] Automatic message truncation
-      - [x] Multiple truncation strategies (sliding_window, smart)
-      - [x] Model-specific context window sizes
-      - [x] Context validation and statistics
-    - [x] Configuration injection pattern
-    - [x] Comprehensive error handling
-    - [x] Full test coverage
-    - [x] Published to local directory: `/Users/azmaveth/code/ex_llm`
-    - [x] Added instructor_ex support for structured outputs
-      - [x] Integrated ExLLM.Instructor module
-      - [x] Support for Ecto schemas and simple type specs
-      - [x] Automatic validation and retry logic
-      - [x] JSON extraction from markdown-wrapped responses
-      - [x] Compatible with Anthropic, OpenAI, Ollama, and Gemini adapters
-  - [x] **ex_llm_local** - Local model support via Bumblebee (INTEGRATED INTO ex_llm)
-    - [x] Model loading/unloading (via ExLLM.Adapters.Local.ModelLoader)
-    - [x] EXLA/EMLX configuration (via ExLLM.Adapters.Local.EXLAConfig)
-    - [x] Hardware acceleration detection (Metal, CUDA, ROCm support)
-    - [x] Optimized inference settings
-    - [x] Integrated into ex_llm as ExLLM.Adapters.Local module
-  - [x] **ex_session** - Pure functional session management (INTEGRATED INTO ex_llm)
-    - [x] Message history management
-    - [x] Token usage tracking
-    - [x] JSON persistence
-    - [x] Metadata handling (timestamps, etc.)
-    - [x] Integrated into ex_llm as ExLLM.Session module
-  - [x] **ex_alias** - Command alias system (COMPLETED)
-    - [x] Alias definition and storage
-    - [x] Parameter substitution
-    - [x] Command expansion with recursive support
-    - [x] Circular reference detection
-    - [x] JSON persistence
-    - [x] Pure functional core (ExAlias.Core)
-    - [x] GenServer wrapper for stateful usage
-    - [x] Reserved command protection
-    - [x] Comprehensive test coverage
-    - [x] Published to local directory: `/Users/azmaveth/code/ex_alias`
-  - [x] **ex_readline** - Better line editing for Elixir (COMPLETED)
-    - [x] Two implementations: simple (Erlang IO) and advanced (full readline)
-    - [x] Proper terminal handling with raw mode support
-    - [x] Command history with persistence
-    - [x] Emacs-style keybindings and arrow key support
-    - [x] Tab completion framework
-    - [x] Word-based movement and editing
-    - [x] Kill ring (cut/paste) functionality
-    - [x] GenServer-based architecture
-    - [x] Comprehensive test coverage
-    - [x] Published to local directory: `/Users/azmaveth/code/ex_readline`
-  - [x] Design decisions made:
-    - Combined ex_llm, ex_context, and ex_llm_cost into single ex_llm library
-    - Created ex_llm as comprehensive all-in-one solution for Elixir LLM needs
-    - Kept modular internal architecture while presenting unified API
-    - Prioritized developer experience with automatic features (cost tracking, context management)
-    - Maintained flexibility through configuration injection pattern
-  - [x] Benefits achieved:
-    - Single dependency for all LLM functionality
-    - Automatic cost tracking and context management
-    - Consistent API across all providers
-    - Easy to integrate into any Elixir project
-    - Well-tested and documented
+
+### Extracted Libraries:
+- **ex_mcp** - Model Context Protocol implementation → See [/Users/azmaveth/code/ex_mcp/TASKS.md]
+- **ex_llm** - All-in-one LLM library → See [/Users/azmaveth/code/ex_llm/TASKS.md]
+- **ex_alias** - Command alias system → See [/Users/azmaveth/code/ex_alias/TASKS.md]
+- **ex_readline** - Enhanced line editing → See [/Users/azmaveth/code/ex_readline/TASKS.md]
 
 ## Phase 11: Supervision Improvements
 - [ ] Enhance supervision tree for better fault tolerance
@@ -507,59 +404,9 @@ history_size = 1000
     7. Demonstrate context truncation
     8. Show session save/load
 
-## Phase 14: Additional LLM Backends
-- [x] Add AWS Bedrock support
-  - [x] Implement Bedrock adapter (MCPChat.LLM.Bedrock)
-  - [x] Support multiple model providers through Bedrock:
-    - [x] Anthropic Claude (via Bedrock)
-    - [x] AI21 Labs Jurassic
-    - [x] Amazon Titan
-    - [x] Cohere Command
-    - [x] Meta Llama 2/3
-    - [x] Mistral/Mixtral
-  - [x] Authentication via AWS credentials:
-    - [x] AWS access key/secret key
-    - [x] IAM role support
-    - [x] AWS profile support
-    - [x] STS temporary credentials
-  - [x] Region configuration
-  - [x] Streaming support with Bedrock runtime
-  - [x] Model-specific parameter handling
-  - [x] Cost tracking for Bedrock pricing
-- [x] Add Google Gemini support
-  - [x] Implement Gemini adapter (MCPChat.LLM.Gemini)
-  - [x] Support Gemini model variants:
-    - [x] Gemini Pro
-    - [x] Gemini Pro Vision (multimodal)
-    - [x] Gemini Ultra (when available)
-    - [x] Gemini Nano (for local/edge)
-  - [x] Authentication:
-    - [x] API key support
-    - [ ] OAuth2 for user auth (not implemented - API key sufficient)
-    - [ ] Service account credentials (not implemented - API key sufficient) 
-    - [ ] ADC (Application Default Credentials) (not implemented - API key sufficient)
-  - [x] Features:
-    - [x] Text generation
-    - [x] Multimodal support (images)
-    - [ ] Function calling (not implemented in initial version)
-    - [x] Streaming responses
-    - [x] Safety settings configuration
-  - [ ] Region/location configuration (uses default)
-  - [ ] Rate limiting and quota management (handled by API)
-- [x] Update configuration examples:
-  - [x] Add Bedrock config section
-  - [x] Add Gemini config section
-  - [x] Document authentication methods
-  - [x] Show region/endpoint configuration
-- [x] Update model listing:
-  - [x] Dynamically fetch available Bedrock models
-  - [x] List Gemini model variants
-  - [x] Show model capabilities (text, vision, etc.)
-- [x] Integration testing:
-  - [x] Test each Bedrock model provider (basic tests)
-  - [x] Test Gemini multimodal features (basic tests)
-  - [ ] Verify streaming works correctly (requires API keys)
-  - [x] Ensure cost tracking is accurate
+## Phase 14: Additional LLM Backends (COMPLETED - See ex_llm)
+- [x] AWS Bedrock and Google Gemini support added to ex_llm
+- [x] See [/Users/azmaveth/code/ex_llm/TASKS.md] for provider details
 
 ## Development Notes
 
