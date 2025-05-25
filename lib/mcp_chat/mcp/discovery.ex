@@ -1,12 +1,13 @@
 defmodule MCPChat.MCP.Discovery do
   @moduledoc """
-  MCP server auto-discovery functionality.
+  MCP server auto-discovery functionality for MCPChat.
 
-  Discovers MCP servers through:
-  - Local filesystem scanning for known server patterns
-  - Environment variable inspection
-  - Well-known locations
-  - Package manager integration (npm, pip, etc.)
+  This module provides MCPChat-specific discovery features on top of ExMCP.Discovery:
+  - Quick setup servers from known configurations
+  - MCPChat-specific server validation
+  - Integration with MCPChat's path providers
+
+  For generic discovery functionality, see ExMCP.Discovery.
   """
 
   require Logger
@@ -14,13 +15,43 @@ defmodule MCPChat.MCP.Discovery do
   @doc """
   Discover all available MCP servers.
 
-  Returns a list of discovered server configurations.
+  Uses ExMCP.Discovery for generic discovery and adds MCPChat-specific sources.
+
+  ## Options
+
+  - `:methods` - List of discovery methods. Defaults to all available methods.
+    MCPChat-specific: `:quick_setup`
+    Generic (from ExMCP): `:npm`, `:env`, `:config`, `:well_known`
   """
   def discover_servers(options \\ []) do
-    methods = Keyword.get(options, :methods, [:quick_setup, :npm, :env, :known_locations])
+    methods = Keyword.get(options, :methods, [:quick_setup, :npm, :env, :well_known])
 
-    methods
-    |> Enum.flat_map(&discover_by_method/1)
+    # Separate MCPChat-specific methods from generic ones
+    {mcp_chat_methods, ex_mcp_methods} =
+      Enum.split_with(methods, &(&1 in [:quick_setup]))
+
+    # Get servers from MCPChat-specific methods
+    mcp_chat_servers =
+      mcp_chat_methods
+      |> Enum.flat_map(&discover_by_method/1)
+
+    # Get servers from ExMCP discovery
+    ex_mcp_servers =
+      if ex_mcp_methods != [] do
+        # Map :known_locations to :well_known for ExMCP compatibility
+        mapped_methods =
+          Enum.map(ex_mcp_methods, fn
+            :known_locations -> :well_known
+            method -> method
+          end)
+
+        ExMCP.Discovery.discover_servers(methods: mapped_methods)
+      else
+        []
+      end
+
+    # Combine and deduplicate
+    (mcp_chat_servers ++ ex_mcp_servers)
     |> Enum.uniq_by(& &1.name)
     |> Enum.sort_by(& &1.name)
   end
@@ -51,28 +82,22 @@ defmodule MCPChat.MCP.Discovery do
 
   @doc """
   Discover npm-based MCP servers.
-  """
-  def discover_npm_servers() do
-    case System.cmd("npm", ["list", "-g", "--depth=0", "--json"], stderr_to_stdout: true) do
-      {output, 0} ->
-        parse_npm_packages(output)
 
-      {error, _} ->
-        Logger.debug("Failed to list npm packages: #{error}")
-        []
-    end
+  Delegates to ExMCP.Discovery.discover_npm_packages/0
+  """
+  @deprecated "Use ExMCP.Discovery.discover_npm_packages/0 directly"
+  def discover_npm_servers() do
+    ExMCP.Discovery.discover_npm_packages()
   end
 
   @doc """
   Discover servers from environment variables.
+
+  Delegates to ExMCP.Discovery.discover_from_env/0
   """
+  @deprecated "Use ExMCP.Discovery.discover_from_env/0 directly"
   def discover_env_servers() do
-    System.get_env()
-    |> Enum.filter(fn {key, _value} ->
-      String.contains?(key, "MCP") || String.ends_with?(key, "_SERVER")
-    end)
-    |> Enum.map(&parse_env_server/1)
-    |> Enum.reject(&is_nil/1)
+    ExMCP.Discovery.discover_from_env()
   end
 
   @doc """
@@ -112,251 +137,40 @@ defmodule MCPChat.MCP.Discovery do
 
   @doc """
   Test if a discovered server is reachable/valid.
+
+  Delegates to ExMCP.Discovery.test_server/1
   """
   def test_server(server_config) do
-    case server_config do
-      %{command: command} ->
-        test_stdio_server(command)
-
-      %{url: url} ->
-        test_sse_server(url)
-
-      _ ->
-        false
-    end
+    ExMCP.Discovery.test_server(server_config)
   end
 
   @doc """
   Get metadata about a discovered server.
+
+  Currently delegates to ExMCP.Discovery.get_server_metadata/1
+  In the future, this could be enhanced with MCPChat-specific metadata.
   """
   def get_server_metadata(server_config) do
-    # Try to get server info by starting it temporarily
-    case start_temporary_server(server_config) do
-      {:ok, info} ->
-        Map.merge(server_config, %{
-          metadata: %{
-            name: info[:name],
-            version: info[:version],
-            description: info[:description],
-            capabilities: info[:capabilities]
-          }
-        })
-
-      _ ->
-        server_config
-    end
+    ExMCP.Discovery.get_server_metadata(server_config)
   end
 
   # Private functions
 
+  # MCPChat-specific discovery methods
   defp discover_by_method(:quick_setup), do: quick_setup_servers()
-  defp discover_by_method(:npm), do: discover_npm_servers()
-  defp discover_by_method(:env), do: discover_env_servers()
-  defp discover_by_method(:known_locations), do: discover_known_locations()
   defp discover_by_method(_), do: []
 
-  defp parse_npm_packages(json_output) do
-    case Jason.decode(json_output) do
-      {:ok, %{"dependencies" => deps}} ->
-        deps
-        |> Enum.filter(fn {name, _} ->
-          String.contains?(name, "mcp") ||
-            String.contains?(name, "modelcontextprotocol")
-        end)
-        |> Enum.map(&npm_package_to_server_config/1)
-        |> Enum.reject(&is_nil/1)
+  # These implementations have been moved to ExMCP.Discovery
+  # Keeping them here for backward compatibility if needed
 
-      _ ->
-        []
-    end
-  end
-
-  defp npm_package_to_server_config({package_name, _info}) do
-    # Map known MCP npm packages to server configurations
-    case package_name do
-      "@modelcontextprotocol/server-filesystem" ->
-        %{
-          name: "filesystem-auto",
-          command: ["npx", "-y", package_name, System.get_env("HOME", "/tmp")],
-          source: :npm,
-          auto_discovered: true
-        }
-
-      "@modelcontextprotocol/server-github" ->
-        if System.get_env("GITHUB_TOKEN") do
-          %{
-            name: "github-auto",
-            command: ["npx", "-y", package_name],
-            env: %{"GITHUB_TOKEN" => System.get_env("GITHUB_TOKEN")},
-            source: :npm,
-            auto_discovered: true
-          }
-        else
-          nil
-        end
-
-      "@modelcontextprotocol/server-postgres" ->
-        if System.get_env("DATABASE_URL") do
-          %{
-            name: "postgres-auto",
-            command: ["npx", "-y", package_name, System.get_env("DATABASE_URL")],
-            source: :npm,
-            auto_discovered: true
-          }
-        else
-          nil
-        end
-
-      "@modelcontextprotocol/server-" <> rest ->
-        # Generic pattern for other MCP servers
-        %{
-          name: "#{rest}-auto",
-          command: ["npx", "-y", package_name],
-          source: :npm,
-          auto_discovered: true
-        }
-
-      _ ->
-        nil
-    end
-  end
-
-  defp parse_env_server({key, value}) do
-    cond do
-      String.ends_with?(key, "_MCP_SERVER") ->
-        # Format: MYAPP_MCP_SERVER=command args
-        name =
-          key
-          |> String.replace_suffix("_MCP_SERVER", "")
-          |> String.downcase()
-
-        %{
-          name: "#{name}-env",
-          command: String.split(value, " "),
-          source: :env,
-          auto_discovered: true
-        }
-
-      String.ends_with?(key, "_SERVER_URL") ->
-        # Format: MYAPP_SERVER_URL=http://localhost:8_080
-        name =
-          key
-          |> String.replace_suffix("_SERVER_URL", "")
-          |> String.downcase()
-
-        %{
-          name: "#{name}-env",
-          url: value,
-          source: :env,
-          auto_discovered: true
-        }
-
-      true ->
-        nil
-    end
-  end
+  # Legacy private functions - kept for backward compatibility
+  # These are now handled by ExMCP.Discovery but may be referenced elsewhere
 
   defp scan_directory(dir) do
-    File.ls!(dir)
-    |> Enum.map(&Path.join(dir, &1))
-    |> Enum.filter(&File.dir?/1)
-    |> Enum.map(&check_mcp_server_directory/1)
-    |> Enum.reject(&is_nil/1)
-  end
-
-  defp check_mcp_server_directory(dir) do
-    # Check for common MCP server patterns
-    cond do
-      # Node.js based server
-      File.exists?(Path.join(dir, "package.json")) &&
-          File.exists?(Path.join(dir, "mcp.json")) ->
-        parse_nodejs_server(dir)
-
-      # Python based server
-      File.exists?(Path.join(dir, "pyproject.toml")) &&
-          File.exists?(Path.join(dir, "mcp.json")) ->
-        parse_python_server(dir)
-
-      # Executable server
-      executable = find_executable(dir) ->
-        %{
-          name: Path.basename(dir) <> "-local",
-          command: [executable],
-          source: :local,
-          auto_discovered: true
-        }
-
-      true ->
-        nil
-    end
-  end
-
-  defp parse_nodejs_server(dir) do
-    with {:ok, mcp_json} <- File.read(Path.join(dir, "mcp.json")),
-         {:ok, mcp_config} <- Jason.decode(mcp_json) do
-      %{
-        name: mcp_config["name"] || Path.basename(dir),
-        command: ["node", Path.join(dir, mcp_config["main"] || "index.js")],
-        source: :local,
-        auto_discovered: true
-      }
-    else
-      _ -> nil
-    end
-  end
-
-  defp parse_python_server(dir) do
-    with {:ok, mcp_json} <- File.read(Path.join(dir, "mcp.json")),
-         {:ok, mcp_config} <- Jason.decode(mcp_json) do
-      %{
-        name: mcp_config["name"] || Path.basename(dir),
-        command: ["python", "-m", mcp_config["module"] || Path.basename(dir)],
-        source: :local,
-        auto_discovered: true
-      }
-    else
-      _ -> nil
-    end
-  end
-
-  defp find_executable(dir) do
-    ["mcp-server", "server", Path.basename(dir)]
-    |> Enum.map(&Path.join(dir, &1))
-    |> Enum.find(&File.exists?/1)
-  end
-
-  defp test_stdio_server(command) do
-    # Try to run the command with --help or --version
-    [cmd | args] = command
-
-    case System.cmd(cmd, args ++ ["--version"], stderr_to_stdout: true) do
-      {_, 0} ->
-        true
-
-      _ ->
-        case System.cmd(cmd, args ++ ["--help"], stderr_to_stdout: true) do
-          {_, 0} -> true
-          _ -> false
-        end
-    end
-  rescue
-    _ -> false
-  end
-
-  defp test_sse_server(url) do
-    # Try to connect to the SSE endpoint
-    case Req.get(url <> "/sse", max_retries: 0, receive_timeout: 5_000) do
-      {:ok, %{status: status}} when status in 200..299 -> true
-      _ -> false
-    end
-  rescue
-    _ -> false
-  end
-
-  defp start_temporary_server(_server_config) do
-    # Start a server temporarily to get its info
-    # This would use the existing MCP client infrastructure
-    # For now, return a placeholder
-    {:error, :not_implemented}
+    # Delegate to ExMCP's enhanced directory scanning
+    ExMCP.Discovery.discover_from_well_known()
+    |> Enum.filter(fn server ->
+      Map.get(server, :base_dir, "") |> String.starts_with?(dir)
+    end)
   end
 end
