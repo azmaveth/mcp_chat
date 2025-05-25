@@ -44,7 +44,7 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
     case start_ex_readline(implementation, opts) do
       {:ok, ex_readline_pid} ->
         # Load history
-        load_history(ex_readline_pid)
+        load_history()
 
         {:ok, %{
           ex_readline_pid: ex_readline_pid,
@@ -64,7 +64,7 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
         # Add to history if not empty
         if line != "" and String.trim(line) != "" do
           ExReadline.add_to_history(line)
-          save_history_async(state.ex_readline_pid)
+          # History persistence not currently implemented
         end
 
         {:reply, line, state}
@@ -81,7 +81,7 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
   @impl true
   def handle_cast({:add_to_history, line}, state) do
     ExReadline.add_history(state.ex_readline_pid, line)
-    save_history_async(state.ex_readline_pid)
+    # History persistence not currently implemented
     {:noreply, state}
   end
 
@@ -99,9 +99,8 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
   end
 
   @impl true
-  def terminate(_reason, state) do
-    # Save history before terminating
-    save_history(state.ex_readline_pid)
+  def terminate(_reason, _state) do
+    # History saving not currently implemented in ex_readline
     :ok
   end
 
@@ -121,7 +120,7 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
     end
   end
 
-  defp load_history(ex_readline_pid) do
+  defp load_history() do
     history_file = Path.expand(@history_file)
 
     case File.read(history_file) do
@@ -144,36 +143,9 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
   end
 
   defp save_history(_ex_readline_pid) do
-    # Note: ExReadline doesn't expose get_history, we'll need to track history differently
-    case :not_implemented do
-      {:ok, history} ->
-        history_file = Path.expand(@history_file)
-
-        # Ensure directory exists
-        history_file
-        |> Path.dirname()
-        |> File.mkdir_p()
-
-        # Write history
-        content = Enum.join(history, "\n")
-        case File.write(history_file, content) do
-          :ok ->
-            :ok
-          {:error, reason} ->
-            Logger.warning("Failed to save history: #{inspect(reason)}")
-            :ok
-        end
-
-      {:error, reason} ->
-        Logger.warning("Failed to get history: #{inspect(reason)}")
-        :ok
-    end
-  end
-
-  defp save_history_async(ex_readline_pid) do
-    # Save history in a separate process to avoid blocking
-    Task.start(fn ->
-      save_history(ex_readline_pid)
-    end)
+    # ExReadline doesn't expose get_history API, so we can't save history
+    # This is a limitation of the current ex_readline implementation
+    # TODO: Add history tracking to ex_readline or track history in this adapter
+    :ok
   end
 end
