@@ -172,6 +172,78 @@ defmodule MCPChat.MCP.ExMCPAdapter do
     end
   end
 
+  # Additional functions for ServerManager compatibility
+  
+  def get_status(server_name) do
+    GenServer.call(server_name, :get_status)
+  end
+  
+  def handle_call(:get_status, _from, state) do
+    status = if state.ex_mcp_client do
+      # Check if the ExMCP client process is alive
+      if Process.alive?(state.ex_mcp_client) do
+        :connected
+      else
+        :disconnected
+      end
+    else
+      :disconnected
+    end
+    
+    {:reply, {:ok, status}, state}
+  end
+  
+  def get_tools(server_name) do
+    GenServer.call(server_name, :get_tools)
+  end
+  
+  def handle_call(:get_tools, _from, state) do
+    result = if state.ex_mcp_client do
+      case ExMCP.Client.list_tools(state.ex_mcp_client) do
+        {:ok, tools} -> {:ok, tools}
+        error -> error
+      end
+    else
+      {:error, :not_connected}
+    end
+    
+    {:reply, result, state}
+  end
+  
+  def get_resources(server_name) do
+    GenServer.call(server_name, :get_resources)
+  end
+  
+  def handle_call(:get_resources, _from, state) do
+    result = if state.ex_mcp_client do
+      case ExMCP.Client.list_resources(state.ex_mcp_client) do
+        {:ok, resources} -> {:ok, resources}
+        error -> error
+      end
+    else
+      {:error, :not_connected}
+    end
+    
+    {:reply, result, state}
+  end
+  
+  def get_prompts(server_name) do
+    GenServer.call(server_name, :get_prompts)
+  end
+  
+  def handle_call(:get_prompts, _from, state) do
+    result = if state.ex_mcp_client do
+      case ExMCP.Client.list_prompts(state.ex_mcp_client) do
+        {:ok, prompts} -> {:ok, prompts}
+        error -> error
+      end
+    else
+      {:error, :not_connected}
+    end
+    
+    {:reply, result, state}
+  end
+
   @impl true
   def terminate(_reason, state) do
     if state.ex_mcp_client do
