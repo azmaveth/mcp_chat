@@ -270,7 +270,7 @@ defmodule MCPChat.LLMBackendIntegrationTest do
       ]
 
       # Use the actual token estimation
-      total_tokens = MCPChat.LLM.TokenEstimator.estimate_messages(messages)
+      total_tokens = ExLLM.Cost.estimate_tokens(messages)
 
       assert total_tokens > 0
       # These short messages should be under 100 tokens
@@ -296,13 +296,20 @@ defmodule MCPChat.LLMBackendIntegrationTest do
       }
 
       # Test with different models
-      gpt4_cost = MCPChat.LLM.CostCalculator.calculate_cost("gpt-4", usage)
-      gpt35_cost = MCPChat.LLM.CostCalculator.calculate_cost("gpt-3.5-turbo", usage)
+      gpt4_result = ExLLM.Cost.calculate("openai", "gpt-4", usage)
+      gpt35_result = ExLLM.Cost.calculate("openai", "gpt-3.5-turbo", usage)
 
-      assert gpt4_cost > 0
-      assert gpt35_cost > 0
+      # Check that results are cost maps, not error maps
+      assert is_map(gpt4_result)
+      assert Map.has_key?(gpt4_result, :total_cost)
+      assert gpt4_result.total_cost > 0
+
+      assert is_map(gpt35_result)
+      assert Map.has_key?(gpt35_result, :total_cost)
+      assert gpt35_result.total_cost > 0
+
       # GPT-4 is more expensive
-      assert gpt4_cost > gpt35_cost
+      assert gpt4_result.total_cost > gpt35_result.total_cost
     end
 
     test "handles unknown model pricing" do
@@ -311,8 +318,11 @@ defmodule MCPChat.LLMBackendIntegrationTest do
         output_tokens: 500
       }
 
-      cost = MCPChat.LLM.CostCalculator.calculate_cost("unknown-model", usage)
-      assert cost == 0.0
+      result = ExLLM.Cost.calculate("unknown", "unknown-model", usage)
+
+      # Unknown models should return an error map
+      assert is_map(result)
+      assert result.error =~ "No pricing data available"
     end
   end
 

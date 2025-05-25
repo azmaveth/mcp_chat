@@ -77,7 +77,8 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
 
   @impl true
   def handle_cast({:add_to_history, line}, state) do
-    ExReadline.add_history(state.ex_readline_pid, line)
+    # Use the same pattern as in line 70 - direct call without pid
+    ExReadline.add_to_history(line)
     # History persistence not currently implemented
     {:noreply, state}
   end

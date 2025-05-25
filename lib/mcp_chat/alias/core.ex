@@ -234,7 +234,7 @@ defmodule MCPChat.Alias.Core do
 
   defp validate_commands(commands) do
     cond do
-      length(commands) == 0 ->
+      commands == [] ->
         Error.validation_error(:commands, "cannot be empty")
 
       Enum.any?(commands, &(not is_binary(&1))) ->
