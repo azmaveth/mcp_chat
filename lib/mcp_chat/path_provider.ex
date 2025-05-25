@@ -56,13 +56,14 @@ defmodule MCPChat.PathProvider do
           {:ok, Path.expand("~/.mcp_chat/connected_servers.json")}
 
         :mcp_discovery_dirs ->
-          {:ok, [
-            Path.expand("~/.mcp/servers"),
-            "/usr/local/share/mcp/servers",
-            "/opt/homebrew/share/mcp/servers",
-            Path.expand("~/mcp-servers"),
-            Path.expand("~/projects/mcp-servers")
-          ]}
+          {:ok,
+           [
+             Path.expand("~/.mcp/servers"),
+             "/usr/local/share/mcp/servers",
+             "/opt/homebrew/share/mcp/servers",
+             Path.expand("~/mcp-servers"),
+             Path.expand("~/projects/mcp-servers")
+           ]}
 
         _ ->
           {:error, {:invalid_file_type, file_type}}
@@ -111,6 +112,7 @@ defmodule MCPChat.PathProvider do
         case Map.get(paths, file_type) do
           nil ->
             default_path(Map.get(paths, :config_dir, "/tmp/mcp_chat_test"), file_type)
+
           path ->
             {:ok, path}
         end

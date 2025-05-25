@@ -72,7 +72,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
   @spec start_server(server_state(), server_config(), keyword()) :: {server_state(), {:ok, pid()} | {:error, term()}}
   def start_server(state, config, opts \\ []) do
     logger_provider = Keyword.get(opts, :logger_provider, LoggerProvider.Default)
-    
+
     case start_server_supervised(config, state.supervisor, logger_provider) do
       {:ok, {name, pid}} ->
         new_servers = Map.put(state.servers, name, pid)
@@ -218,7 +218,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
   @spec handle_server_death(server_state(), pid(), keyword()) :: server_state()
   def handle_server_death(state, pid, opts \\ []) do
     logger_provider = Keyword.get(opts, :logger_provider, LoggerProvider.Default)
-    
+
     case Enum.find(state.servers, fn {_name, server_pid} -> server_pid == pid end) do
       {name, _} ->
         logger_provider.warning("MCP server #{name} died")

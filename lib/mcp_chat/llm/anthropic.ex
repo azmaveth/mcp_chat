@@ -11,10 +11,10 @@ defmodule MCPChat.LLM.Anthropic do
       MCPChat.LLM.Anthropic.chat(messages, config_provider: my_config)
   """
   @behaviour MCPChat.LLM.Adapter
-  
+
   alias MCPChat.ConfigProvider
   alias MCPChat.Error
-  
+
   require Logger
 
   @default_base_url "https://api.anthropic.com/v1"

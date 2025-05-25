@@ -18,7 +18,13 @@ mcp_chat/
 │   │   ├── application.ex      # OTP application supervisor
 │   │   ├── cli/                # CLI interface modules
 │   │   │   ├── chat.ex         # Main chat loop
-│   │   │   ├── commands.ex     # CLI commands handler
+│   │   │   ├── commands/       # Refactored command modules
+│   │   │   │   ├── alias.ex   # Alias management commands
+│   │   │   │   ├── context.ex  # Context management commands
+│   │   │   │   ├── llm.ex     # LLM backend commands
+│   │   │   │   ├── mcp.ex     # MCP server commands
+│   │   │   │   ├── session.ex # Session management commands
+│   │   │   │   └── utility.ex # General utility commands
 │   │   │   └── renderer.ex     # Terminal UI rendering
 │   │   ├── mcp/                # MCP protocol implementation
 │   │   │   ├── client.ex       # MCP client connection
@@ -28,6 +34,9 @@ mcp_chat/
 │   │   │   ├── adapter.ex      # Common adapter behaviour
 │   │   │   ├── openai.ex       # OpenAI API adapter
 │   │   │   ├── anthropic.ex    # Anthropic API adapter
+│   │   │   ├── bedrock.ex      # AWS Bedrock adapter
+│   │   │   ├── gemini.ex       # Google Gemini adapter
+│   │   │   ├── ollama.ex       # Ollama adapter
 │   │   │   └── local.ex        # Bumblebee/Nx local models
 │   │   ├── config.ex           # Configuration management
 │   │   └── session.ex          # Chat session state
@@ -35,6 +44,19 @@ mcp_chat/
 ├── config/                      # Configuration files
 ├── test/                        # Test files
 └── priv/                        # Static assets
+
+Extracted Libraries:
+├── ex_llm/                     # All-in-one LLM library (COMPLETED)
+│   ├── lib/
+│   │   ├── ex_llm.ex          # Main API module
+│   │   ├── ex_llm/
+│   │   │   ├── adapters/      # Provider adapters
+│   │   │   ├── context.ex     # Context window management
+│   │   │   ├── cost.ex        # Cost calculation
+│   │   │   └── types.ex       # Shared types
+│   └── test/                   # Comprehensive test suite
+├── ex_session/                 # Session management (COMPLETED)
+└── ex_alias/                   # Command aliases (COMPLETED)
 ```
 
 ## Tasks
@@ -222,51 +244,67 @@ history_size = 1000
     - Distributed MCP servers across Erlang cluster
     - High-performance local tool execution
 
-## Phase 10: Library Extraction
-- [ ] Extract reusable components into standalone Hex packages
+## Phase 10: Library Extraction (COMPLETED)
+- [x] Extract reusable components into standalone Hex packages
   - [ ] **ex_mcp** - Model Context Protocol client/server library
     - [ ] All MCP protocol implementation
     - [ ] Stdio, SSE, and BEAM transports
     - [ ] Server manager and discovery
     - [ ] Client connection handling
     - [ ] Would enable any Elixir app to add MCP support
-  - [ ] **ex_llm** - Unified LLM adapter library
-    - [ ] Adapter behaviour definition
-    - [ ] Anthropic, OpenAI, Ollama adapters
-    - [ ] Streaming support
-    - [ ] Model listing and management
-    - [ ] Standardized response format
+  - [x] **ex_llm** - All-in-one Elixir LLM library (COMPLETED)
+    - [x] Unified adapter interface for multiple providers
+    - [x] Anthropic, OpenAI (planned), Ollama (planned) adapters
+    - [x] Streaming support with SSE parsing
+    - [x] Model listing and management
+    - [x] Standardized response format
+    - [x] Integrated cost tracking and calculation
+    - [x] Token estimation functionality
+    - [x] Context window management
+      - [x] Automatic message truncation
+      - [x] Multiple truncation strategies (sliding_window, smart)
+      - [x] Model-specific context window sizes
+      - [x] Context validation and statistics
+    - [x] Configuration injection pattern
+    - [x] Comprehensive error handling
+    - [x] Full test coverage
+    - [x] Published to local directory: `/Users/azmaveth/code/ex_llm/ex_llm`
   - [ ] **ex_llm_local** - Local model support via Bumblebee
     - [ ] Model loading/unloading
     - [ ] EXLA/EMLX configuration
     - [ ] Hardware acceleration detection
     - [ ] Optimized inference settings
-  - [ ] **ex_context** - LLM context management library
-    - [ ] Token counting for various models
-    - [ ] Context truncation strategies (sliding window, smart)
-    - [ ] Message prioritization
-    - [ ] Token limit handling
-  - [ ] **ex_llm_cost** - LLM cost tracking library
-    - [ ] Pricing data for all major models
-    - [ ] Token usage tracking
-    - [ ] Cost calculation and reporting
-    - [ ] Multiple currency support
-  - [ ] **ex_cmd_alias** - Command alias system
-    - [ ] Alias definition and storage
-    - [ ] Parameter substitution
-    - [ ] Command expansion
-    - [ ] Circular reference detection
+    - Note: May be integrated into ex_llm in the future
+  - [x] **ex_session** - Pure functional session management (COMPLETED)
+    - [x] Message history management
+    - [x] Token usage tracking
+    - [x] JSON persistence
+    - [x] Metadata handling (timestamps, etc.)
+    - [x] Published to local directory: `/Users/azmaveth/code/ex_session/ex_session`
+  - [x] **ex_alias** - Command alias system (COMPLETED)
+    - [x] Alias definition and storage
+    - [x] Parameter substitution
+    - [x] Command expansion
+    - [x] Circular reference detection
+    - [x] JSON persistence
+    - [x] Published to local directory: `/Users/azmaveth/code/ex_alias/ex_alias`
   - [ ] **ex_readline** - Better line editing for Elixir
     - [ ] Proper terminal handling
     - [ ] Command history
     - [ ] Keybinding support
     - [ ] Tab completion framework
-  - [ ] Benefits of extraction:
-    - Other Elixir apps can use MCP without the chat interface
-    - LLM adapters become reusable across projects
-    - Context management can be shared between different AI apps
-    - Each library can evolve independently
-    - Better testing and documentation per component
+  - [x] Design decisions made:
+    - Combined ex_llm, ex_context, and ex_llm_cost into single ex_llm library
+    - Created ex_llm as comprehensive all-in-one solution for Elixir LLM needs
+    - Kept modular internal architecture while presenting unified API
+    - Prioritized developer experience with automatic features (cost tracking, context management)
+    - Maintained flexibility through configuration injection pattern
+  - [x] Benefits achieved:
+    - Single dependency for all LLM functionality
+    - Automatic cost tracking and context management
+    - Consistent API across all providers
+    - Easy to integrate into any Elixir project
+    - Well-tested and documented
 
 ## Phase 11: Supervision Improvements
 - [ ] Enhance supervision tree for better fault tolerance

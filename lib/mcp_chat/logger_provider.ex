@@ -49,7 +49,7 @@ defmodule MCPChat.LoggerProvider do
     Falls back to IO.puts if Logger is not available.
     """
     @behaviour MCPChat.LoggerProvider
-    
+
     require Logger
 
     @impl true
@@ -86,6 +86,7 @@ defmodule MCPChat.LoggerProvider do
         formatted_message = if metadata != [], do: "#{formatted_message} #{inspect(metadata)}", else: formatted_message
         IO.puts(formatted_message)
       end
+
       :ok
     end
   end
@@ -129,6 +130,7 @@ defmodule MCPChat.LoggerProvider do
 
     def start_link(log_fun) when is_function(log_fun) do
       arity = Function.info(log_fun)[:arity]
+
       if arity not in [2, 3] do
         {:error, :invalid_log_function_arity}
       else
@@ -159,6 +161,7 @@ defmodule MCPChat.LoggerProvider do
           3 -> log_fun.(level, message, metadata)
         end
       end)
+
       :ok
     end
   end
