@@ -8,6 +8,10 @@ defmodule MCPChat.CLI.Chat do
   # alias MCPChat.LLM
 
   def start() do
+    start([])
+  end
+
+  def start(_opts) do
     Renderer.clear_screen()
     Renderer.show_welcome()
 

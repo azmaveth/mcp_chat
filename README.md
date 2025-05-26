@@ -147,6 +147,20 @@ To exit: type `/exit` in the chat, then `Ctrl-C` twice to exit IEx.
 - `/servers` - List connected MCP servers
 - `/discover` - Auto-discover MCP servers
 - `/save` - Save current session
+
+### New MCP Features (v0.2.0)
+
+- **Progress Tracking**: See real-time progress bars for long operations
+  - `/mcp tool server tool_name --progress` - Execute with progress tracking
+  - `/mcp progress` - View active operations
+  
+- **Notifications**: Get alerts when server capabilities change
+  - `/mcp notify on/off/status` - Control notifications
+  - Automatic alerts for tool/resource/prompt changes
+  
+- **Server-side LLM**: Use MCP servers' own language models
+  - `/mcp sample server "prompt"` - Generate text via server
+  - `/mcp capabilities` - Check which servers support sampling
 - `/cost` - Show session cost
 - `/acceleration` - Show GPU/acceleration info
 - `/exit` - Exit the application

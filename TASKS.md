@@ -291,34 +291,24 @@ history_size = 1000
   - [x] Add telemetry and monitoring hooks - Integrated in HealthMonitor
 - [x] See [SUPERVISION.md](SUPERVISION.md) for current supervision structure
 
-## Phase 12: Interrupted Response Recovery
-- [ ] Implement resumable LLM streaming responses
-  - [ ] Save partial responses during streaming
-    - [ ] Store response chunks with timestamps
-    - [ ] Track token count of partial response
-    - [ ] Save request context (messages, model, parameters)
-  - [ ] Detect interruptions (network, user-initiated, errors)
-    - [ ] Distinguish between recoverable and non-recoverable errors
-    - [ ] Implement timeout detection for stalled streams
-    - [ ] Handle Ctrl-C gracefully during streaming
-  - [ ] Resume mechanisms
-    - [ ] `/resume` command to continue last interrupted response
-    - [ ] Show partial response and continuation point
-    - [ ] Adjust token count to account for already-received content
-    - [ ] Support different resumption strategies:
-      - Continue from exact cutoff
-      - Regenerate last paragraph for coherence
-      - Summarize and continue
-  - [ ] Storage considerations
-    - [ ] Save interrupted streams to session
-    - [ ] Persist across application restarts
-    - [ ] Clean up old interrupted responses
-    - [ ] Handle multiple interrupted responses per session
-  - [ ] UI/UX improvements
+## Phase 12: Interrupted Response Recovery (MOVED to ex_llm)
+- [ ] Core functionality moved to ex_llm library
+  - [ ] See [/Users/azmaveth/code/ex_llm/TASKS.md] for streaming recovery implementation
+  - [ ] ex_llm will handle:
+    - Saving partial responses during streaming
+    - Detecting interruptions (network, timeouts, errors)
+    - Resume mechanisms and strategies
+    - Token counting for partial responses
+    - Storage of interrupted stream data
+- [ ] MCP Chat integration (after ex_llm implementation):
+  - [ ] `/resume` command to continue last interrupted response
+  - [ ] Session-level persistence of interrupted responses
+  - [ ] UI/UX improvements:
     - [ ] Show indicator when response is resumable
     - [ ] Display partial response differently (e.g., dimmed or italic)
     - [ ] Prompt user to resume on reconnection
     - [ ] Show estimated tokens/cost saved by resuming
+  - [ ] Integration with chat history and context
 
 ## Phase 13: CLI Commands Refactoring
 - [ ] Refactor monolithic CLI commands module (in progress)
@@ -343,7 +333,7 @@ history_size = 1000
     - Easier to add new commands
     - Follows single responsibility principle
 
-## Phase 14: Default Resources and Prompts
+## Phase 14: Default Resources and Prompts (COMPLETED)
 - [x] Add built-in MCP resources for better user experience
   - [x] Default resources to include:
     - [x] Project documentation links
@@ -375,45 +365,188 @@ history_size = 1000
     - [x] "debug_session" - Debugging methodology
     - [x] "explain_code" - Explain code with context
     - [x] "setup_mcp_server" - Guide for adding servers
-  - [ ] Integration prompts:
-    - [ ] "create_agent" - Multi-agent setup wizard
-    - [ ] "api_integration" - Connect external services
-- [ ] Include default MCP servers for demos
-  - [ ] Essential servers to bundle:
-    - [ ] Filesystem (already common)
-    - [ ] Time/date server (for scheduling demos)
-    - [ ] Calculator (for computation demos)
-    - [ ] Demo data server (sample datasets)
+  - [x] Integration prompts:
+    - [x] "create_agent" - Multi-agent setup wizard
+    - [x] "api_integration" - Connect external services
+- [x] Include default MCP servers for demos
+  - [x] Essential servers to bundle:
+    - [x] Filesystem (already common)
+    - [x] Time/date server (for scheduling demos)
+    - [x] Calculator (for computation demos)
+    - [x] Demo data server (sample datasets)
   - [ ] Optional but useful:
     - [ ] SQLite server (local data management)
     - [ ] Git server (code repository interaction)
     - [ ] Markdown server (documentation access)
-  - [ ] Demo scenarios:
-    - [ ] "Analyze this file and suggest improvements"
-    - [ ] "Schedule a task for next week"
-    - [ ] "Calculate the cost of running this prompt 1000 times"
-    - [ ] "Search my documents for information about X"
-- [ ] Create interactive demo system
-  - [ ] `/demo` command that:
-    - [ ] Checks available MCP servers
-    - [ ] Runs through capability showcase
-    - [ ] Demonstrates each major feature
-    - [ ] Shows cost tracking
-    - [ ] Displays context management
-    - [ ] Performs actual useful tasks
-  - [ ] Demo flow:
-    1. Connect to filesystem server
-    2. Create a sample file
-    3. Analyze the file
-    4. Generate improvements
-    5. Save results
-    6. Show cost and token usage
-    7. Demonstrate context truncation
-    8. Show session save/load
+  - [x] Demo scenarios:
+    - [x] "Analyze this file and suggest improvements"
+    - [x] "Schedule a task for next week"
+    - [x] "Calculate the cost of running this prompt 1000 times"
+    - [x] "Search my documents for information about X"
+- [x] Create comprehensive example files and demo servers
+  - [x] examples/README.md - Overview of all examples
+  - [x] examples/getting_started.exs - Basic MCP Chat usage demo
+  - [x] examples/multi_model.exs - Multi-model capabilities showcase
+  - [x] examples/beam_integration/ - BEAM message passing examples
+    - [x] agent_server.ex - GenServer managing MCP Chat instance
+    - [x] agent_supervisor.ex - Multi-agent supervision tree
+    - [x] orchestrator.ex - Multi-agent workflow orchestration
+    - [x] agent_system.exs - Interactive multi-agent demo
+    - [x] client.exs - Client connection examples
+  - [x] examples/demo_servers/ - Python MCP server implementations
+    - [x] time_server.py - Time/date functionality server
+    - [x] calculator_server.py - Advanced calculator server
+    - [x] data_server.py - Data generation and query server
+    - [x] requirements.txt - Python dependencies
+    - [x] README.md - Server setup and usage guide
+- [ ] Create interactive /demo command (future enhancement)
+  - [ ] Auto-detect available demo servers
+  - [ ] Run through capability showcase
+  - [ ] Interactive tutorial mode
 
 ## Phase 14: Additional LLM Backends (COMPLETED - See ex_llm)
 - [x] AWS Bedrock and Google Gemini support added to ex_llm
 - [x] See [/Users/azmaveth/code/ex_llm/TASKS.md] for provider details
+
+## Phase 15: Performance Optimization
+- [ ] Optimize startup time
+  - [ ] Lazy load MCP server connections
+  - [ ] Profile and optimize config loading
+  - [ ] Defer non-essential initialization
+  - [ ] Add startup time metrics
+- [ ] Memory optimization
+  - [ ] Implement message history pagination
+  - [ ] Add configurable history limits
+  - [ ] Optimize large context handling
+  - [ ] Add memory usage telemetry
+- [ ] Response streaming improvements
+  - [ ] Implement backpressure for streaming
+  - [ ] Add streaming buffer management
+  - [ ] Optimize chunk processing
+  - [ ] Handle slow consumers gracefully
+- [ ] Concurrent operations
+  - [ ] Parallel MCP server initialization
+  - [ ] Concurrent tool execution where safe
+  - [ ] Async context file loading
+  - [ ] Background session autosave
+
+## Phase 16: Enhanced MCP Features
+- [ ] MCP server health monitoring (requires ex_mcp enhancements)
+  - [ ] Use ex_mcp health check protocol (when implemented)
+  - [ ] Display server status in UI with indicators
+  - [ ] Show health metrics (latency, uptime, success rate)
+  - [ ] Auto-disable unhealthy servers
+  - [ ] Health status notifications to user
+- [ ] Leverage new ex_mcp v0.2.0 features
+  - [x] Progress notifications - integrate with UI
+    - [ ] Capture progress notifications via custom client
+    - [ ] Show progress bars for long operations in renderer
+    - [ ] Display progress percentage in status line
+    - [ ] Support multiple concurrent progress indicators
+    - [ ] Add /progress command to show active operations
+  - [x] Change notifications - react to server changes
+    - [ ] Create notification handler module
+    - [ ] Auto-refresh tool/resource/prompt lists on changes
+    - [ ] Notify user of capability changes in chat
+    - [ ] Update cached server metadata on changes
+    - [ ] Add /notifications command to show recent changes
+  - [x] Sampling/createMessage - for server-side LLM
+    - [ ] Add /sample command for server-side generation
+    - [ ] Support sampling parameters (temperature, max_tokens, etc.)
+    - [ ] Show which server is generating in UI
+    - [ ] Handle sampling errors gracefully
+    - [ ] Support streaming responses from sampling
+- [ ] Advanced tool execution
+  - [ ] Tool execution history (local tracking)
+    - [ ] Store last N tool executions
+    - [ ] Show execution time and results
+    - [ ] Search through tool history
+  - [ ] Tool result caching (implement locally)
+    - [ ] Cache deterministic tool results
+    - [ ] Configurable cache TTL
+    - [ ] Manual cache invalidation
+  - [ ] Tool execution analytics
+    - [ ] Track most used tools
+    - [ ] Average execution times
+    - [ ] Success/failure rates
+- [ ] Resource management enhancements
+  - [ ] Local resource caching layer
+    - [ ] Cache frequently accessed resources
+    - [ ] Smart cache eviction
+    - [ ] Show cache hit rates
+  - [ ] Resource access patterns
+    - [ ] Track resource usage
+    - [ ] Suggest frequently used resources
+    - [ ] Resource access history
+- [ ] MCP server marketplace integration
+  - [ ] Browse npmjs.com for @modelcontextprotocol packages
+  - [ ] Parse package.json for MCP metadata
+  - [ ] One-click npm install and config
+  - [ ] Show download stats from npm
+  - [ ] Local server ratings/bookmarks
+
+## Phase 17: Advanced ex_mcp Integration
+- [ ] Custom notification handlers
+  - [ ] Create MCPChat.MCP.NotificationHandler behaviour
+  - [ ] Implement handlers for each notification type:
+    - [ ] ResourceListChangedHandler - refresh resource cache
+    - [ ] ResourceUpdatedHandler - update specific resource
+    - [ ] ToolListChangedHandler - refresh tool cache
+    - [ ] PromptListChangedHandler - refresh prompt cache
+    - [ ] ProgressHandler - update progress UI
+  - [ ] Register handlers with client on connection
+  - [ ] Telemetry events for notifications
+- [ ] Progress tracking system
+  - [ ] Create MCPChat.MCP.ProgressTracker GenServer
+  - [ ] Track active operations with progress tokens
+  - [ ] Progress UI components:
+    - [ ] Inline progress bars in chat
+    - [ ] Global progress indicator in status bar
+    - [ ] Progress history/log
+  - [ ] Automatic progress token generation
+  - [ ] Progress timeout handling
+- [ ] Server-side LLM integration
+  - [ ] Create MCPChat.LLM.ServerAdapter for MCP sampling
+  - [ ] Unified interface for local and server LLMs
+  - [ ] Cost tracking for server-side generation
+  - [ ] Model capability detection
+  - [ ] Fallback to local LLM if sampling unavailable
+- [ ] Enhanced server capabilities
+  - [ ] Parse and display server capabilities in detail
+  - [ ] Show sampling support and model preferences
+  - [ ] Display supported notification types
+  - [ ] Capability-based UI adaptation
+  - [ ] Server feature compatibility matrix
+- [ ] BEAM transport optimization
+  - [ ] Use BEAM transport for local Elixir servers
+  - [ ] Zero-copy message passing for performance
+  - [ ] Native process monitoring
+  - [ ] Hot code reloading support
+  - [ ] Distributed BEAM node connections
+
+## Phase 18: MCP Commands Enhancement
+- [ ] Enhance /mcp commands with new features
+  - [ ] `/mcp sample <server> <prompt>` - Use server-side LLM
+    - [ ] Parse sampling parameters (--temperature, --max-tokens)
+    - [ ] Show server name in response
+    - [ ] Handle both streaming and non-streaming
+  - [ ] `/mcp progress` - Show active progress operations
+    - [ ] List all operations with progress tokens
+    - [ ] Show progress bars for each operation
+    - [ ] Allow cancellation of operations
+  - [ ] `/mcp notify <on|off|status>` - Control notifications
+    - [ ] Toggle notification display
+    - [ ] Show notification history
+    - [ ] Filter by notification type
+  - [ ] `/mcp capabilities <server>` - Detailed capabilities
+    - [ ] Show sampling support details
+    - [ ] List supported notifications
+    - [ ] Display experimental features
+- [ ] Integration with existing commands
+  - [ ] Update `/mcp tools` to show progress support
+  - [ ] Add progress tracking to `/mcp call`
+  - [ ] Show notification status in `/mcp servers`
+  - [ ] Add sampling info to server details
 
 ## Development Notes
 
@@ -423,3 +556,4 @@ history_size = 1000
 - Use behaviours for extensibility
 - Follow Elixir naming conventions
 - Add telemetry for monitoring
+- Leverage ex_mcp v0.2.0 features (progress, notifications, sampling)

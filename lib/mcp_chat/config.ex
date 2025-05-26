@@ -54,6 +54,20 @@ defmodule MCPChat.Config do
     GenServer.call(__MODULE__, :get_all)
   end
 
+  @doc """
+  Gets a runtime configuration value.
+  """
+  def get_runtime(key, default \\ nil) do
+    GenServer.call(__MODULE__, {:get_runtime, key, default})
+  end
+
+  @doc """
+  Sets a runtime configuration value.
+  """
+  def set_runtime(key, value) do
+    GenServer.call(__MODULE__, {:set_runtime, key, value})
+  end
+
   # Server Callbacks
 
   @impl true
@@ -92,7 +106,8 @@ defmodule MCPChat.Config do
 
     state = %{
       config_path: config_path,
-      config: %{}
+      config: %{},
+      runtime_config: %{}
     }
 
     {:ok, state, {:continue, :load_config}}
@@ -108,6 +123,18 @@ defmodule MCPChat.Config do
   def handle_call({:get, key}, _from, state) do
     value = Map.get(state.config, key)
     {:reply, value, state}
+  end
+
+  @impl true
+  def handle_call({:get_runtime, key, default}, _from, state) do
+    value = Map.get(state.runtime_config, key, default)
+    {:reply, value, state}
+  end
+
+  @impl true
+  def handle_call({:set_runtime, key, value}, _from, state) do
+    new_runtime = Map.put(state.runtime_config, key, value)
+    {:reply, :ok, %{state | runtime_config: new_runtime}}
   end
 
   @impl true

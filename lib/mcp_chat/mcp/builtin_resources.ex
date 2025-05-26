@@ -217,6 +217,14 @@ defmodule MCPChat.MCP.BuiltinResources do
       %{
         "name" => "debug_session",
         "description" => "Interactive debugging session"
+      },
+      %{
+        "name" => "create_agent",
+        "description" => "Multi-agent system setup wizard"
+      },
+      %{
+        "name" => "api_integration",
+        "description" => "Connect external services to MCP Chat"
       }
     ]
   end
@@ -478,6 +486,137 @@ defmodule MCPChat.MCP.BuiltinResources do
              %{name: "error_message", description: "Error message if available", required: false},
              %{name: "stack_trace", description: "Stack trace if available", required: false},
              %{name: "mcp_tools", description: "Relevant MCP tools available", required: false}
+           ]
+         }}
+
+      "create_agent" ->
+        {:ok,
+         %{
+           name: "create_agent",
+           template: """
+           Let's create a multi-agent MCP Chat setup!
+
+           Agent Purpose: {{agent_purpose}}
+           {{#if agent_count}}
+           Number of agents: {{agent_count}}
+           {{/if}}
+
+           I'll help you design a multi-agent system:
+
+           ## Step 1: Define Agent Roles
+           Based on your purpose, here are suggested agent roles:
+           {{#if agent_purpose contains "research"}}
+           - Research Agent: Gathers and analyzes information
+           - Synthesis Agent: Combines findings into insights
+           - Writer Agent: Produces final reports
+           {{else if agent_purpose contains "development"}}
+           - Code Analyzer: Reviews existing code
+           - Implementation Agent: Writes new code
+           - Test Agent: Creates and runs tests
+           - Documentation Agent: Updates docs
+           {{else}}
+           - Coordinator Agent: Manages workflow
+           - Worker Agents: Perform specific tasks
+           - Quality Agent: Validates results
+           {{/if}}
+
+           ## Step 2: Agent Communication
+           We'll use BEAM message passing for agent coordination:
+           - Agents run as MCP servers (stdio mode)
+           - Main instance connects to all agents
+           - Agents can send/receive messages via tools
+
+           ## Step 3: Configuration
+           I'll generate the configuration files needed:
+           1. Individual agent configs
+           2. Main coordinator config
+           3. Startup scripts
+
+           What specific capabilities should each agent have?
+           """,
+           arguments: [
+             %{name: "agent_purpose", description: "What the multi-agent system will do", required: true},
+             %{name: "agent_count", description: "Number of agents needed", required: false}
+           ]
+         }}
+
+      "api_integration" ->
+        {:ok,
+         %{
+           name: "api_integration",
+           template: """
+           Setting up API integration for: {{service_name}}
+
+           {{#if api_type}}
+           API Type: {{api_type}}
+           {{/if}}
+
+           I'll help you integrate {{service_name}} with MCP Chat:
+
+           ## Integration Approach
+
+           {{#if api_type == "REST"}}
+           ### REST API Integration
+           1. Create MCP server wrapper
+           2. Define tools for each endpoint
+           3. Handle authentication
+           4. Implement rate limiting
+           {{else if api_type == "GraphQL"}}
+           ### GraphQL Integration
+           1. Schema introspection
+           2. Query/mutation tools
+           3. Subscription support
+           4. Type mapping
+           {{else if api_type == "WebSocket"}}
+           ### WebSocket Integration
+           1. Connection management
+           2. Message routing
+           3. Event handling
+           4. Reconnection logic
+           {{else}}
+           ### Generic API Integration
+           1. Protocol detection
+           2. Authentication setup
+           3. Tool generation
+           4. Error handling
+           {{/if}}
+
+           ## Implementation Steps
+
+           1. **MCP Server Creation**
+              ```elixir
+              defmodule {{service_name}}Server do
+                use ExMCP.Server
+
+                def handle_tool_call("{{service_name}}.request", params) do
+                  # API call implementation
+                end
+              end
+              ```
+
+           2. **Configuration**
+              ```toml
+              [mcp.servers.{{service_name|lowercase}}]
+              command = ["./{{service_name|lowercase}}_server"]
+              env = { API_KEY = "your-key" }
+              ```
+
+           3. **Usage Example**
+              ```
+              /mcp connect {{service_name|lowercase}}
+              /mcp tool {{service_name|lowercase}} request {...}
+              ```
+
+           {{#if requires_auth}}
+           Note: This service requires authentication. Make sure to set up your API credentials.
+           {{/if}}
+
+           Would you like me to generate the complete MCP server code?
+           """,
+           arguments: [
+             %{name: "service_name", description: "Name of the service to integrate", required: true},
+             %{name: "api_type", description: "Type of API (REST, GraphQL, WebSocket, etc.)", required: false},
+             %{name: "requires_auth", description: "Whether authentication is required", required: false}
            ]
          }}
 

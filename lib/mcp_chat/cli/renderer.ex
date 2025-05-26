@@ -41,6 +41,30 @@ defmodule MCPChat.CLI.Renderer do
     ])
   end
 
+  def show_divider() do
+    puts(Owl.Data.tag(String.duplicate("─", 60), :light_black))
+  end
+
+  def show_markdown(content) do
+    # Simple markdown rendering - could be enhanced
+    formatted =
+      content
+      |> String.replace(~r/^# (.+)$/m, fn _, title ->
+        Owl.Data.tag("\n#{title}\n#{String.duplicate("=", String.length(title))}\n", :cyan) |> Owl.Data.to_chardata()
+      end)
+      |> String.replace(~r/^## (.+)$/m, fn _, title ->
+        Owl.Data.tag("\n#{title}\n#{String.duplicate("-", String.length(title))}\n", :blue) |> Owl.Data.to_chardata()
+      end)
+      |> String.replace(~r/`([^`]+)`/, fn _, code ->
+        Owl.Data.tag(code, :yellow) |> Owl.Data.to_chardata()
+      end)
+      |> String.replace(~r/\*\*([^*]+)\*\*/, fn _, text ->
+        Owl.Data.tag(text, [:bright]) |> Owl.Data.to_chardata()
+      end)
+
+    puts(formatted)
+  end
+
   def format_prompt() do
     [
       Owl.Data.tag("You", @colors.prompt),

@@ -27,7 +27,10 @@ defmodule MCPChat.Application do
         # Line editor for CLI input
         MCPChat.CLI.ExReadlineAdapter,
         # MCP server manager (handles the dynamic supervisor internally)
-        MCPChat.MCP.ServerManager
+        MCPChat.MCP.ServerManager,
+        # New v0.2.0 MCP features
+        MCPChat.MCP.NotificationRegistry,
+        MCPChat.MCP.ProgressTracker
       ] ++ mcp_server_children()
 
     opts = [strategy: :one_for_one, name: MCPChat.Supervisor]
@@ -36,6 +39,8 @@ defmodule MCPChat.Application do
       {:ok, _sup} = result ->
         # Register core processes for health monitoring
         register_health_monitors()
+        # Enable notifications by default
+        enable_notifications()
         result
 
       error ->
@@ -126,5 +131,34 @@ defmodule MCPChat.Application do
       end
 
     children
+  end
+
+  defp enable_notifications() do
+    # Give registry time to start
+    Process.sleep(200)
+
+    # Register default notification handlers
+    MCPChat.MCP.NotificationRegistry.register_handler(
+      MCPChat.MCP.Handlers.ResourceChangeHandler,
+      [:resources_list_changed, :resources_updated]
+    )
+
+    MCPChat.MCP.NotificationRegistry.register_handler(
+      MCPChat.MCP.Handlers.ToolChangeHandler,
+      [:tools_list_changed]
+    )
+
+    MCPChat.MCP.NotificationRegistry.register_handler(
+      MCPChat.MCP.Handlers.ProgressHandler,
+      [:progress],
+      progress_tracker_pid: Process.whereis(MCPChat.MCP.ProgressTracker)
+    )
+
+    # Save preference
+    if Process.whereis(MCPChat.Config) do
+      MCPChat.Config.set_runtime("notifications.enabled", true)
+    end
+  rescue
+    _ -> :ok
   end
 end

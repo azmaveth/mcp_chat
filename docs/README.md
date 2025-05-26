@@ -11,6 +11,7 @@ Welcome to the MCP Chat documentation! This directory contains comprehensive gui
 
 ### Advanced Topics
 - **[MCP_SERVERS.md](MCP_SERVERS.md)** - Guide to using and creating MCP servers
+- **[NOTIFICATIONS.md](NOTIFICATIONS.md)** - Progress tracking and real-time notifications
 - **[API_REFERENCE.md](API_REFERENCE.md)** - Developer API documentation (coming soon)
 - **[CONFIGURATION.md](CONFIGURATION.md)** - Advanced configuration options (coming soon)
 
@@ -34,10 +35,11 @@ Welcome to the MCP Chat documentation! This directory contains comprehensive gui
 
 ## Documentation Versions
 
-This documentation is for MCP Chat version 0.1.0 (May 2025).
+This documentation is for MCP Chat version 0.2.0 (May 2025).
 
-- **Latest stable**: v0.1.0
+- **Latest stable**: v0.2.0
 - **Development**: main branch
+- **New in v0.2.0**: Progress tracking, notifications, server-side LLM
 
 ## Getting Help
 

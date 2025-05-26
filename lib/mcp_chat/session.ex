@@ -84,6 +84,15 @@ defmodule MCPChat.Session do
   end
 
   @doc """
+  Get context files from the current session.
+  """
+  def get_context_files(pid \\ __MODULE__) do
+    session = GenServer.call(pid, :get_current_session)
+    files = session.context[:files] || %{}
+    {:ok, files}
+  end
+
+  @doc """
   Track token usage for a message exchange.
   """
   def track_token_usage(input_messages, response_content) do

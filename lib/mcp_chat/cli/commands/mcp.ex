@@ -36,7 +36,12 @@ defmodule MCPChat.CLI.Commands.MCP do
       "resources" => "List available MCP resources",
       "resource" => "Read an MCP resource (usage: resource <server> <uri>)",
       "prompts" => "List available MCP prompts",
-      "prompt" => "Get an MCP prompt (usage: prompt <server> <name>)"
+      "prompt" => "Get an MCP prompt (usage: prompt <server> <name>)",
+      # New v0.2.0 features
+      "sample" => "Use server-side LLM generation (usage: sample <server> <prompt>)",
+      "progress" => "Show active operations with progress",
+      "notify" => "Control notification display (usage: notify <on|off|status>)",
+      "capabilities" => "Show detailed server capabilities"
     }
   end
 
@@ -75,6 +80,11 @@ defmodule MCPChat.CLI.Commands.MCP do
   defp handle_mcp_subcommand(["resource" | args]), do: read_resource(args)
   defp handle_mcp_subcommand(["prompts" | _args]), do: list_prompts()
   defp handle_mcp_subcommand(["prompt" | args]), do: get_prompt(args)
+  # New v0.2.0 commands
+  defp handle_mcp_subcommand(["sample" | args]), do: MCPChat.CLI.Commands.MCPExtended.handle_sample(args)
+  defp handle_mcp_subcommand(["progress" | args]), do: MCPChat.CLI.Commands.MCPExtended.handle_progress(args)
+  defp handle_mcp_subcommand(["notify" | args]), do: MCPChat.CLI.Commands.MCPExtended.handle_notify(args)
+  defp handle_mcp_subcommand(["capabilities" | args]), do: MCPChat.CLI.Commands.MCPExtended.handle_capabilities(args)
 
   defp handle_mcp_subcommand([subcmd | _]) do
     show_error("Unknown MCP subcommand: #{subcmd}")
@@ -476,12 +486,33 @@ defmodule MCPChat.CLI.Commands.MCP do
   end
 
   defp execute_tool(server, tool, args) do
+    # Check for --progress flag
+    {args, with_progress} =
+      case List.last(args) do
+        "--progress" -> {List.delete_at(args, -1), true}
+        _ -> {args, false}
+      end
+
     # Parse arguments - could be JSON or key=value pairs
     arguments = parse_tool_arguments(args)
 
     show_info("Executing #{tool} on #{server}...")
 
-    case ServerManager.call_tool(server, tool, arguments) do
+    # Call with progress tracking if requested
+    result =
+      if with_progress do
+        case ServerManager.get_server(server) do
+          {:ok, %{client: client}} ->
+            MCPChat.MCP.NotificationClient.call_tool(client, tool, arguments, with_progress: true)
+
+          error ->
+            error
+        end
+      else
+        ServerManager.call_tool(server, tool, arguments)
+      end
+
+    case result do
       {:ok, result} ->
         display_tool_result(result)
 
