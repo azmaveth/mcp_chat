@@ -221,10 +221,10 @@ defmodule MCPChat.Session.ExLLMSessionAdapter do
   defp to_mcp_chat_session(%MCPChatSessionType{} = session), do: session
 
   # Serialization support
-  
+
   @doc """
   Serialize session to JSON.
-  
+
   Converts MCPChat session to ExLLM session for serialization.
   """
   def to_json(session) do
@@ -232,16 +232,17 @@ defmodule MCPChat.Session.ExLLMSessionAdapter do
     |> to_ex_llm_session()
     |> ExLLMSession.to_json()
   end
-  
+
   @doc """
   Deserialize session from JSON.
-  
+
   Returns MCPChat session type.
   """
   def from_json(json_string) do
     case ExLLMSession.from_json(json_string) do
       {:ok, ex_llm_session} ->
         {:ok, to_mcp_chat_session(ex_llm_session)}
+
       error ->
         error
     end

@@ -277,5 +277,5 @@ defmodule MCPChat.Session do
 
   # Private Functions - only those specific to GenServer behavior
 
-  # Note: Session creation and manipulation logic moved to MCPChat.Session.Core
+  # Note: Session operations are handled by ExLLMSessionAdapter which wraps ExLLM.Session
 end
