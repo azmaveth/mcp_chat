@@ -93,7 +93,7 @@ defmodule MCPChat.CLIChatIntegrationTest do
       # Join should preserve newlines
       content =
         lines
-        |> Enum.slice(1..-2)
+        |> Enum.slice(1..-2//1)
         |> Enum.join("\n")
 
       assert content == "Line 1\nLine 2\nLine 3"

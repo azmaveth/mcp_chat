@@ -103,20 +103,7 @@ defmodule MCPChat.CLI.Chat do
         else: options
 
     # Check if adapter is configured
-    if not adapter.configured?(session.llm_backend) do
-      backend_name = session.llm_backend
-
-      env_var =
-        case backend_name do
-          "openai" -> "OPENAI_API_KEY"
-          "bedrock" -> "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
-          "gemini" -> "GOOGLE_API_KEY"
-          _ -> "ANTHROPIC_API_KEY"
-        end
-
-      {:error,
-       "LLM backend '#{backend_name}' not configured. Please set your API key in ~/.config/mcp_chat/config.toml or set the #{env_var} environment variable"}
-    else
+    if adapter.configured?(session.llm_backend) do
       # Check if streaming is enabled
       response =
         if Config.get([:ui, :streaming]) != false do
@@ -134,6 +121,19 @@ defmodule MCPChat.CLI.Chat do
         error ->
           error
       end
+    else
+      backend_name = session.llm_backend
+
+      env_var =
+        case backend_name do
+          "openai" -> "OPENAI_API_KEY"
+          "bedrock" -> "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
+          "gemini" -> "GOOGLE_API_KEY"
+          _ -> "ANTHROPIC_API_KEY"
+        end
+
+      {:error,
+       "LLM backend '#{backend_name}' not configured. Please set your API key in ~/.config/mcp_chat/config.toml or set the #{env_var} environment variable"}
     end
   end
 

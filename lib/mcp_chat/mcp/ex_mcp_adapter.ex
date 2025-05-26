@@ -169,17 +169,6 @@ defmodule MCPChat.MCP.ExMCPAdapter do
     end
   end
 
-  # Additional functions for ServerManager compatibility
-
-  def get_status(server_ref) when is_pid(server_ref) do
-    GenServer.call(server_ref, :get_status)
-  end
-
-  def get_status(server_name) when is_binary(server_name) do
-    # For string names, we need to look up the PID from the ServerManager
-    {:error, :invalid_server_reference}
-  end
-
   def handle_call(:get_status, _from, state) do
     status =
       if state.ex_mcp_client do
@@ -196,14 +185,6 @@ defmodule MCPChat.MCP.ExMCPAdapter do
     {:reply, {:ok, status}, state}
   end
 
-  def get_tools(server_ref) when is_pid(server_ref) do
-    GenServer.call(server_ref, :get_tools)
-  end
-
-  def get_tools(server_name) when is_binary(server_name) do
-    {:error, :invalid_server_reference}
-  end
-
   def handle_call(:get_tools, _from, state) do
     result =
       if state.ex_mcp_client do
@@ -213,14 +194,6 @@ defmodule MCPChat.MCP.ExMCPAdapter do
       end
 
     {:reply, result, state}
-  end
-
-  def get_resources(server_ref) when is_pid(server_ref) do
-    GenServer.call(server_ref, :get_resources)
-  end
-
-  def get_resources(server_name) when is_binary(server_name) do
-    {:error, :invalid_server_reference}
   end
 
   def handle_call(:get_resources, _from, state) do
@@ -238,14 +211,6 @@ defmodule MCPChat.MCP.ExMCPAdapter do
     {:reply, result, state}
   end
 
-  def get_prompts(server_ref) when is_pid(server_ref) do
-    GenServer.call(server_ref, :get_prompts)
-  end
-
-  def get_prompts(server_name) when is_binary(server_name) do
-    {:error, :invalid_server_reference}
-  end
-
   def handle_call(:get_prompts, _from, state) do
     result =
       if state.ex_mcp_client do
@@ -259,6 +224,41 @@ defmodule MCPChat.MCP.ExMCPAdapter do
       end
 
     {:reply, result, state}
+  end
+
+  # Additional functions for ServerManager compatibility
+
+  def get_status(server_ref) when is_pid(server_ref) do
+    GenServer.call(server_ref, :get_status)
+  end
+
+  def get_status(server_name) when is_binary(server_name) do
+    # For string names, we need to look up the PID from the ServerManager
+    {:error, :invalid_server_reference}
+  end
+
+  def get_tools(server_ref) when is_pid(server_ref) do
+    GenServer.call(server_ref, :get_tools)
+  end
+
+  def get_tools(server_name) when is_binary(server_name) do
+    {:error, :invalid_server_reference}
+  end
+
+  def get_resources(server_ref) when is_pid(server_ref) do
+    GenServer.call(server_ref, :get_resources)
+  end
+
+  def get_resources(server_name) when is_binary(server_name) do
+    {:error, :invalid_server_reference}
+  end
+
+  def get_prompts(server_ref) when is_pid(server_ref) do
+    GenServer.call(server_ref, :get_prompts)
+  end
+
+  def get_prompts(server_name) when is_binary(server_name) do
+    {:error, :invalid_server_reference}
   end
 
   @impl true

@@ -115,30 +115,7 @@ defmodule MCPChat.CLI.Commands.Session do
 
         sessions
         |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
-        |> Enum.each(fn session ->
-          # Format the session info
-          time_ago = session.relative_time || format_time_ago(session.updated_at)
-          messages = "#{session.message_count} msgs"
-
-          # Extract name from filename if available
-          name = extract_session_name(session.filename)
-
-          # Show session details
-          if name do
-            IO.puts("  • #{name} (#{session.id})")
-          else
-            IO.puts("  • #{session.id}")
-          end
-
-          IO.puts("    #{messages}, #{time_ago}, #{format_bytes(session.size)}")
-
-          # Backend info if available
-          if session.llm_backend do
-            IO.puts("    Backend: #{session.llm_backend}")
-          end
-
-          IO.puts("")
-        end)
+        |> Enum.each(&show_session_details/1)
 
       {:error, reason} ->
         show_error("Failed to list sessions: #{reason}")
@@ -154,32 +131,50 @@ defmodule MCPChat.CLI.Commands.Session do
       show_info("No messages in history")
     else
       MCPChat.CLI.Renderer.show_text("## Conversation History\n")
-
-      Enum.each(session.messages, fn msg ->
-        # Handle both map and struct access patterns
-        role = msg[:role] || msg["role"]
-        content = msg[:content] || msg["content"]
-
-        case role do
-          "system" ->
-            MCPChat.CLI.Renderer.show_text("**System:** #{content}\n")
-
-          "user" ->
-            MCPChat.CLI.Renderer.show_text("**User:** #{content}\n")
-
-          "assistant" ->
-            MCPChat.CLI.Renderer.show_text("**Assistant:** #{content}\n")
-
-          nil ->
-            MCPChat.CLI.Renderer.show_text("**Unknown:** #{content}\n")
-
-          _ ->
-            MCPChat.CLI.Renderer.show_text("**#{String.capitalize(role)}:** #{content}\n")
-        end
-      end)
+      Enum.each(session.messages, &show_message/1)
     end
 
     :ok
+  end
+
+  defp show_message(msg) do
+    # Handle both map and struct access patterns
+    role = msg[:role] || msg["role"]
+    content = msg[:content] || msg["content"]
+    formatted_role = format_role(role)
+
+    MCPChat.CLI.Renderer.show_text("**#{formatted_role}:** #{content}\n")
+  end
+
+  defp format_role(nil), do: "Unknown"
+  defp format_role("system"), do: "System"
+  defp format_role("user"), do: "User"
+  defp format_role("assistant"), do: "Assistant"
+  defp format_role(role), do: String.capitalize(role)
+
+  defp show_session_details(session) do
+    # Format the session info
+    time_ago = session.relative_time || format_time_ago(session.updated_at)
+    messages = "#{session.message_count} msgs"
+
+    # Extract name from filename if available
+    name = extract_session_name(session.filename)
+
+    # Show session details
+    if name do
+      IO.puts("  • #{name} (#{session.id})")
+    else
+      IO.puts("  • #{session.id}")
+    end
+
+    IO.puts("    #{messages}, #{time_ago}, #{format_bytes(session.size)}")
+
+    # Backend info if available
+    if session.llm_backend do
+      IO.puts("    Backend: #{session.llm_backend}")
+    end
+
+    IO.puts("")
   end
 
   # Helper functions
