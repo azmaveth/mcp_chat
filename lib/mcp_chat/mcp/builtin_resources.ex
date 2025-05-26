@@ -10,58 +10,58 @@ defmodule MCPChat.MCP.BuiltinResources do
   def list_resources() do
     [
       %{
-        uri: "mcp-chat://docs/readme",
-        name: "MCP Chat Documentation",
-        description: "Main documentation and getting started guide",
-        mimeType: "text/markdown"
+        "uri" => "mcp-chat://docs/readme",
+        "name" => "MCP Chat Documentation",
+        "description" => "Main documentation and getting started guide",
+        "mimeType" => "text/markdown"
       },
       %{
-        uri: "mcp-chat://docs/commands",
-        name: "Command Reference",
-        description: "Complete list of available commands",
-        mimeType: "text/markdown"
+        "uri" => "mcp-chat://docs/commands",
+        "name" => "Command Reference",
+        "description" => "Complete list of available commands",
+        "mimeType" => "text/markdown"
       },
       %{
-        uri: "mcp-chat://docs/mcp-servers",
-        name: "MCP Server Guide",
-        description: "How to connect and use MCP servers",
-        mimeType: "text/markdown"
+        "uri" => "mcp-chat://docs/mcp-servers",
+        "name" => "MCP Server Guide",
+        "description" => "How to connect and use MCP servers",
+        "mimeType" => "text/markdown"
       },
       %{
-        uri: "mcp-chat://info/version",
-        name: "Version Information",
-        description: "Current version and build information",
-        mimeType: "text/plain"
+        "uri" => "mcp-chat://info/version",
+        "name" => "Version Information",
+        "description" => "Current version and build information",
+        "mimeType" => "text/plain"
       },
       %{
-        uri: "mcp-chat://info/config",
-        name: "Current Configuration",
-        description: "Active configuration settings",
-        mimeType: "application/json"
+        "uri" => "mcp-chat://info/config",
+        "name" => "Current Configuration",
+        "description" => "Active configuration settings",
+        "mimeType" => "application/json"
       },
       %{
-        uri: "mcp-chat://examples/multi-agent",
-        name: "Multi-Agent Examples",
-        description: "Examples of chaining MCP Chat instances",
-        mimeType: "text/markdown"
+        "uri" => "mcp-chat://examples/multi-agent",
+        "name" => "Multi-Agent Examples",
+        "description" => "Examples of chaining MCP Chat instances",
+        "mimeType" => "text/markdown"
       },
       %{
-        uri: "mcp-chat://docs/troubleshooting",
-        name: "Troubleshooting Guide",
-        description: "Common issues and solutions",
-        mimeType: "text/markdown"
+        "uri" => "mcp-chat://docs/troubleshooting",
+        "name" => "Troubleshooting Guide",
+        "description" => "Common issues and solutions",
+        "mimeType" => "text/markdown"
       },
       %{
-        uri: "mcp-chat://docs/api-keys",
-        name: "API Key Setup",
-        description: "How to configure API keys for different providers",
-        mimeType: "text/markdown"
+        "uri" => "mcp-chat://docs/api-keys",
+        "name" => "API Key Setup",
+        "description" => "How to configure API keys for different providers",
+        "mimeType" => "text/markdown"
       },
       %{
-        uri: "mcp-chat://info/libraries",
-        name: "Library Information",
-        description: "Information about extracted libraries (ex_mcp, ex_llm, etc.)",
-        mimeType: "text/markdown"
+        "uri" => "mcp-chat://info/libraries",
+        "name" => "Library Information",
+        "description" => "Information about extracted libraries (ex_mcp, ex_llm, etc.)",
+        "mimeType" => "text/markdown"
       }
     ]
   end
@@ -162,7 +162,9 @@ defmodule MCPChat.MCP.BuiltinResources do
 
       "mcp-chat://info/config" ->
         config = MCPChat.Config.get_all()
-        {:ok, Jason.encode!(config, pretty: true)}
+        # Convert config to JSON format manually
+        config_string = format_config_as_json(config)
+        {:ok, config_string}
 
       "mcp-chat://examples/multi-agent" ->
         {:ok, generate_multi_agent_examples()}
@@ -185,36 +187,36 @@ defmodule MCPChat.MCP.BuiltinResources do
   def list_prompts() do
     [
       %{
-        name: "getting_started",
-        description: "Interactive tutorial for new users"
+        "name" => "getting_started",
+        "description" => "Interactive tutorial for new users"
       },
       %{
-        name: "demo",
-        description: "Showcase MCP Chat capabilities"
+        "name" => "demo",
+        "description" => "Showcase MCP Chat capabilities"
       },
       %{
-        name: "troubleshoot",
-        description: "Diagnose common issues"
+        "name" => "troubleshoot",
+        "description" => "Diagnose common issues"
       },
       %{
-        name: "code_review",
-        description: "Template for reviewing code"
+        "name" => "code_review",
+        "description" => "Template for reviewing code"
       },
       %{
-        name: "research_mode",
-        description: "Structured research workflow"
+        "name" => "research_mode",
+        "description" => "Structured research workflow"
       },
       %{
-        name: "setup_mcp_server",
-        description: "Guide for adding new MCP servers"
+        "name" => "setup_mcp_server",
+        "description" => "Guide for adding new MCP servers"
       },
       %{
-        name: "explain_code",
-        description: "Explain code with context from MCP servers"
+        "name" => "explain_code",
+        "description" => "Explain code with context from MCP servers"
       },
       %{
-        name: "debug_session",
-        description: "Interactive debugging session"
+        "name" => "debug_session",
+        "description" => "Interactive debugging session"
       }
     ]
   end
@@ -801,4 +803,37 @@ defmodule MCPChat.MCP.BuiltinResources do
       vsn -> to_string(vsn)
     end
   end
+
+  defp format_config_as_json(config) do
+    # Simple JSON formatting for config display
+    config
+    |> Enum.map(fn {key, value} ->
+      ~s{"#{key}": #{format_json_value(value)}}
+    end)
+    |> Enum.join(",\n  ")
+    |> then(&"{\n  #{&1}\n}")
+  end
+
+  defp format_json_value(value) when is_binary(value), do: ~s{"#{value}"}
+  defp format_json_value(value) when is_atom(value), do: ~s{"#{value}"}
+  defp format_json_value(value) when is_number(value), do: "#{value}"
+  defp format_json_value(value) when is_boolean(value), do: "#{value}"
+  defp format_json_value(value) when is_nil(value), do: "null"
+
+  defp format_json_value(value) when is_map(value) do
+    value
+    |> Enum.map(fn {k, v} ->
+      ~s{"#{k}": #{format_json_value(v)}}
+    end)
+    |> Enum.join(", ")
+    |> then(&"{#{&1}}")
+  end
+
+  defp format_json_value(value) when is_list(value) do
+    value
+    |> Enum.map_join(&format_json_value/1, ", ")
+    |> then(&"[#{&1}]")
+  end
+
+  defp format_json_value(value), do: ~s{"#{inspect(value)}"}
 end

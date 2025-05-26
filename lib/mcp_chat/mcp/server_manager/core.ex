@@ -104,15 +104,25 @@ defmodule MCPChat.MCP.ServerManager.Core do
   """
   @spec list_servers(server_state()) :: list()
   def list_servers(state) do
-    state.servers
-    |> Enum.map(fn {name, pid} ->
-      case Server.get_status(pid) do
-        {:error, _} -> nil
-        {:ok, status} -> %{name: name, status: status}
-        status -> %{name: name, status: status}
-      end
-    end)
-    |> Enum.reject(&is_nil/1)
+    # Get status of connected servers
+    connected_servers =
+      state.servers
+      |> Enum.map(fn {name, pid} ->
+        case Server.get_status(pid) do
+          {:error, _} -> nil
+          {:ok, status} -> %{name: name, status: status}
+          status -> %{name: name, status: status}
+        end
+      end)
+      |> Enum.reject(&is_nil/1)
+
+    # Add built-in server (always available)
+    builtin_server = %{
+      name: "builtin",
+      status: :connected
+    }
+
+    [builtin_server | connected_servers]
   end
 
   @doc """
@@ -120,15 +130,29 @@ defmodule MCPChat.MCP.ServerManager.Core do
   """
   @spec get_server(server_state(), String.t()) :: {:ok, map()} | {:error, term()}
   def get_server(state, name) do
-    case Map.get(state.servers, name) do
-      nil ->
-        {:error, :not_found}
+    if name == "builtin" do
+      {:ok,
+       %{
+         status: "running",
+         server_name: "MCP Chat Built-in Resources",
+         description: "Built-in documentation, prompts, and resources",
+         transport: "internal",
+         capabilities: %{
+           resources: true,
+           prompts: true
+         }
+       }}
+    else
+      case Map.get(state.servers, name) do
+        nil ->
+          {:error, :not_found}
 
-      pid ->
-        case Server.get_status(pid) do
-          {:error, reason} -> {:error, reason}
-          status -> {:ok, status}
-        end
+        pid ->
+          case Server.get_status(pid) do
+            {:error, reason} -> {:error, reason}
+            status -> {:ok, status}
+          end
+      end
     end
   end
 
@@ -166,14 +190,23 @@ defmodule MCPChat.MCP.ServerManager.Core do
   """
   @spec list_all_resources(server_state()) :: list()
   def list_all_resources(state) do
-    state.servers
-    |> Enum.map(fn {name, pid} ->
-      case Server.get_resources(pid) do
-        {:ok, resources} -> Enum.map(resources, &Map.put(&1, :server, name))
-        _ -> []
-      end
-    end)
-    |> List.flatten()
+    # Get resources from connected servers
+    server_resources =
+      state.servers
+      |> Enum.map(fn {name, pid} ->
+        case Server.get_resources(pid) do
+          {:ok, resources} -> Enum.map(resources, &Map.put(&1, :server, name))
+          _ -> []
+        end
+      end)
+      |> List.flatten()
+
+    # Add built-in resources
+    builtin_resources =
+      MCPChat.MCP.BuiltinResources.list_resources()
+      |> Enum.map(&Map.put(&1, "server", "builtin"))
+
+    server_resources ++ builtin_resources
   end
 
   @doc """
@@ -181,12 +214,17 @@ defmodule MCPChat.MCP.ServerManager.Core do
   """
   @spec read_resource(server_state(), String.t(), String.t()) :: {:ok, term()} | {:error, term()}
   def read_resource(state, server_name, uri) do
-    case Map.get(state.servers, server_name) do
-      nil ->
-        {:error, :server_not_found}
+    # Check if it's a built-in resource
+    if server_name == "builtin" do
+      MCPChat.MCP.BuiltinResources.read_resource(uri)
+    else
+      case Map.get(state.servers, server_name) do
+        nil ->
+          {:error, :server_not_found}
 
-      pid ->
-        Server.read_resource(pid, uri)
+        pid ->
+          Server.read_resource(pid, uri)
+      end
     end
   end
 
@@ -195,14 +233,23 @@ defmodule MCPChat.MCP.ServerManager.Core do
   """
   @spec list_all_prompts(server_state()) :: list()
   def list_all_prompts(state) do
-    state.servers
-    |> Enum.map(fn {name, pid} ->
-      case Server.get_prompts(pid) do
-        {:ok, prompts} -> Enum.map(prompts, &Map.put(&1, :server, name))
-        _ -> []
-      end
-    end)
-    |> List.flatten()
+    # Get prompts from connected servers
+    server_prompts =
+      state.servers
+      |> Enum.map(fn {name, pid} ->
+        case Server.get_prompts(pid) do
+          {:ok, prompts} -> Enum.map(prompts, &Map.put(&1, :server, name))
+          _ -> []
+        end
+      end)
+      |> List.flatten()
+
+    # Add built-in prompts
+    builtin_prompts =
+      MCPChat.MCP.BuiltinResources.list_prompts()
+      |> Enum.map(&Map.put(&1, "server", "builtin"))
+
+    server_prompts ++ builtin_prompts
   end
 
   @doc """
@@ -210,12 +257,17 @@ defmodule MCPChat.MCP.ServerManager.Core do
   """
   @spec get_prompt(server_state(), String.t(), String.t(), map()) :: {:ok, term()} | {:error, term()}
   def get_prompt(state, server_name, prompt_name, arguments) do
-    case Map.get(state.servers, server_name) do
-      nil ->
-        {:error, :server_not_found}
+    # Check if it's a built-in prompt
+    if server_name == "builtin" do
+      MCPChat.MCP.BuiltinResources.get_prompt(prompt_name)
+    else
+      case Map.get(state.servers, server_name) do
+        nil ->
+          {:error, :server_not_found}
 
-      pid ->
-        Server.get_prompt(pid, prompt_name, arguments)
+        pid ->
+          Server.get_prompt(pid, prompt_name, arguments)
+      end
     end
   end
 

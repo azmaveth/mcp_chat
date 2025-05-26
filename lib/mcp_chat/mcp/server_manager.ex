@@ -171,17 +171,27 @@ defmodule MCPChat.MCP.ServerManager do
 
   @impl true
   def handle_call({:get_resources, server_name}, _from, state) do
-    case Map.get(state.servers, server_name) do
-      nil -> {:reply, {:error, :not_found}, state}
-      pid -> {:reply, MCPChat.MCP.ExMCPAdapter.get_resources(pid), state}
+    if server_name == "builtin" do
+      resources = MCPChat.MCP.BuiltinResources.list_resources()
+      {:reply, {:ok, resources}, state}
+    else
+      case Map.get(state.servers, server_name) do
+        nil -> {:reply, {:error, :not_found}, state}
+        pid -> {:reply, MCPChat.MCP.ExMCPAdapter.get_resources(pid), state}
+      end
     end
   end
 
   @impl true
   def handle_call({:get_prompts, server_name}, _from, state) do
-    case Map.get(state.servers, server_name) do
-      nil -> {:reply, {:error, :not_found}, state}
-      pid -> {:reply, MCPChat.MCP.ExMCPAdapter.get_prompts(pid), state}
+    if server_name == "builtin" do
+      prompts = MCPChat.MCP.BuiltinResources.list_prompts()
+      {:reply, {:ok, prompts}, state}
+    else
+      case Map.get(state.servers, server_name) do
+        nil -> {:reply, {:error, :not_found}, state}
+        pid -> {:reply, MCPChat.MCP.ExMCPAdapter.get_prompts(pid), state}
+      end
     end
   end
 

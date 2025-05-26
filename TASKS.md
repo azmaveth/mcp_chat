@@ -243,13 +243,13 @@ history_size = 1000
   - [x] /backend already showed current setting
   - [x] /model now shows current model and available models when no params
   - [ ] Add popup selection box for available backends/models (future enhancement)
-- [ ] Consolidate MCP commands under /mcp with subcommands
-  - [ ] Move /servers, /tools, /resources, /prompts, /connect, /disconnect, /discover, /saved
+- [x] Consolidate MCP commands under /mcp with subcommands
+  - [x] Move /servers, /tools, /resources, /prompts, /connect, /disconnect, /discover, /saved
   - [ ] Add "/mcp connect <command> <args> --env KEY=VALUE" for arbitrary servers
   - [ ] Support multiple --env flags for environment variables
-- [ ] Add /context subcommands for manual file management
-  - [ ] /context add <file> - Add local file to context
-  - [ ] /context rm <file> - Remove file from context
+- [x] Add /context subcommands for manual file management
+  - [x] /context add <file> - Add local file to context
+  - [x] /context rm <file> - Remove file from context
   - [ ] Support persistent context files across conversations
 - [ ] Fix arrow keys and Emacs keybindings (MOVED to ex_readline)
   - [ ] Currently showing escape sequences (^[[A, ^P, etc) instead of working
@@ -344,38 +344,38 @@ history_size = 1000
     - Follows single responsibility principle
 
 ## Phase 14: Default Resources and Prompts
-- [ ] Add built-in MCP resources for better user experience
-  - [ ] Default resources to include:
-    - [ ] Project documentation links
+- [x] Add built-in MCP resources for better user experience
+  - [x] Default resources to include:
+    - [x] Project documentation links
       - GitHub repository URL
       - Online documentation site
       - API reference
       - Examples directory
-    - [ ] Quick reference cards
+    - [x] Quick reference cards
       - Command cheat sheet
       - MCP server setup guide
       - LLM backend comparison
-    - [ ] System information
+    - [x] System information
       - Current version
       - Loaded configuration
       - Available features
-  - [ ] Implementation approach:
+  - [x] Implementation approach:
     - Create built-in MCP resource server
     - Auto-load on startup
     - Available via /resource command
-- [ ] Add default MCP prompts for common tasks
-  - [ ] Utility prompts:
-    - [ ] "getting_started" - Interactive tutorial
-    - [ ] "demo" - Showcase all capabilities
-    - [ ] "troubleshoot" - Diagnose common issues
-    - [ ] "optimize" - Suggest config improvements
-  - [ ] Workflow prompts:
-    - [ ] "code_review" - Template for code analysis
-    - [ ] "writing_assistant" - Content creation workflow
-    - [ ] "research_mode" - Structured research approach
-    - [ ] "debug_session" - Debugging methodology
+- [x] Add default MCP prompts for common tasks
+  - [x] Utility prompts:
+    - [x] "getting_started" - Interactive tutorial
+    - [x] "demo" - Showcase all capabilities
+    - [x] "troubleshoot" - Diagnose common issues
+    - [x] "optimize" - Suggest config improvements
+  - [x] Workflow prompts:
+    - [x] "code_review" - Template for code analysis
+    - [x] "research_mode" - Structured research approach
+    - [x] "debug_session" - Debugging methodology
+    - [x] "explain_code" - Explain code with context
+    - [x] "setup_mcp_server" - Guide for adding servers
   - [ ] Integration prompts:
-    - [ ] "setup_mcp_server" - Guide for adding new servers
     - [ ] "create_agent" - Multi-agent setup wizard
     - [ ] "api_integration" - Connect external services
 - [ ] Include default MCP servers for demos
