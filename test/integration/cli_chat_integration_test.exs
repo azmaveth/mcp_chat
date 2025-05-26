@@ -17,6 +17,19 @@ defmodule MCPChat.CLIChatIntegrationTest do
     :ok
   end
 
+  defp wait_for_condition(condition, timeout \\ 1_000) do
+    if condition.() do
+      :ok
+    else
+      if timeout > 0 do
+        Process.sleep(10)
+        wait_for_condition(condition, timeout - 10)
+      else
+        raise "Timeout waiting for condition"
+      end
+    end
+  end
+
   describe "Chat command processing" do
     test "processes regular chat messages" do
       # Simulate user input
@@ -205,7 +218,7 @@ defmodule MCPChat.CLIChatIntegrationTest do
       )
 
       stats = MCPChat.Session.get_context_stats()
-      assert stats.total_tokens > 0
+      assert stats.estimated_tokens > 0
     end
   end
 
@@ -254,7 +267,7 @@ defmodule MCPChat.CLIChatIntegrationTest do
       assert stats.message_count == 2
       assert stats.user_messages == 2
       assert stats.assistant_messages == 0
-      assert stats.context_stats.total_tokens > 0
+      assert stats.context_stats.estimated_tokens > 0
     end
   end
 
@@ -329,8 +342,12 @@ defmodule MCPChat.CLIChatIntegrationTest do
 
       # Clear and recreate session
       MCPChat.Session.clear_session()
-      # Give time for async clear
-      Process.sleep(100)
+      # Wait for session to be cleared
+      wait_for_condition(fn ->
+        session = MCPChat.Session.get_current_session()
+        session.messages == []
+      end)
+
       new_session = MCPChat.Session.get_current_session()
 
       assert new_session.messages == []

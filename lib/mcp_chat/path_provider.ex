@@ -95,7 +95,7 @@ defmodule MCPChat.PathProvider do
           aliases_file: "/tmp/test_aliases.json"
         }
         {:ok, provider} = MCPChat.PathProvider.Static.start_link(paths)
-        MCPChat.Alias.start_link(path_provider: provider)
+        MCPChat.Alias.ExAliasAdapter.start_link(path_provider: provider)
     """
     use Agent
 

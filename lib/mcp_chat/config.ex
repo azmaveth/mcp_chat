@@ -111,7 +111,12 @@ defmodule MCPChat.Config do
 
   @impl true
   def handle_call({:get_path, path}, _from, state) do
-    value = get_in(state.config, path)
+    value =
+      case path do
+        [] -> state.config
+        _ -> get_in(state.config, path)
+      end
+
     {:reply, value, state}
   end
 

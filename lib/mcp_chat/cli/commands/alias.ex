@@ -66,9 +66,10 @@ defmodule MCPChat.CLI.Commands.Alias do
       show_info("Command aliases:")
 
       aliases
-      |> Enum.sort_by(fn {name, _} -> name end)
-      |> Enum.each(fn {name, command} ->
-        IO.puts("  #{name} → #{command}")
+      |> Enum.sort_by(fn %{name: name, commands: _} -> name end)
+      |> Enum.each(fn %{name: name, commands: commands} ->
+        command_str = Enum.join(commands, " ")
+        IO.puts("  #{name} → #{command_str}")
       end)
     end
 

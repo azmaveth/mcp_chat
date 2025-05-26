@@ -2,18 +2,6 @@ defmodule MCPChat.MCP.DiscoveryTest do
   use ExUnit.Case
   alias MCPChat.MCP.Discovery
 
-  describe "discover_servers/0" do
-    @tag :skip
-    test "discovers available servers" do
-      # This test is skipped because discovery requires:
-      # 1. NPM to be installed
-      # 2. Network access to download packages
-      # 3. File system access to check for executables
-      #
-      # In a real test environment, you would mock these external dependencies
-    end
-  end
-
   describe "discover_servers/1" do
     test "returns discovered servers sorted by name" do
       # This will return an empty list since we don't have any servers configured

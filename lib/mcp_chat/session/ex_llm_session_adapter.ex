@@ -191,6 +191,19 @@ defmodule MCPChat.Session.ExLLMSessionAdapter do
   # Conversion helpers
 
   defp to_ex_llm_session(%MCPChatSessionType{} = session) do
+    # Normalize token_usage to ensure atom keys for ExLLM compatibility
+    normalized_token_usage =
+      case session.token_usage do
+        %{"input_tokens" => input, "output_tokens" => output} ->
+          %{input_tokens: input, output_tokens: output}
+
+        %{input_tokens: _, output_tokens: _} = usage ->
+          usage
+
+        _ ->
+          %{input_tokens: 0, output_tokens: 0}
+      end
+
     %ExLLMSessionType{
       id: session.id,
       llm_backend: session.llm_backend,
@@ -198,7 +211,7 @@ defmodule MCPChat.Session.ExLLMSessionAdapter do
       context: session.context || %{},
       created_at: session.created_at,
       updated_at: session.updated_at,
-      token_usage: session.token_usage,
+      token_usage: normalized_token_usage,
       # MCPChat sessions don't have names
       name: nil
     }

@@ -10,9 +10,25 @@ defmodule MCPChat.CLI.CommandsTest do
 
     # Clear any existing session
     MCPChat.Session.clear_session()
-    Process.sleep(10)
+
+    # Wait for session to be ready by checking it's clear
+    wait_until(fn -> MCPChat.Session.get_messages() == [] end)
 
     :ok
+  end
+
+  defp wait_until(condition, timeout \\ 100) do
+    if condition.() do
+      :ok
+    else
+      if timeout > 0 do
+        Process.sleep(10)
+        wait_until(condition, timeout - 10)
+      else
+        # Give up but don't fail
+        :ok
+      end
+    end
   end
 
   describe "handle_command/1" do
@@ -405,11 +421,18 @@ defmodule MCPChat.CLI.CommandsTest do
     end
 
     # Start Alias if needed
-    case Process.whereis(MCPChat.Alias) do
-      nil -> {:ok, _} = MCPChat.Alias.start_link()
-      _ -> :ok
-    end
+    case Process.whereis(MCPChat.Alias.ExAliasAdapter) do
+      nil ->
+        # Start ExAlias first if needed
+        case Process.whereis(ExAlias) do
+          nil -> {:ok, _} = ExAlias.start_link()
+          _ -> :ok
+        end
 
-    Process.sleep(50)
+        {:ok, _} = MCPChat.Alias.ExAliasAdapter.start_link()
+
+      _ ->
+        :ok
+    end
   end
 end

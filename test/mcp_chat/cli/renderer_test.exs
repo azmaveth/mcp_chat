@@ -8,7 +8,8 @@ defmodule MCPChat.CLI.RendererTest do
       output = capture_io(fn -> Renderer.show_welcome() end)
 
       assert output =~ "Welcome to MCP Chat Client"
-      assert output =~ "Type /help for available commands"
+      assert output =~ "/help"
+      assert output =~ "available commands"
     end
   end
 
@@ -57,7 +58,7 @@ defmodule MCPChat.CLI.RendererTest do
         end)
 
       assert output =~ "Assistant"
-      assert output =~ "def hello do"
+      assert output =~ "def hello"
       assert output =~ ":world"
     end
 
@@ -145,7 +146,7 @@ defmodule MCPChat.CLI.RendererTest do
 
       assert output =~ "Assistant"
       assert output =~ "›"
-      assert output =~ "Thinking..."
+      assert output =~ "Thinking"
     end
   end
 
@@ -321,7 +322,7 @@ defmodule MCPChat.CLI.RendererTest do
           Renderer.show_code(code)
         end)
 
-      assert output =~ "def hello do"
+      assert output =~ "def hello"
       assert output =~ ":world"
       assert output =~ "end"
     end

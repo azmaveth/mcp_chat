@@ -1,9 +1,15 @@
 defmodule MCPChat.AliasTest do
   use ExUnit.Case
-  alias MCPChat.Alias
+  alias MCPChat.Alias.ExAliasAdapter, as: Alias
 
   setup do
-    # Start the Alias GenServer if not already started
+    # Start ExAlias if not already started
+    case Process.whereis(ExAlias) do
+      nil -> {:ok, _} = ExAlias.start_link()
+      _ -> :ok
+    end
+
+    # Start the Alias adapter if not already started
     case Process.whereis(Alias) do
       nil -> {:ok, _} = Alias.start_link()
       _ -> :ok
@@ -12,7 +18,7 @@ defmodule MCPChat.AliasTest do
     # Clean up any existing aliases
     aliases = Alias.list_aliases()
 
-    Enum.each(aliases, fn %{name: name} ->
+    Enum.each(aliases, fn %{name: name, commands: _commands} ->
       Alias.remove_alias(name)
     end)
 
@@ -28,27 +34,27 @@ defmodule MCPChat.AliasTest do
     end
 
     test "rejects empty alias name" do
-      assert {:error, {:validation, :name, "cannot be empty"}} =
+      assert {:error, {:validation_error, {:name, "cannot be empty"}}} =
                Alias.define_alias("", ["/help"])
     end
 
     test "rejects alias name with spaces" do
-      assert {:error, {:validation, :name, "cannot contain spaces"}} =
+      assert {:error, {:validation_error, {:name, "cannot contain spaces"}}} =
                Alias.define_alias("my alias", ["/help"])
     end
 
     test "rejects reserved command names" do
-      assert {:error, {:validation, :name, "cannot override built-in command 'help'"}} =
+      assert {:error, {:validation_error, {:name, "cannot override built-in command 'help'"}}} =
                Alias.define_alias("help", ["/config"])
     end
 
     test "rejects empty command list" do
-      assert {:error, {:validation, :commands, "cannot be empty"}} =
+      assert {:error, {:validation_error, {:commands, "cannot be empty"}}} =
                Alias.define_alias("test", [])
     end
 
     test "rejects non-string commands" do
-      assert {:error, {:validation, :commands, "must all be strings"}} =
+      assert {:error, {:validation_error, {:commands, "must all be strings"}}} =
                Alias.define_alias("test", ["/help", 123])
     end
   end
@@ -139,35 +145,6 @@ defmodule MCPChat.AliasTest do
 
     test "returns false for non-existent alias" do
       refute Alias.is_alias?("nonexistent")
-    end
-  end
-
-  describe "persistence" do
-    @tag :skip
-    test "saves and loads aliases", %{tmp_dir: _tmp_dir} do
-      # Define some aliases
-      :ok = Alias.define_alias("persist1", ["/help"])
-      :ok = Alias.define_alias("persist2", ["/config", "/servers"])
-
-      # Save aliases
-      Alias.save_aliases()
-
-      # Give it a moment to save
-      Process.sleep(100)
-
-      # Clear current aliases
-      Alias.remove_alias("persist1")
-      Alias.remove_alias("persist2")
-
-      # Restart to load from file
-      GenServer.stop(Alias)
-      {:ok, _} = Alias.start_link()
-
-      # Check if aliases were loaded
-      aliases = Alias.list_aliases()
-      assert length(aliases) == 2
-      assert Alias.is_alias?("persist1")
-      assert Alias.is_alias?("persist2")
     end
   end
 end

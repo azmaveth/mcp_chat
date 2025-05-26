@@ -2,6 +2,16 @@ defmodule MCPChat.MCP.BuiltinResourcesTest do
   use ExUnit.Case
   alias MCPChat.MCP.BuiltinResources
 
+  setup do
+    # Ensure Config is started for the config resource test
+    case Process.whereis(MCPChat.Config) do
+      nil -> {:ok, _} = MCPChat.Config.start_link()
+      _ -> :ok
+    end
+
+    :ok
+  end
+
   describe "list_resources/0" do
     test "returns all built-in resources" do
       resources = BuiltinResources.list_resources()

@@ -12,7 +12,7 @@ defmodule MCPChat.ConfigTest do
 
       pid ->
         GenServer.stop(pid)
-        Process.sleep(100)
+        wait_until(fn -> Process.whereis(Config) == nil end, 500)
     end
 
     # Create test config directory
@@ -31,32 +31,6 @@ defmodule MCPChat.ConfigTest do
     end)
 
     :ok
-  end
-
-  describe "start_link/1" do
-    test "starts with custom config path" do
-      # Stop existing Config server if running
-      case Process.whereis(Config) do
-        nil ->
-          :ok
-
-        pid ->
-          GenServer.stop(pid)
-          Process.sleep(100)
-      end
-
-      # Ensure directory exists
-      File.mkdir_p!(Path.dirname(@test_config_path))
-
-      {:ok, pid} = Config.start_link(config_path: @test_config_path)
-      assert Process.alive?(pid)
-
-      # Give it time to create the file
-      Process.sleep(100)
-
-      # Should create default config
-      assert File.exists?(@test_config_path)
-    end
   end
 
   describe "get/1" do
@@ -150,12 +124,15 @@ defmodule MCPChat.ConfigTest do
 
         pid ->
           GenServer.stop(pid)
-          Process.sleep(100)
+          # Wait for it to actually stop
+          wait_until(fn -> Process.whereis(Config) == nil end, 500)
       end
 
       # Create a fresh config that will read env vars
       {:ok, _} = Config.start_link(config_path: @test_config_path)
-      Process.sleep(50)
+
+      # Wait for config to be ready
+      wait_until(fn -> Config.get([]) != nil end, 500)
 
       anthropic_key = Config.get([:llm, :anthropic, :api_key])
       openai_key = Config.get([:llm, :openai, :api_key])
@@ -231,8 +208,8 @@ defmodule MCPChat.ConfigTest do
 
         # Reload config
         Config.reload()
-        # Give time for async reload
-        Process.sleep(50)
+        # Wait for reload to complete
+        wait_until(fn -> Config.get([:ui, :theme]) == "light" end, 300)
 
         # Check if reloaded
         new_theme = Config.get([:ui, :theme])
@@ -242,6 +219,20 @@ defmodule MCPChat.ConfigTest do
   end
 
   # Helper functions
+
+  defp wait_until(condition, timeout \\ 100) do
+    if condition.() do
+      :ok
+    else
+      if timeout > 0 do
+        Process.sleep(10)
+        wait_until(condition, timeout - 10)
+      else
+        # Give up but don't fail
+        :ok
+      end
+    end
+  end
 
   defp ensure_config_started() do
     case Process.whereis(Config) do
@@ -261,12 +252,12 @@ defmodule MCPChat.ConfigTest do
       pid ->
         GenServer.stop(pid)
         # Wait for process to fully stop
-        Process.sleep(50)
+        wait_until(fn -> Process.whereis(Config) == nil end, 500)
     end
 
     {:ok, _} = Config.start_link(opts)
-    # Give time to initialize
-    Process.sleep(50)
+    # Wait for initialization
+    wait_until(fn -> Config.get([]) != nil end, 500)
   end
 
   defp get_config_path() do

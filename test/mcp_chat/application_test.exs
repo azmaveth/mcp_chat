@@ -28,7 +28,7 @@ defmodule MCPChat.ApplicationTest do
       # Verify core children are started
       assert Process.whereis(MCPChat.Config) != nil
       assert Process.whereis(MCPChat.Session) != nil
-      assert Process.whereis(MCPChat.Alias) != nil
+      assert Process.whereis(MCPChat.Alias.ExAliasAdapter) != nil
       assert Process.whereis(MCPChat.MCP.ServerManager) != nil
 
       # Clean up
@@ -73,7 +73,7 @@ defmodule MCPChat.ApplicationTest do
       # Get PIDs of multiple children
       config_pid = Process.whereis(MCPChat.Config)
       session_pid = Process.whereis(MCPChat.Session)
-      alias_pid = Process.whereis(MCPChat.Alias)
+      alias_pid = Process.whereis(MCPChat.Alias.ExAliasAdapter)
 
       assert config_pid != nil
       assert session_pid != nil
@@ -86,7 +86,7 @@ defmodule MCPChat.ApplicationTest do
       # Verify only the killed child was restarted
       assert Process.whereis(MCPChat.Config) == config_pid
       assert Process.whereis(MCPChat.Session) != session_pid
-      assert Process.whereis(MCPChat.Alias) == alias_pid
+      assert Process.whereis(MCPChat.Alias.ExAliasAdapter) == alias_pid
 
       # Clean up
       Supervisor.stop(sup_pid)
@@ -114,7 +114,7 @@ defmodule MCPChat.ApplicationTest do
       # Verify core children are present
       assert MCPChat.Config in child_ids
       assert MCPChat.Session in child_ids
-      assert MCPChat.Alias in child_ids
+      assert MCPChat.Alias.ExAliasAdapter in child_ids
       assert MCPChat.MCP.ServerManager in child_ids
 
       # Clean up
@@ -179,12 +179,12 @@ defmodule MCPChat.ApplicationTest do
 
       # Kill it multiple times
       for _i <- 1..3 do
-        current_pid = Process.whereis(MCPChat.Alias)
+        current_pid = Process.whereis(MCPChat.Alias.ExAliasAdapter)
         Process.exit(current_pid, :kill)
         Process.sleep(100)
 
         # Verify it was restarted
-        new_pid = Process.whereis(MCPChat.Alias)
+        new_pid = Process.whereis(MCPChat.Alias.ExAliasAdapter)
         assert new_pid != nil
         assert new_pid != current_pid
       end
@@ -269,7 +269,7 @@ defmodule MCPChat.ApplicationTest do
     processes = [
       MCPChat.Config,
       MCPChat.Session,
-      MCPChat.Alias,
+      MCPChat.Alias.ExAliasAdapter,
       MCPChat.MCP.ServerManager,
       MCPChat.MCPServer.StdioServer,
       MCPChat.MCPServer.SSEServer
