@@ -301,12 +301,15 @@ defmodule MCPChat.MCP.ExMCPAdapter do
         {:error, :websocket_not_supported}
 
       {:stdio, command_config} ->
-        # ExMCP expects command to be a list with [executable | args]
-        command_list = [command_config.command | command_config.args || []]
-
+        # For stdio transport, we expect the server process to already be running
+        # (managed by StdioProcessManager), so we configure ExMCP to connect to it
+        
+        # Parse command to get the proper executable and args
+        {cmd, args} = parse_command_for_exmcp(command_config.command, command_config.args || [])
+        
         [
           transport: ExMCP.Transport.Stdio,
-          command: command_list,
+          command: [cmd | args],
           env: command_config.env || %{}
         ]
 
@@ -400,5 +403,27 @@ defmodule MCPChat.MCP.ExMCPAdapter do
       true ->
         {:error, :unknown_transport}
     end
+  end
+  
+  defp parse_command_for_exmcp(command, args) when is_list(command) do
+    # Command is already a list
+    [cmd | cmd_args] = command
+    {cmd, cmd_args ++ args}
+  end
+  
+  defp parse_command_for_exmcp(command, args) when is_binary(command) do
+    # Check if command contains spaces
+    if String.contains?(command, " ") do
+      # Split the command string
+      parts = String.split(command, " ", trim: true)
+      [cmd | cmd_args] = parts
+      {cmd, cmd_args ++ args}
+    else
+      {command, args}
+    end
+  end
+  
+  defp parse_command_for_exmcp(command, args) do
+    {to_string(command), args}
   end
 end

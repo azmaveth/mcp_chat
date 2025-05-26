@@ -1,10 +1,17 @@
 defmodule MCPChat.MCP.ServerWrapper do
   @moduledoc """
-  Wrapper that starts either a standard ExMCP client or a NotificationClient
-  based on configuration.
+  Wrapper that manages MCP server connections.
+  
+  For stdio transport:
+  - Starts a StdioProcessManager to manage the OS process
+  - Starts either a standard ExMCP client or NotificationClient to communicate with it
+  
+  For other transports:
+  - Directly starts the appropriate client
   """
 
   use GenServer
+  require Logger
 
   def start_link(config, opts \\ []) do
     GenServer.start_link(__MODULE__, {config, opts})
@@ -43,22 +50,75 @@ defmodule MCPChat.MCP.ServerWrapper do
   def init({config, _opts}) do
     # Check if notifications are enabled
     notifications_enabled = MCPChat.Config.get_runtime("notifications.enabled", false)
-
-    # Prepare client options
-    client_opts = build_client_opts(config)
-
-    # Start appropriate client
-    {:ok, client_pid} =
-      if notifications_enabled do
-        MCPChat.MCP.NotificationClient.start_link(client_opts)
-      else
-        ExMCP.Client.start_link(client_opts)
-      end
-
-    # Monitor the client
-    Process.monitor(client_pid)
-
-    {:ok, %{client: client_pid, config: config, type: if(notifications_enabled, do: :notification, else: :standard)}}
+    
+    # Check transport type
+    transport = determine_transport(config)
+    
+    case transport do
+      :stdio ->
+        # For stdio transport, start the process manager first
+        command = config[:command] || config["command"]
+        env = config[:env] || config["env"] || %{}
+        
+        # Parse command and args
+        {cmd, args} = parse_command(command)
+        
+        process_manager_opts = [
+          command: cmd,
+          args: args,
+          env: Map.to_list(env)
+        ]
+        
+        {:ok, process_manager} = MCPChat.MCP.StdioProcessManager.start_link(process_manager_opts)
+        Process.monitor(process_manager)
+        
+        # Start the process
+        {:ok, _port} = MCPChat.MCP.StdioProcessManager.start_process(process_manager)
+        
+        # Prepare client options with the process manager
+        client_opts = build_client_opts(config, process_manager)
+        
+        # Start appropriate client
+        {:ok, client_pid} =
+          if notifications_enabled do
+            MCPChat.MCP.NotificationClient.start_link(client_opts)
+          else
+            ExMCP.Client.start_link(client_opts)
+          end
+        
+        # Monitor the client
+        Process.monitor(client_pid)
+        
+        {:ok, %{
+          client: client_pid,
+          process_manager: process_manager,
+          config: config,
+          type: if(notifications_enabled, do: :notification, else: :standard),
+          transport: :stdio
+        }}
+      
+      _ ->
+        # For other transports, just start the client
+        client_opts = build_client_opts(config)
+        
+        {:ok, client_pid} =
+          if notifications_enabled do
+            MCPChat.MCP.NotificationClient.start_link(client_opts)
+          else
+            ExMCP.Client.start_link(client_opts)
+          end
+        
+        # Monitor the client
+        Process.monitor(client_pid)
+        
+        {:ok, %{
+          client: client_pid,
+          process_manager: nil,
+          config: config,
+          type: if(notifications_enabled, do: :notification, else: :standard),
+          transport: transport
+        }}
+    end
   end
 
   # Forward all calls to the underlying client
@@ -135,14 +195,43 @@ defmodule MCPChat.MCP.ServerWrapper do
   @impl true
   def handle_info({:DOWN, _ref, :process, pid, reason}, state) when pid == state.client do
     # Client died, stop this wrapper too
+    Logger.warning("MCP client died: #{inspect(reason)}")
     {:stop, {:client_died, reason}, state}
+  end
+  
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state) when pid == state.process_manager do
+    # Process manager died (stdio transport only)
+    Logger.error("MCP process manager died: #{inspect(reason)}")
+    # The client will likely die too, but we'll stop proactively
+    {:stop, {:process_manager_died, reason}, state}
   end
 
   def handle_info(_msg, state) do
     {:noreply, state}
   end
 
+  @impl true
+  def terminate(reason, state) do
+    Logger.info("ServerWrapper terminating: #{inspect(reason)}")
+    
+    # Stop the process manager if we have one (stdio transport)
+    if state[:process_manager] do
+      MCPChat.MCP.StdioProcessManager.stop_process(state.process_manager)
+    end
+    
+    :ok
+  end
+
   # Private Functions
+
+  defp parse_command(command) do
+    parts = String.split(command, " ", trim: true)
+    case parts do
+      [] -> {"", []}
+      [cmd] -> {cmd, []}
+      [cmd | args] -> {cmd, args}
+    end
+  end
 
   defp forward_to_client(state, fun) do
     try do
@@ -153,15 +242,44 @@ defmodule MCPChat.MCP.ServerWrapper do
         {:reply, {:error, e}, state}
     end
   end
+  
+  defp determine_transport(config) do
+    cond do
+      config[:command] || config["command"] ->
+        :stdio
+      
+      config[:url] || config["url"] ->
+        url = config[:url] || config["url"]
+        if String.starts_with?(url, "ws://") or String.starts_with?(url, "wss://") do
+          :websocket
+        else
+          :sse
+        end
+      
+      config[:target] || config["target"] ->
+        :beam
+      
+      true ->
+        :unknown
+    end
+  end
 
-  defp build_client_opts(config) do
+  defp build_client_opts(config, process_manager \\ nil) do
     base_opts = [
-      server_name: config.name || config[:name]
+      server_name: config[:name] || config["name"]
     ]
 
     cond do
+      # When we have a process manager, use the managed stdio transport
+      process_manager != nil ->
+        base_opts ++
+          [
+            transport: MCPChat.MCP.Transport.ManagedStdio,
+            process_manager: process_manager
+          ]
+
       config[:command] || config["command"] ->
-        # Stdio transport
+        # Stdio transport (legacy path, shouldn't be reached with new code)
         base_opts ++
           [
             transport: :stdio,

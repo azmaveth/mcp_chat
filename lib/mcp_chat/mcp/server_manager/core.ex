@@ -331,8 +331,8 @@ defmodule MCPChat.MCP.ServerManager.Core do
         server_config = %{
           name: name,
           command: command,
-          env: env,
-          transport: :stdio
+          transport: :stdio,
+          env: env
         }
 
         child_spec = %{
