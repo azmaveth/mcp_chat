@@ -41,11 +41,11 @@ defmodule CredoAutofix do
     files |> Enum.reject(&String.contains?(&1, "_backup"))
   end
   
-  defp apply_fixes(content, _file) do
+  defp apply_fixes(content, file) do
     content
     |> fix_trailing_whitespace()
     |> fix_trailing_blank_line()
-    |> fix_large_numbers()
+    |> fix_large_numbers(file)
     |> fix_map_join()
     |> fix_parens_on_zero_arity()
   end
@@ -65,10 +65,15 @@ defmodule CredoAutofix do
     end
   end
   
-  defp fix_large_numbers(content) do
-    # Apply number formatting but preserve model names
-    content
-    |> fix_number_in_content()
+  defp fix_large_numbers(content, file) do
+    # Skip number formatting in cost_test.exs since it tests specific formats
+    if String.ends_with?(file, "cost_test.exs") do
+      content
+    else
+      # Apply number formatting but preserve model names
+      content
+      |> fix_number_in_content()
+    end
   end
   
   defp fix_number_in_content(content) do
