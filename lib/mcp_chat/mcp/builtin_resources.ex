@@ -96,7 +96,7 @@ defmodule MCPChat.MCP.BuiltinResources do
          - `/save` - Save your session
 
          ## Documentation
-         - GitHub: https://github.com/user/mcp_chat
+         - GitHub: https://github.com/azmaveth/mcp_chat
          - MCP Protocol: https://modelcontextprotocol.io
          """}
 
@@ -655,7 +655,7 @@ defmodule MCPChat.MCP.BuiltinResources do
 
     ## Getting Help
 
-    - GitHub Issues: https://github.com/user/mcp_chat/issues
+    - GitHub Issues: https://github.com/azmaveth/mcp_chat/issues
     - MCP Protocol Docs: https://modelcontextprotocol.io
     """
   end
