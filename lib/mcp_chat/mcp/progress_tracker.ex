@@ -10,6 +10,7 @@ defmodule MCPChat.MCP.ProgressTracker do
 
   # Operation structure
   defmodule Operation do
+    @moduledoc false
     defstruct [
       :token,
       :server,

@@ -147,6 +147,18 @@ defmodule MCPChat.CircuitBreaker do
     {:noreply, new_state}
   end
 
+  @impl true
+  def handle_info({:timeout, _ref}, state) do
+    # Handle timeout messages (can be ignored)
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info(_msg, state) do
+    # Handle any other messages
+    {:noreply, state}
+  end
+
   # Private Functions
 
   defp execute_call(fun, from, state) do

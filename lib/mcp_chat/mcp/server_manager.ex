@@ -88,12 +88,15 @@ defmodule MCPChat.MCP.ServerManager do
 
   @impl true
   def handle_call(:start_configured_servers, _from, state) do
-    # Start a supervisor for the servers if needed
-    {:ok, supervisor} =
-      DynamicSupervisor.start_link(
-        strategy: :one_for_one,
-        name: MCPChat.MCP.ServerSupervisor
-      )
+    # Start a supervisor for the servers if needed, or use existing one
+    supervisor =
+      case DynamicSupervisor.start_link(
+             strategy: :one_for_one,
+             name: MCPChat.MCP.ServerSupervisor
+           ) do
+        {:ok, pid} -> pid
+        {:error, {:already_started, pid}} -> pid
+      end
 
     state_with_supervisor = Core.set_supervisor(state, supervisor)
     {new_state, result} = Core.start_configured_servers(state_with_supervisor)
