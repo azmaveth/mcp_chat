@@ -239,9 +239,10 @@ history_size = 1000
 - ✅ Added command history with arrow keys and Emacs keybindings (SimpleLineReader)
 
 ## Phase 8: UI/UX Improvements
-- [ ] Update /backend and /model commands to show current setting when no params
-  - [ ] Add popup selection box for available backends/models
-  - [ ] Show "current: <value>" before selection
+- [x] Update /backend and /model commands to show current setting when no params
+  - [x] /backend already showed current setting
+  - [x] /model now shows current model and available models when no params
+  - [ ] Add popup selection box for available backends/models (future enhancement)
 - [ ] Consolidate MCP commands under /mcp with subcommands
   - [ ] Move /servers, /tools, /resources, /prompts, /connect, /disconnect, /discover, /saved
   - [ ] Add "/mcp connect <command> <args> --env KEY=VALUE" for arbitrary servers

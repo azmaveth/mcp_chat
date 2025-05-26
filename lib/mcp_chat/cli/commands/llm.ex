@@ -102,15 +102,32 @@ defmodule MCPChat.CLI.Commands.LLM do
   end
 
   defp switch_model(args) do
-    with {:ok, args} <- require_arg(args, "/model <name>"),
-         model <- parse_args(args) do
-      MCPChat.Session.update_session(%{model: model})
-      {backend, _} = get_current_model()
-      show_success("Switched to model: #{model} (#{backend})")
-      :ok
-    else
-      {:error, msg} ->
-        show_error(msg)
+    case args do
+      [] ->
+        # Show current model when no params
+        {backend, current_model} = get_current_model()
+        show_info("Current backend: #{backend}")
+        show_info("Current model: #{current_model}")
+        
+        # Try to show available models for current backend
+        adapter = get_adapter_module(backend)
+        if function_exported?(adapter, :list_models, 1) do
+          case adapter.list_models([{:provider, String.to_atom(backend)}]) do
+            {:ok, models} ->
+              show_info("\nAvailable models for #{backend}:")
+              display_models(models, backend)
+            _ ->
+              :ok
+          end
+        end
+        :ok
+        
+      _ ->
+        # Switch to specified model
+        model = parse_args(args)
+        MCPChat.Session.update_session(%{model: model})
+        {backend, _} = get_current_model()
+        show_success("Switched to model: #{model} (#{backend})")
         :ok
     end
   end

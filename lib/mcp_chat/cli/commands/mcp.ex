@@ -16,35 +16,96 @@ defmodule MCPChat.CLI.Commands.MCP do
   @impl true
   def commands() do
     %{
+      # Main MCP command with subcommands
+      "mcp" => "MCP server management (usage: /mcp <subcommand>)",
+      
+      # Legacy commands (kept for backward compatibility)
+      "servers" => "List connected MCP servers (use: /mcp servers)",
+      "saved" => "List saved MCP server connections (use: /mcp saved)",
+      "discover" => "Discover available MCP servers (use: /mcp discover)",
+      "connect" => "Connect to an MCP server (use: /mcp connect <name>)",
+      "disconnect" => "Disconnect from an MCP server (use: /mcp disconnect <name>)",
+      "tools" => "List available MCP tools (use: /mcp tools)",
+      "tool" => "Call an MCP tool (use: /mcp tool <server> <tool> [args...])",
+      "resources" => "List available MCP resources (use: /mcp resources)",
+      "resource" => "Read an MCP resource (use: /mcp resource <server> <uri>)",
+      "prompts" => "List available MCP prompts (use: /mcp prompts)",
+      "prompt" => "Get an MCP prompt (use: /mcp prompt <server> <name>)"
+    }
+  end
+  
+  @doc """
+  Returns the list of MCP subcommands for help display.
+  """
+  def subcommands() do
+    %{
       "servers" => "List connected MCP servers",
-      "saved" => "List saved MCP server connections",
+      "saved" => "List saved MCP server connections", 
       "discover" => "Discover available MCP servers",
-      "connect" => "Connect to an MCP server (usage: /connect <name>)",
-      "disconnect" => "Disconnect from an MCP server (usage: /disconnect <name>)",
+      "connect" => "Connect to an MCP server (usage: connect <name> [--env KEY=VALUE ...])",
+      "disconnect" => "Disconnect from an MCP server (usage: disconnect <name>)",
       "tools" => "List available MCP tools",
-      "tool" => "Call an MCP tool (usage: /tool <server> <tool> [args...])",
+      "tool" => "Call an MCP tool (usage: tool <server> <tool> [args...])",
       "resources" => "List available MCP resources",
-      "resource" => "Read an MCP resource (usage: /resource <server> <uri>)",
+      "resource" => "Read an MCP resource (usage: resource <server> <uri>)",
       "prompts" => "List available MCP prompts",
-      "prompt" => "Get an MCP prompt (usage: /prompt <server> <name>)"
+      "prompt" => "Get an MCP prompt (usage: prompt <server> <name>)"
     }
   end
 
   @impl true
-  def handle_command("servers", _args), do: list_servers()
-  def handle_command("saved", _args), do: list_saved_servers()
-  def handle_command("discover", _args), do: discover_servers()
-  def handle_command("connect", args), do: connect_server(args)
-  def handle_command("disconnect", args), do: disconnect_server(args)
-  def handle_command("tools", _args), do: list_tools()
-  def handle_command("tool", args), do: call_tool(args)
-  def handle_command("resources", _args), do: list_resources()
-  def handle_command("resource", args), do: read_resource(args)
-  def handle_command("prompts", _args), do: list_prompts()
-  def handle_command("prompt", args), do: get_prompt(args)
+  def handle_command("mcp", args), do: handle_mcp_subcommand(args)
+  
+  # Legacy commands (redirect to mcp subcommands)
+  def handle_command("servers", args), do: handle_mcp_subcommand(["servers" | args])
+  def handle_command("saved", args), do: handle_mcp_subcommand(["saved" | args])
+  def handle_command("discover", args), do: handle_mcp_subcommand(["discover" | args])
+  def handle_command("connect", args), do: handle_mcp_subcommand(["connect" | args])
+  def handle_command("disconnect", args), do: handle_mcp_subcommand(["disconnect" | args])
+  def handle_command("tools", args), do: handle_mcp_subcommand(["tools" | args])
+  def handle_command("tool", args), do: handle_mcp_subcommand(["tool" | args])
+  def handle_command("resources", args), do: handle_mcp_subcommand(["resources" | args])
+  def handle_command("resource", args), do: handle_mcp_subcommand(["resource" | args])
+  def handle_command("prompts", args), do: handle_mcp_subcommand(["prompts" | args])
+  def handle_command("prompt", args), do: handle_mcp_subcommand(["prompt" | args])
 
   def handle_command(cmd, _args) do
     {:error, "Unknown MCP command: #{cmd}"}
+  end
+  
+  # Handle MCP subcommands
+  defp handle_mcp_subcommand([]) do
+    # Show MCP help when no subcommand given
+    show_info("MCP (Model Context Protocol) Commands:")
+    show_info("")
+    
+    subcommands()
+    |> Enum.sort_by(fn {cmd, _} -> cmd end)
+    |> Enum.each(fn {cmd, desc} ->
+      show_info("  #{String.pad_trailing(cmd, 12)} - #{desc}")
+    end)
+    
+    show_info("")
+    show_info("Usage: /mcp <subcommand> [args...]")
+    :ok
+  end
+  
+  defp handle_mcp_subcommand(["servers" | _args]), do: list_servers()
+  defp handle_mcp_subcommand(["saved" | _args]), do: list_saved_servers()
+  defp handle_mcp_subcommand(["discover" | _args]), do: discover_servers()
+  defp handle_mcp_subcommand(["connect" | args]), do: connect_server_enhanced(args)
+  defp handle_mcp_subcommand(["disconnect" | args]), do: disconnect_server(args)
+  defp handle_mcp_subcommand(["tools" | _args]), do: list_tools()
+  defp handle_mcp_subcommand(["tool" | args]), do: call_tool(args)
+  defp handle_mcp_subcommand(["resources" | _args]), do: list_resources()
+  defp handle_mcp_subcommand(["resource" | args]), do: read_resource(args)
+  defp handle_mcp_subcommand(["prompts" | _args]), do: list_prompts()
+  defp handle_mcp_subcommand(["prompt" | args]), do: get_prompt(args)
+  
+  defp handle_mcp_subcommand([subcmd | _]) do
+    show_error("Unknown MCP subcommand: #{subcmd}")
+    show_info("Type /mcp for available subcommands")
+    :ok
   end
 
   # Server management commands
@@ -122,17 +183,17 @@ defmodule MCPChat.CLI.Commands.MCP do
     :ok
   end
 
-  defp connect_server(args) do
+  defp connect_server_enhanced(args) do
     case args do
       [] ->
-        show_error("Usage: /connect <name> or /connect <command> [args...]")
+        show_error("Usage: /mcp connect <name> or /mcp connect <command> [args...] [--env KEY=VALUE ...]")
 
       [name] ->
         # Try quick setup server first
         connect_quick_setup_server(name)
 
       _ ->
-        # Parse as custom command
+        # Use the existing connect_custom_server which already handles env vars
         connect_custom_server(args)
     end
   end
@@ -403,25 +464,34 @@ defmodule MCPChat.CLI.Commands.MCP do
   end
 
   defp parse_env_args(args) do
-    {env_args, cmd_args} = Enum.split_while(args, &String.contains?(&1, "--env"))
-
-    env =
-      env_args
-      |> Enum.flat_map(fn arg ->
-        case String.split(arg, "=", parts: 2) do
-          ["--env", _] ->
-            []
-
-          [key_part, value] ->
-            key = String.replace_prefix(key_part, "--env ", "")
-            [{key, value}]
-
-          _ ->
-            []
+    # Split args into command args and env args
+    # --env KEY=VALUE can appear anywhere in the args
+    {cmd_args, env_pairs} = 
+      args
+      |> Enum.chunk_while(
+        [],
+        fn
+          "--env", acc -> {:cont, Enum.reverse(acc), ["--env"]}
+          arg, ["--env"] -> {:cont, [], {:env, arg}}
+          arg, acc -> {:cont, [arg | acc]}
+        end,
+        fn
+          [] -> {:cont, []}
+          ["--env"] -> {:cont, []}
+          acc -> {:cont, Enum.reverse(acc), []}
         end
+      )
+      |> Enum.reduce({[], []}, fn
+        {:env, kv}, {cmd, env} -> 
+          case String.split(kv, "=", parts: 2) do
+            [key, value] -> {cmd, [{key, value} | env]}
+            _ -> {cmd, env}
+          end
+        list, {cmd, env} when is_list(list) -> 
+          {cmd ++ list, env}
       end)
-      |> Map.new()
 
+    env = Map.new(Enum.reverse(env_pairs))
     {cmd_args, env}
   end
 
