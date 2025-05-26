@@ -36,14 +36,14 @@ defmodule MCPChat.MCP.DiscoveryTest do
       for server <- servers do
         assert Map.has_key?(server, :name)
         assert Map.has_key?(server, :status)
-        
+
         case server.status do
           :available ->
             # Available servers should have command or url
             assert Map.has_key?(server, :command) or Map.has_key?(server, :url)
             assert Map.has_key?(server, :source)
             assert server.source == :quick_setup
-            
+
           :missing_requirements ->
             # Servers with missing requirements should have missing field
             assert Map.has_key?(server, :missing)
