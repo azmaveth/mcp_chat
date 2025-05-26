@@ -12,6 +12,14 @@ defmodule MCPChat.Application do
         MCPChat.Config,
         # Session manager
         MCPChat.Session,
+        # Health monitoring
+        MCPChat.HealthMonitor,
+        # Circuit breakers for external services
+        {MCPChat.CircuitBreaker, name: MCPChat.CircuitBreaker.LLM, failure_threshold: 3, reset_timeout: 60_000},
+        # Connection pool supervisor
+        {DynamicSupervisor, strategy: :one_for_one, name: MCPChat.ConnectionPoolSupervisor},
+        # Chat session supervisor
+        MCPChat.ChatSupervisor,
         # ExAlias server (must be started before the adapter)
         ExAlias,
         # Alias manager adapter
@@ -23,7 +31,39 @@ defmodule MCPChat.Application do
       ] ++ mcp_server_children()
 
     opts = [strategy: :one_for_one, name: MCPChat.Supervisor]
-    Supervisor.start_link(children, opts)
+
+    case Supervisor.start_link(children, opts) do
+      {:ok, _sup} = result ->
+        # Register core processes for health monitoring
+        register_health_monitors()
+        result
+
+      error ->
+        error
+    end
+  end
+
+  defp register_health_monitors() do
+    # Give processes time to start
+    Process.sleep(100)
+
+    # Register core processes for monitoring
+    processes_to_monitor = [
+      {:config, MCPChat.Config},
+      {:session, MCPChat.Session},
+      {:server_manager, MCPChat.MCP.ServerManager},
+      {:alias_adapter, MCPChat.Alias.ExAliasAdapter}
+    ]
+
+    Enum.each(processes_to_monitor, fn {name, process_name} ->
+      case Process.whereis(process_name) do
+        nil ->
+          :ok
+
+        pid ->
+          MCPChat.HealthMonitor.register(name, pid)
+      end
+    end)
   end
 
   defp mcp_server_children() do

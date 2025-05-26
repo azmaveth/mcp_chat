@@ -37,10 +37,20 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Add config provider to options
     ex_llm_options = [{:config_provider, ExLLM.ConfigProvider.Env} | ex_llm_options]
 
-    # Call ExLLM
-    case ExLLM.chat(provider, ex_llm_messages, ex_llm_options) do
-      {:ok, response} ->
+    # Call ExLLM through circuit breaker
+    breaker = get_circuit_breaker()
+
+    case MCPChat.CircuitBreaker.call(breaker, fn ->
+           ExLLM.chat(provider, ex_llm_messages, ex_llm_options)
+         end) do
+      {:ok, {:ok, response}} ->
         {:ok, convert_response(response)}
+
+      {:ok, {:error, reason}} ->
+        {:error, reason}
+
+      {:error, :circuit_open} ->
+        {:error, "LLM service temporarily unavailable (circuit breaker open)"}
 
       {:error, reason} ->
         {:error, reason}
@@ -58,12 +68,22 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Add config provider to options
     ex_llm_options = [{:config_provider, ExLLM.ConfigProvider.Env} | ex_llm_options]
 
-    # Call ExLLM streaming
-    case ExLLM.stream_chat(provider, ex_llm_messages, ex_llm_options) do
-      {:ok, stream} ->
+    # Call ExLLM streaming through circuit breaker
+    breaker = get_circuit_breaker()
+
+    case MCPChat.CircuitBreaker.call(breaker, fn ->
+           ExLLM.stream_chat(provider, ex_llm_messages, ex_llm_options)
+         end) do
+      {:ok, {:ok, stream}} ->
         # Convert the stream to MCPChat format
         converted_stream = Stream.map(stream, &convert_stream_chunk/1)
         {:ok, converted_stream}
+
+      {:ok, {:error, reason}} ->
+        {:error, reason}
+
+      {:error, :circuit_open} ->
+        {:error, "LLM service temporarily unavailable (circuit breaker open)"}
 
       {:error, reason} ->
         {:error, reason}
@@ -264,6 +284,19 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     case Process.whereis(ExLLM.Local.ModelLoader) do
       nil -> false
       _pid -> true
+    end
+  end
+
+  defp get_circuit_breaker() do
+    # Get the circuit breaker for LLM calls
+    case Process.whereis(MCPChat.CircuitBreaker.LLM) do
+      nil ->
+        # If circuit breaker not available, create a dummy one
+        # This allows the system to work even if supervision isn't set up
+        self()
+
+      pid ->
+        pid
     end
   end
 end
