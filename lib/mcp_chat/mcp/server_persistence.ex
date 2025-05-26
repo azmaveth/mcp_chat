@@ -5,8 +5,8 @@ defmodule MCPChat.MCP.ServerPersistence do
 
   require Logger
 
-  # Legacy file path for backward compatibility
-  @connections_file Path.expand("~/.mcp_chat/connected_servers.json")
+  # Legacy file path for backward compatibility (kept for reference but not used)
+  # @connections_file Path.expand("~/.mcp_chat/connected_servers.json")
 
   @doc """
   Save a server configuration to persistent storage.

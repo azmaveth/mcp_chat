@@ -122,22 +122,18 @@ defmodule MCPChat.CLI.Commands.LLM do
     show_info("Current backend: #{backend}")
     show_info("Current model: #{current_model}")
 
-    cond do
-      adapter == nil ->
-        show_error("Backend #{backend} is not available")
+    # adapter is always MCPChat.LLM.ExLLMAdapter, so we just check if list_models is exported
+    if function_exported?(adapter, :list_models, 1) do
+      case adapter.list_models([{:provider, String.to_atom(backend)}]) do
+        {:ok, models} ->
+          show_info("\nAvailable models:")
+          display_models(models, backend)
 
-      not function_exported?(adapter, :list_models, 1) ->
-        show_error("Backend #{backend} does not support listing models")
-
-      true ->
-        case adapter.list_models([{:provider, String.to_atom(backend)}]) do
-          {:ok, models} ->
-            show_info("\nAvailable models:")
-            display_models(models, backend)
-
-          {:error, reason} ->
-            show_error("Failed to list models: #{reason}")
-        end
+        {:error, reason} ->
+          show_error("Failed to list models: #{reason}")
+      end
+    else
+      show_error("Backend #{backend} does not support listing models")
     end
   end
 
@@ -260,7 +256,7 @@ defmodule MCPChat.CLI.Commands.LLM do
 
   # Helper functions
 
-  defp get_adapter_module(backend) do
+  defp get_adapter_module(_backend) do
     # Always use ExLLMAdapter with the provider option
     MCPChat.LLM.ExLLMAdapter
   end

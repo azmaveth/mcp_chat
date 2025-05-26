@@ -144,141 +144,6 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     end
   end
 
-  defp convert_config(mcp_chat_config) do
-    # Convert mcp_chat configuration format to ex_llm format
-    # This maps the TOML config structure to ExLLM's expected format
-
-    llm_config = Map.get(mcp_chat_config, "llm", %{})
-    default_backend = Map.get(llm_config, "default", "anthropic")
-
-    adapters = []
-
-    # Add Anthropic adapter if configured
-    adapters =
-      if Map.has_key?(llm_config, "anthropic") do
-        anthropic_config = Map.get(llm_config, "anthropic", %{})
-
-        anthropic_adapter = %{
-          adapter: ExLLM.Adapters.Anthropic,
-          config: %{
-            api_key: Map.get(anthropic_config, "api_key") || System.get_env("ANTHROPIC_API_KEY"),
-            model: Map.get(anthropic_config, "model", "claude-sonnet-4-20250514"),
-            max_tokens: Map.get(anthropic_config, "max_tokens", 4_096)
-          }
-        }
-
-        [anthropic_adapter | adapters]
-      else
-        adapters
-      end
-
-    # Add OpenAI adapter if configured
-    adapters =
-      if Map.has_key?(llm_config, "openai") do
-        openai_config = Map.get(llm_config, "openai", %{})
-
-        openai_adapter = %{
-          adapter: ExLLM.Adapters.OpenAI,
-          config: %{
-            api_key: Map.get(openai_config, "api_key") || System.get_env("OPENAI_API_KEY"),
-            model: Map.get(openai_config, "model", "gpt-4"),
-            max_tokens: Map.get(openai_config, "max_tokens", 4_096)
-          }
-        }
-
-        [openai_adapter | adapters]
-      else
-        adapters
-      end
-
-    # Add Ollama adapter if configured
-    adapters =
-      if Map.has_key?(llm_config, "ollama") do
-        ollama_config = Map.get(llm_config, "ollama", %{})
-
-        ollama_adapter = %{
-          adapter: ExLLM.Adapters.Ollama,
-          config: %{
-            base_url: Map.get(ollama_config, "base_url", "http://localhost:11_434"),
-            model: Map.get(ollama_config, "model", "llama3"),
-            timeout: Map.get(ollama_config, "timeout", 60_000)
-          }
-        }
-
-        [ollama_adapter | adapters]
-      else
-        adapters
-      end
-
-    # Add Local adapter if configured
-    adapters =
-      if Map.has_key?(llm_config, "local") do
-        local_config = Map.get(llm_config, "local", %{})
-
-        local_adapter = %{
-          adapter: ExLLM.Adapters.Local,
-          config: %{
-            model_path: Map.get(local_config, "model_path"),
-            device: Map.get(local_config, "device", "cpu"),
-            max_tokens: Map.get(local_config, "max_tokens", 2048)
-          }
-        }
-
-        [local_adapter | adapters]
-      else
-        adapters
-      end
-
-    # Add Bedrock adapter if configured
-    adapters =
-      if Map.has_key?(llm_config, "bedrock") do
-        bedrock_config = Map.get(llm_config, "bedrock", %{})
-
-        bedrock_adapter = %{
-          adapter: ExLLM.Adapters.Bedrock,
-          config: %{
-            access_key_id: Map.get(bedrock_config, "access_key_id") || System.get_env("AWS_ACCESS_KEY_ID"),
-            secret_access_key: Map.get(bedrock_config, "secret_access_key") || System.get_env("AWS_SECRET_ACCESS_KEY"),
-            region: Map.get(bedrock_config, "region", "us-east-1"),
-            model: Map.get(bedrock_config, "model", "claude-3-sonnet")
-          }
-        }
-
-        [bedrock_adapter | adapters]
-      else
-        adapters
-      end
-
-    # Add Gemini adapter if configured
-    adapters =
-      if Map.has_key?(llm_config, "gemini") do
-        gemini_config = Map.get(llm_config, "gemini", %{})
-
-        gemini_adapter = %{
-          adapter: ExLLM.Adapters.Gemini,
-          config: %{
-            api_key: Map.get(gemini_config, "api_key") || System.get_env("GOOGLE_API_KEY"),
-            model: Map.get(gemini_config, "model", "gemini-pro")
-          }
-        }
-
-        [gemini_adapter | adapters]
-      else
-        adapters
-      end
-
-    %{
-      adapters: adapters,
-      default_adapter: default_backend,
-      cost_tracking: %{
-        enabled: true
-      },
-      context: %{
-        max_tokens: 8_000,
-        strategy: :sliding_window
-      }
-    }
-  end
 
   defp convert_messages(messages) do
     # Convert MCPChat message format to ExLLM format
@@ -300,13 +165,19 @@ defmodule MCPChat.LLM.ExLLMAdapter do
 
     ex_llm_options = if model, do: [{:model, model} | ex_llm_options], else: ex_llm_options
 
-    if max_tokens = Keyword.get(options, :max_tokens) do
-      ex_llm_options = [{:max_tokens, max_tokens} | ex_llm_options]
-    end
+    ex_llm_options = 
+      if max_tokens = Keyword.get(options, :max_tokens) do
+        [{:max_tokens, max_tokens} | ex_llm_options]
+      else
+        ex_llm_options
+      end
 
-    if temperature = Keyword.get(options, :temperature) do
-      ex_llm_options = [{:temperature, temperature} | ex_llm_options]
-    end
+    ex_llm_options = 
+      if temperature = Keyword.get(options, :temperature) do
+        [{:temperature, temperature} | ex_llm_options]
+      else
+        ex_llm_options
+      end
 
     {provider, ex_llm_options}
   end

@@ -348,19 +348,6 @@ defmodule MCPChat.CLI.Commands.MCP do
 
   # Helper functions
 
-  defp format_capabilities(caps) do
-    features = []
-    features = if caps["tools"], do: ["tools" | features], else: features
-    features = if caps["resources"], do: ["resources" | features], else: features
-    features = if caps["prompts"], do: ["prompts" | features], else: features
-
-    if Enum.empty?(features) do
-      ""
-    else
-      "Capabilities: #{Enum.join(features, ", ")}"
-    end
-  end
-
   defp connect_quick_setup_server(name) do
     quick_servers = Discovery.quick_setup_servers()
 

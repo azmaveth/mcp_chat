@@ -5,7 +5,8 @@ defmodule MCPChat.Config do
   """
   use GenServer
 
-  @default_config_path "~/.config/mcp_chat/config.toml"
+  # Default config path (kept for reference but not used directly)
+  # @default_config_path "~/.config/mcp_chat/config.toml"
 
   # Client API
 
@@ -229,16 +230,4 @@ defmodule MCPChat.Config do
   end
 
   defp atomize_keys(value), do: value
-
-  defp stringify_keys(map) when is_map(map) do
-    Map.new(map, fn {k, v} ->
-      {to_string(k), stringify_keys(v)}
-    end)
-  end
-
-  defp stringify_keys(list) when is_list(list) do
-    Enum.map(list, &stringify_keys/1)
-  end
-
-  defp stringify_keys(value), do: value
 end

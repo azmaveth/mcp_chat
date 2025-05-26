@@ -53,7 +53,7 @@ defmodule MCPChat.Alias.ExAliasAdapter do
   # Server Callbacks
 
   @impl true
-  def init(opts) do
+  def init(_opts) do
     # Load existing aliases if available
     load_mcp_chat_aliases()
 

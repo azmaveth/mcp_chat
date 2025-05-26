@@ -89,7 +89,7 @@ defmodule MCPChat.MCP.ExMCPAdapter do
   end
 
   @impl true
-  def handle_cast({:initialize, client_info}, state) do
+  def handle_cast({:initialize, _client_info}, state) do
     # ExMCP clients auto-initialize, so we just need to get server info
     case ExMCP.Client.server_info(state.ex_mcp_client) do
       {:ok, server_info} ->
@@ -295,7 +295,7 @@ defmodule MCPChat.MCP.ExMCPAdapter do
     config_map = if is_list(config), do: Enum.into(config, %{}), else: config
 
     case determine_transport(config_map) do
-      {:websocket, url} ->
+      {:websocket, _url} ->
         # ExMCP doesn't have WebSocket transport, so we'd need to implement it
         # For now, we'll fall back to a different transport or error
         {:error, :websocket_not_supported}

@@ -267,7 +267,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
   # Private Functions
 
   @spec start_server_supervised(map(), pid(), module()) :: {:ok, {String.t(), pid()}} | {:error, term()}
-  defp start_server_supervised(config, supervisor, logger_provider \\ LoggerProvider.Default) do
+  defp start_server_supervised(config, supervisor, logger_provider) do
     name = config[:name] || config["name"]
     command = config[:command] || config["command"]
     url = config[:url] || config["url"]

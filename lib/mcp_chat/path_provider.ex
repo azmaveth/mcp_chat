@@ -21,7 +21,6 @@ defmodule MCPChat.PathProvider do
   """
   @callback get_all_paths() :: map()
 
-  alias MCPChat.Error
 
   defmodule Default do
     @moduledoc """
