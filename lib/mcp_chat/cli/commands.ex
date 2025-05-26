@@ -42,17 +42,7 @@ defmodule MCPChat.CLI.Commands do
     "acceleration" => LLM,
 
     # MCP commands
-    "servers" => MCP,
-    "saved" => MCP,
-    "discover" => MCP,
-    "connect" => MCP,
-    "disconnect" => MCP,
-    "tools" => MCP,
-    "tool" => MCP,
-    "resources" => MCP,
-    "resource" => MCP,
-    "prompts" => MCP,
-    "prompt" => MCP,
+    "mcp" => MCP,
 
     # Context commands
     "context" => Context,

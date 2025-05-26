@@ -29,7 +29,7 @@ defmodule MCPChat.CLI.Commands.MCPBasicTest do
 
       output =
         capture_io(fn ->
-          MCP.handle_command("tools", [])
+          MCP.handle_command("mcp", ["tools"])
         end)
 
       assert output =~ "No MCP servers connected"
@@ -46,7 +46,7 @@ defmodule MCPChat.CLI.Commands.MCPBasicTest do
 
       output =
         capture_io(fn ->
-          MCP.handle_command("tools", [])
+          MCP.handle_command("mcp", ["tools"])
         end)
 
       assert output =~ "No tools available from connected servers"
@@ -75,7 +75,7 @@ defmodule MCPChat.CLI.Commands.MCPBasicTest do
 
       output =
         capture_io(fn ->
-          MCP.handle_command("tools", [])
+          MCP.handle_command("mcp", ["tools"])
         end)
 
       assert output =~ "Available MCP tools:"
@@ -101,7 +101,7 @@ defmodule MCPChat.CLI.Commands.MCPBasicTest do
 
       output =
         capture_io(fn ->
-          MCP.handle_command("tools", [])
+          MCP.handle_command("mcp", ["tools"])
         end)
 
       assert output =~ "legacy_tool - A legacy tool"
@@ -137,7 +137,7 @@ defmodule MCPChat.CLI.Commands.MCPBasicTest do
 
       output =
         capture_io(fn ->
-          MCP.handle_command("tools", [])
+          MCP.handle_command("mcp", ["tools"])
         end)
 
       assert output =~ "server1:"
@@ -171,7 +171,7 @@ defmodule MCPChat.CLI.Commands.MCPBasicTest do
 
       output =
         capture_io(fn ->
-          MCP.handle_command("tools", [])
+          MCP.handle_command("mcp", ["tools"])
         end)
 
       # Should still show the working tools
@@ -200,7 +200,7 @@ defmodule MCPChat.CLI.Commands.MCPBasicTest do
 
       output =
         capture_io(fn ->
-          MCP.handle_command("tools", [])
+          MCP.handle_command("mcp", ["tools"])
         end)
 
       assert output =~ "available_tool"

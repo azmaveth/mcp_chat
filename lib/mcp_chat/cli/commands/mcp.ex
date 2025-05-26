@@ -17,20 +17,7 @@ defmodule MCPChat.CLI.Commands.MCP do
   def commands() do
     %{
       # Main MCP command with subcommands
-      "mcp" => "MCP server management (usage: /mcp <subcommand>)",
-      
-      # Legacy commands (kept for backward compatibility)
-      "servers" => "List connected MCP servers (use: /mcp servers)",
-      "saved" => "List saved MCP server connections (use: /mcp saved)",
-      "discover" => "Discover available MCP servers (use: /mcp discover)",
-      "connect" => "Connect to an MCP server (use: /mcp connect <name>)",
-      "disconnect" => "Disconnect from an MCP server (use: /mcp disconnect <name>)",
-      "tools" => "List available MCP tools (use: /mcp tools)",
-      "tool" => "Call an MCP tool (use: /mcp tool <server> <tool> [args...])",
-      "resources" => "List available MCP resources (use: /mcp resources)",
-      "resource" => "Read an MCP resource (use: /mcp resource <server> <uri>)",
-      "prompts" => "List available MCP prompts (use: /mcp prompts)",
-      "prompt" => "Get an MCP prompt (use: /mcp prompt <server> <name>)"
+      "mcp" => "MCP server management (usage: /mcp <subcommand>)"
     }
   end
   
@@ -55,19 +42,6 @@ defmodule MCPChat.CLI.Commands.MCP do
 
   @impl true
   def handle_command("mcp", args), do: handle_mcp_subcommand(args)
-  
-  # Legacy commands (redirect to mcp subcommands)
-  def handle_command("servers", args), do: handle_mcp_subcommand(["servers" | args])
-  def handle_command("saved", args), do: handle_mcp_subcommand(["saved" | args])
-  def handle_command("discover", args), do: handle_mcp_subcommand(["discover" | args])
-  def handle_command("connect", args), do: handle_mcp_subcommand(["connect" | args])
-  def handle_command("disconnect", args), do: handle_mcp_subcommand(["disconnect" | args])
-  def handle_command("tools", args), do: handle_mcp_subcommand(["tools" | args])
-  def handle_command("tool", args), do: handle_mcp_subcommand(["tool" | args])
-  def handle_command("resources", args), do: handle_mcp_subcommand(["resources" | args])
-  def handle_command("resource", args), do: handle_mcp_subcommand(["resource" | args])
-  def handle_command("prompts", args), do: handle_mcp_subcommand(["prompts" | args])
-  def handle_command("prompt", args), do: handle_mcp_subcommand(["prompt" | args])
 
   def handle_command(cmd, _args) do
     {:error, "Unknown MCP command: #{cmd}"}

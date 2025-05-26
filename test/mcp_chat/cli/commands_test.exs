@@ -82,7 +82,7 @@ defmodule MCPChat.CLI.CommandsTest do
 
       # Check for various command categories
       # MCP commands
-      assert output =~ "/servers"
+      assert output =~ "/mcp"
       # Config commands
       assert output =~ "/backend"
       # Context commands
@@ -202,22 +202,22 @@ defmodule MCPChat.CLI.CommandsTest do
     end
   end
 
-  describe "servers command" do
+  describe "mcp servers command" do
     test "shows no servers when none connected" do
       output =
         capture_io(fn ->
-          Commands.handle_command("servers")
+          Commands.handle_command("mcp servers")
         end)
 
       assert output =~ "No MCP servers connected"
     end
   end
 
-  describe "discover command" do
+  describe "mcp discover command" do
     test "attempts to discover MCP servers" do
       output =
         capture_io(fn ->
-          Commands.handle_command("discover")
+          Commands.handle_command("mcp discover")
         end)
 
       assert output =~ "Discovering MCP servers"
