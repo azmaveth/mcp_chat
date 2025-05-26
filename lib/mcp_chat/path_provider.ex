@@ -21,7 +21,6 @@ defmodule MCPChat.PathProvider do
   """
   @callback get_all_paths() :: map()
 
-
   defmodule Default do
     @moduledoc """
     Default path provider that uses standard application directories.

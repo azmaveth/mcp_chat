@@ -251,9 +251,10 @@ history_size = 1000
   - [ ] /context add <file> - Add local file to context
   - [ ] /context rm <file> - Remove file from context
   - [ ] Support persistent context files across conversations
-- [ ] Fix arrow keys and Emacs keybindings in line editor
+- [ ] Fix arrow keys and Emacs keybindings (MOVED to ex_readline)
   - [ ] Currently showing escape sequences (^[[A, ^P, etc) instead of working
   - [ ] Need proper terminal input handling for SimpleLineReader
+  - [ ] See [/Users/azmaveth/code/ex_readline/TASKS.md] for implementation
 
 ## Phase 9: BEAM-Native MCP Transport (MOVED to ex_mcp)
 - [ ] BEAM transport implementation tracked in [/Users/azmaveth/code/ex_mcp/TASKS.md]

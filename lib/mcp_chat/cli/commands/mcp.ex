@@ -20,14 +20,14 @@ defmodule MCPChat.CLI.Commands.MCP do
       "mcp" => "MCP server management (usage: /mcp <subcommand>)"
     }
   end
-  
+
   @doc """
   Returns the list of MCP subcommands for help display.
   """
   def subcommands() do
     %{
       "servers" => "List connected MCP servers",
-      "saved" => "List saved MCP server connections", 
+      "saved" => "List saved MCP server connections",
       "discover" => "Discover available MCP servers",
       "connect" => "Connect to an MCP server (usage: connect <name> [--env KEY=VALUE ...])",
       "disconnect" => "Disconnect from an MCP server (usage: disconnect <name>)",
@@ -46,24 +46,24 @@ defmodule MCPChat.CLI.Commands.MCP do
   def handle_command(cmd, _args) do
     {:error, "Unknown MCP command: #{cmd}"}
   end
-  
+
   # Handle MCP subcommands
   defp handle_mcp_subcommand([]) do
     # Show MCP help when no subcommand given
     show_info("MCP (Model Context Protocol) Commands:")
     show_info("")
-    
+
     subcommands()
     |> Enum.sort_by(fn {cmd, _} -> cmd end)
     |> Enum.each(fn {cmd, desc} ->
       show_info("  #{String.pad_trailing(cmd, 12)} - #{desc}")
     end)
-    
+
     show_info("")
     show_info("Usage: /mcp <subcommand> [args...]")
     :ok
   end
-  
+
   defp handle_mcp_subcommand(["servers" | _args]), do: list_servers()
   defp handle_mcp_subcommand(["saved" | _args]), do: list_saved_servers()
   defp handle_mcp_subcommand(["discover" | _args]), do: discover_servers()
@@ -75,7 +75,7 @@ defmodule MCPChat.CLI.Commands.MCP do
   defp handle_mcp_subcommand(["resource" | args]), do: read_resource(args)
   defp handle_mcp_subcommand(["prompts" | _args]), do: list_prompts()
   defp handle_mcp_subcommand(["prompt" | args]), do: get_prompt(args)
-  
+
   defp handle_mcp_subcommand([subcmd | _]) do
     show_error("Unknown MCP subcommand: #{subcmd}")
     show_info("Type /mcp for available subcommands")
@@ -440,7 +440,7 @@ defmodule MCPChat.CLI.Commands.MCP do
   defp parse_env_args(args) do
     # Split args into command args and env args
     # --env KEY=VALUE can appear anywhere in the args
-    {cmd_args, env_pairs} = 
+    {cmd_args, env_pairs} =
       args
       |> Enum.chunk_while(
         [],
@@ -456,12 +456,13 @@ defmodule MCPChat.CLI.Commands.MCP do
         end
       )
       |> Enum.reduce({[], []}, fn
-        {:env, kv}, {cmd, env} -> 
+        {:env, kv}, {cmd, env} ->
           case String.split(kv, "=", parts: 2) do
             [key, value] -> {cmd, [{key, value} | env]}
             _ -> {cmd, env}
           end
-        list, {cmd, env} when is_list(list) -> 
+
+        list, {cmd, env} when is_list(list) ->
           {cmd ++ list, env}
       end)
 

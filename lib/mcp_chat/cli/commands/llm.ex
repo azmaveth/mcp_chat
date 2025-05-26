@@ -108,20 +108,23 @@ defmodule MCPChat.CLI.Commands.LLM do
         {backend, current_model} = get_current_model()
         show_info("Current backend: #{backend}")
         show_info("Current model: #{current_model}")
-        
+
         # Try to show available models for current backend
         adapter = get_adapter_module(backend)
+
         if function_exported?(adapter, :list_models, 1) do
           case adapter.list_models([{:provider, String.to_atom(backend)}]) do
             {:ok, models} ->
               show_info("\nAvailable models for #{backend}:")
               display_models(models, backend)
+
             _ ->
               :ok
           end
         end
+
         :ok
-        
+
       _ ->
         # Switch to specified model
         model = parse_args(args)

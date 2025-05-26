@@ -144,7 +144,6 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     end
   end
 
-
   defp convert_messages(messages) do
     # Convert MCPChat message format to ExLLM format
     Enum.map(messages, fn message ->
@@ -165,14 +164,14 @@ defmodule MCPChat.LLM.ExLLMAdapter do
 
     ex_llm_options = if model, do: [{:model, model} | ex_llm_options], else: ex_llm_options
 
-    ex_llm_options = 
+    ex_llm_options =
       if max_tokens = Keyword.get(options, :max_tokens) do
         [{:max_tokens, max_tokens} | ex_llm_options]
       else
         ex_llm_options
       end
 
-    ex_llm_options = 
+    ex_llm_options =
       if temperature = Keyword.get(options, :temperature) do
         [{:temperature, temperature} | ex_llm_options]
       else

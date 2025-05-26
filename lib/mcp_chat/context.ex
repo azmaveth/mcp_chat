@@ -25,6 +25,7 @@ defmodule MCPChat.Context do
     max_tokens = Keyword.get(options, :max_tokens, @default_max_tokens)
     system_prompt = Keyword.get(options, :system_prompt)
     strategy = Keyword.get(options, :strategy, :sliding_window)
+    context_files = Keyword.get(options, :files, %{})
 
     # Calculate available tokens for messages
     available_tokens = max_tokens - @reserve_tokens
@@ -38,17 +39,54 @@ defmodule MCPChat.Context do
         messages
       end
 
+    # Add context files if any
+    messages_with_context =
+      if map_size(context_files) > 0 do
+        # Create a user message with file contents
+        file_content = format_context_files(context_files)
+
+        context_message = %{
+          role: "user",
+          content: "Context files:\n\n#{file_content}\n\n---\n\nNow, regarding my request:"
+        }
+
+        # Insert context files after system prompt but before other messages
+        case messages_with_system do
+          [%{role: "system"} = sys | rest] -> [sys, context_message | rest]
+          other -> [context_message | other]
+        end
+      else
+        messages_with_system
+      end
+
     # Apply truncation strategy
     case strategy do
       :sliding_window ->
-        sliding_window_truncate(messages_with_system, available_tokens)
+        sliding_window_truncate(messages_with_context, available_tokens)
 
       :smart ->
-        smart_truncate(messages_with_system, available_tokens, system_prompt)
+        smart_truncate(messages_with_context, available_tokens, system_prompt)
 
       _ ->
-        messages_with_system
+        messages_with_context
     end
+  end
+
+  defp format_context_files(context_files) do
+    context_files
+    |> Enum.map_join(
+      fn {_name, file_info} ->
+        """
+        File: #{file_info.name}
+        Path: #{file_info.path}
+
+        ```
+        #{file_info.content}
+        ```
+        """
+      end,
+      "\n\n"
+    )
   end
 
   @doc """
