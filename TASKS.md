@@ -559,6 +559,43 @@ history_size = 1000
   - [ ] Show notification status in `/mcp servers`
   - [ ] Add sampling info to server details
 
+## Phase 19: @ Symbol Context Inclusion
+- [ ] Implement @ symbol for marking resources/prompts for context inclusion
+  - [ ] Parse @ symbols in user input (e.g., "@file:///path/to/doc.md", "@prompt:code_review")
+  - [ ] Support different @ prefixes:
+    - [ ] `@resource:` or `@r:` - Include MCP resource content
+    - [ ] `@prompt:` or `@p:` - Execute MCP prompt and include result
+    - [ ] `@tool:` or `@t:` - Execute tool and include output
+    - [ ] `@file:` or `@f:` - Include local file content (shorthand for file:// resources)
+    - [ ] `@url:` or `@u:` - Fetch and include web content
+  - [ ] Auto-completion for @ symbols
+    - [ ] Show available resources/prompts/tools when typing @
+    - [ ] Filter suggestions based on partial match
+    - [ ] Display type icons (📄 resource, 💬 prompt, 🔧 tool)
+  - [ ] Visual indicators in chat
+    - [ ] Highlight @ references in user input
+    - [ ] Show included content in expandable blocks
+    - [ ] Display token count for included content
+  - [ ] Context management
+    - [ ] Track which @ items are included in current context
+    - [ ] Show total tokens from @ inclusions
+    - [ ] Warn if @ content exceeds context limits
+    - [ ] Allow selective removal of @ content
+  - [ ] Integration with existing features
+    - [ ] Work with /context command
+    - [ ] Update token counting to include @ content
+    - [ ] Cache frequently used @ resources
+    - [ ] Support @ references in aliases
+  - [ ] Error handling
+    - [ ] Gracefully handle missing resources/prompts
+    - [ ] Show clear error messages for invalid @ syntax
+    - [ ] Fallback options when content unavailable
+  - [ ] Examples:
+    - "Please review @file:./src/main.ex and suggest improvements"
+    - "Using @prompt:code_review analyze this function"
+    - "Compare @resource:config.toml with @url:https://example.com/config"
+    - "Execute @tool:calculate with these parameters..."
+
 ## Development Notes
 
 - Use supervisor trees for fault tolerance
