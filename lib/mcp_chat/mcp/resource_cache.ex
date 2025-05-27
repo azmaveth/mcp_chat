@@ -471,19 +471,20 @@ defmodule MCPChat.MCP.ResourceCache do
       size_to_remove = stats.total_size - state.max_size
       removed_size = 0
 
-      Enum.reduce_while(entries, removed_size, fn {{server, uri}, resource}, acc ->
-        if acc >= size_to_remove do
-          {:halt, acc}
-        else
-          :ets.delete(@table_name, {server, uri})
+      _ =
+        Enum.reduce_while(entries, removed_size, fn {{server, uri}, resource}, acc ->
+          if acc >= size_to_remove do
+            {:halt, acc}
+          else
+            :ets.delete(@table_name, {server, uri})
 
-          # Remove file
-          cache_file = get_cache_file_path(state.cache_dir, server, uri)
-          File.rm(cache_file)
+            # Remove file
+            cache_file = get_cache_file_path(state.cache_dir, server, uri)
+            File.rm(cache_file)
 
-          {:cont, acc + resource.size}
-        end
-      end)
+            {:cont, acc + resource.size}
+          end
+        end)
 
       update_cache_size()
     end
