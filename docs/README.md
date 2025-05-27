@@ -45,9 +45,9 @@ This documentation is for MCP Chat version 0.2.0 (May 2025).
 
 If you can't find what you need in the documentation:
 
-1. **Search existing issues**: [GitHub Issues](https://github.com/yourusername/mcp_chat/issues)
-2. **Ask questions**: [Discussions](https://github.com/yourusername/mcp_chat/discussions)
-3. **Report bugs**: [Issue Tracker](https://github.com/yourusername/mcp_chat/issues/new)
+1. **Search existing issues**: [GitHub Issues](https://github.com/azmaveth/mcp_chat/issues)
+2. **Ask questions**: [Discussions](https://github.com/azmaveth/mcp_chat/discussions)
+3. **Report bugs**: [Issue Tracker](https://github.com/azmaveth/mcp_chat/issues/new)
 4. **Chat with us**: Join our community (coming soon)
 
 ## Contributing to Documentation

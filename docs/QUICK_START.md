@@ -15,7 +15,7 @@ sudo apt-get install elixir
 ## 2. Clone and Setup
 
 ```bash
-git clone https://github.com/yourusername/mcp_chat.git
+git clone https://github.com/azmaveth/mcp_chat.git
 cd mcp_chat
 mix deps.get
 mix compile

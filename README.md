@@ -79,7 +79,7 @@ This architecture provides:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mcp_chat.git
+git clone https://github.com/azmaveth/mcp_chat.git
 cd mcp_chat
 
 # Run the setup script (installs deps, builds, creates config)

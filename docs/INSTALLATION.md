@@ -29,7 +29,7 @@ This guide will walk you through installing and setting up MCP Chat on your syst
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/mcp_chat.git
+git clone https://github.com/azmaveth/mcp_chat.git
 cd mcp_chat
 ```
 
@@ -240,7 +240,7 @@ If you want to contribute or modify MCP Chat:
 ### 1. Fork and Clone
 
 ```bash
-git clone https://github.com/yourusername/mcp_chat.git
+git clone https://github.com/azmaveth/mcp_chat.git
 cd mcp_chat
 ```
 
