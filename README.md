@@ -17,11 +17,15 @@ An Elixir-based CLI chat client with support for the Model Context Protocol (MCP
 - 🛠️ MCP server functionality - expose chat as an MCP server (stdio and SSE transports)
 - 💬 Interactive CLI chat interface with rich formatting
 - 📝 Conversation history and session management
-- 🎨 Beautiful terminal UI with Owl
+- 🎨 Beautiful terminal UI with Owl (progress bars, cache displays)
 - 📊 Export conversations to Markdown or JSON
 - ⚡ Streaming response support
 - 🔧 TOML-based configuration
 - 🔑 Environment variable support for API keys
+- 🚀 Performance optimizations (startup profiling, lazy loading, resource caching)
+- 💾 Smart memory management with hybrid disk/memory storage
+- 📈 Real-time progress tracking for MCP operations
+- 🗂️ Local resource caching with automatic invalidation
 
 ## Architecture
 

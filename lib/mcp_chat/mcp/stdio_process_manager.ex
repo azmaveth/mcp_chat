@@ -1,13 +1,13 @@
 defmodule MCPChat.MCP.StdioProcessManager do
   @moduledoc """
   Manages stdio MCP server processes as external OS processes.
-  
+
   This module handles:
   - Starting MCP servers as OS processes
   - Managing stdio communication channels
   - Process lifecycle (start, stop, restart)
   - Integration with ServerManager
-  
+
   The key architectural principle is that MCP servers run as independent
   OS processes, and we connect to them via stdio transport.
   """
@@ -31,7 +31,7 @@ defmodule MCPChat.MCP.StdioProcessManager do
 
   @doc """
   Starts a stdio process manager.
-  
+
   Options:
   - `:command` - The command to run (required)
   - `:args` - Command arguments (default: [])
@@ -160,7 +160,7 @@ defmodule MCPChat.MCP.StdioProcessManager do
 
   def handle_info({port, {:exit_status, status}}, %{port: port} = state) do
     Logger.info("Process exited with status: #{status}")
-    
+
     # Notify client if one is set
     if state.client_pid do
       send(state.client_pid, {:stdio_exit, status})
@@ -171,7 +171,7 @@ defmodule MCPChat.MCP.StdioProcessManager do
 
   def handle_info({:EXIT, port, reason}, %{port: port} = state) do
     Logger.error("Port crashed: #{inspect(reason)}")
-    
+
     # Notify client if one is set
     if state.client_pid do
       send(state.client_pid, {:stdio_crash, reason})
@@ -222,7 +222,8 @@ defmodule MCPChat.MCP.StdioProcessManager do
     else
       # Try to find in PATH
       case System.find_executable(command) do
-        nil -> command  # Let Port.open handle the error
+        # Let Port.open handle the error
+        nil -> command
         path -> path
       end
     end

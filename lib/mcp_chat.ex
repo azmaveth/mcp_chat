@@ -65,7 +65,17 @@ defmodule MCPChat do
       MCPChat.Session.new_session(opts[:backend])
     end
 
+    # Profile UI setup phase
+    MCPChat.StartupProfiler.start_phase(:ui_setup)
+
     # Start the chat interface
-    MCPChat.CLI.Chat.start()
+    result = MCPChat.CLI.Chat.start()
+
+    # End UI setup phase and show report
+    MCPChat.StartupProfiler.end_phase(:ui_setup)
+    MCPChat.StartupProfiler.end_phase(:total)
+    MCPChat.StartupProfiler.report()
+
+    result
   end
 end

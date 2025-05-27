@@ -378,6 +378,37 @@ log_level = "info"
 mcp_debug = false
 
 # ==============================================================================
+# Startup and Performance Settings
+# ==============================================================================
+
+[startup]
+# MCP server connection mode:
+# - "eager" = Connect to all servers at startup (fastest first use, slower startup)
+# - "lazy" = Connect only when first needed (faster startup, slight delay on first use)
+# - "background" = Start connections after UI loads (balanced approach)
+mcp_connection_mode = "lazy"
+
+# Enable startup time profiling (set via MCP_CHAT_STARTUP_PROFILING=true env var)
+# profiling_enabled = false
+
+# ==============================================================================
+# Memory Management Settings
+# ==============================================================================
+
+[memory]
+# Number of recent messages to keep in memory for quick access
+session_cache_size = 20
+
+# Messages per page when loading history
+page_size = 50
+
+# Maximum messages to store on disk per session
+max_disk_size = 10000
+
+# Memory limit for in-memory message cache
+memory_limit = 100
+
+# ==============================================================================
 # Advanced Settings
 # ==============================================================================
 
@@ -393,3 +424,23 @@ retry_delay = 1
 
 # Maximum concurrent MCP server connections
 max_connections = 10
+
+# ==============================================================================
+# Resource Cache Configuration
+# ==============================================================================
+
+[resource_cache]
+# Enable local caching of MCP resources
+enabled = true
+
+# Maximum cache size in bytes (100MB default)
+max_size = 104857600
+
+# Time to live for cached resources in seconds (1 hour default)
+ttl = 3600
+
+# Directory for storing cached resources
+cache_directory = "~/.config/mcp_chat/resource_cache"
+
+# Cleanup interval in seconds (5 minutes default)
+cleanup_interval = 300

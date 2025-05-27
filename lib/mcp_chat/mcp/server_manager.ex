@@ -200,6 +200,9 @@ defmodule MCPChat.MCP.ServerManager do
 
   @impl true
   def handle_info(:start_configured_servers, state) do
+    # Start profiling MCP servers phase
+    MCPChat.StartupProfiler.start_phase(:mcp_servers)
+
     # Start servers from config file
     config_state =
       handle_call(:start_configured_servers, nil, state)
@@ -207,6 +210,9 @@ defmodule MCPChat.MCP.ServerManager do
 
     # Also start saved servers with auto_connect enabled
     final_state = Core.start_auto_connect_servers(config_state)
+
+    # End profiling MCP servers phase
+    MCPChat.StartupProfiler.end_phase(:mcp_servers)
 
     {:noreply, final_state}
   end

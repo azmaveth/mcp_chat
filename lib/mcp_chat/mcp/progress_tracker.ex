@@ -79,6 +79,14 @@ defmodule MCPChat.MCP.ProgressTracker do
     GenServer.call(__MODULE__, :generate_token)
   end
 
+  @doc """
+  Gets all progress items for display.
+  Returns a map of token => progress data.
+  """
+  def get_all_progress() do
+    GenServer.call(__MODULE__, :get_all_progress)
+  end
+
   # Server Callbacks
 
   @impl true
@@ -132,6 +140,26 @@ defmodule MCPChat.MCP.ProgressTracker do
     token = "op-#{state.token_counter + 1}-#{:erlang.unique_integer([:positive])}"
     new_state = %{state | token_counter: state.token_counter + 1}
     {:reply, token, new_state}
+  end
+
+  def handle_call(:get_all_progress, _from, state) do
+    # Transform operations into progress display format
+    progress_map =
+      state.operations
+      |> Enum.filter(fn {_token, op} -> op.status == :running end)
+      |> Enum.map(fn {token, op} ->
+        {token,
+         %{
+           operation: "#{op.server}/#{op.tool}",
+           current: op.progress || 0,
+           total: op.total,
+           status: op.status,
+           message: nil
+         }}
+      end)
+      |> Enum.into(%{})
+
+    {:reply, progress_map, state}
   end
 
   @impl true

@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **TUI Components**: Beautiful text-based UI components using Owl library
+  - Progress display with real-time updates for MCP operations
+  - Resource cache display with summary and detailed views
+  - TUI manager for coordinating multiple displays
+  - `/tui` command for controlling displays
+- **Performance Optimizations**:
+  - Startup profiling with detailed phase tracking
+  - Lazy loading for MCP servers (lazy/eager/background modes)
+  - Configurable startup behavior in config.toml
+- **Memory Management**:
+  - Message store with hybrid memory/disk storage
+  - Configurable pagination for conversation history
+  - Smart context memory adapter for efficient retrieval
+- **Resource Caching**:
+  - Local caching layer for MCP resources
+  - Automatic cache invalidation via resource subscriptions
+  - LRU eviction policy with size limits
+  - Comprehensive cache statistics and monitoring
+- **Notification Enhancements**:
+  - Comprehensive notification handler for all MCP event types
+  - Event history tracking and batching
+  - Configurable notification settings per category
+
+### Changed
+- Improved startup performance with lazy loading options
+- Enhanced memory efficiency for long conversations
+- Better resource management with caching
+
+### Fixed
+- Memory usage for large conversation histories
+- Startup delays when connecting to multiple MCP servers
+
 ## [0.2.0] - 2025-05-26
 
 ### Added

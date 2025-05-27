@@ -6,6 +6,17 @@ defmodule MCPChat.Application do
 
   @impl true
   def start(_type, _args) do
+    # Start profiling if enabled
+    MCPChat.StartupProfiler.start_profiling()
+    MCPChat.StartupProfiler.start_phase(:total)
+
+    # Load configuration first
+    MCPChat.StartupProfiler.start_phase(:config_loading)
+    config_mode = get_startup_mode()
+    MCPChat.StartupProfiler.end_phase(:config_loading)
+
+    MCPChat.StartupProfiler.start_phase(:supervision_tree)
+
     children =
       [
         # Configuration manager
@@ -18,6 +29,8 @@ defmodule MCPChat.Application do
         {MCPChat.CircuitBreaker, name: MCPChat.CircuitBreaker.LLM, failure_threshold: 3, reset_timeout: 60_000},
         # Connection pool supervisor
         {DynamicSupervisor, strategy: :one_for_one, name: MCPChat.ConnectionPoolSupervisor},
+        # Memory store supervisor for message pagination
+        MCPChat.Memory.StoreSupervisor,
         # Chat session supervisor
         MCPChat.ChatSupervisor,
         # ExAlias server (must be started before the adapter)
@@ -26,25 +39,75 @@ defmodule MCPChat.Application do
         MCPChat.Alias.ExAliasAdapter,
         # Line editor for CLI input
         MCPChat.CLI.ExReadlineAdapter,
+        # Lazy server manager (new)
+        {MCPChat.MCP.LazyServerManager, connection_mode: config_mode},
         # MCP server manager (handles the dynamic supervisor internally)
         MCPChat.MCP.ServerManager,
         # New v0.2.0 MCP features
         MCPChat.MCP.NotificationRegistry,
-        MCPChat.MCP.ProgressTracker
+        MCPChat.MCP.ProgressTracker,
+        # Comprehensive notification handler
+        MCPChat.MCP.Handlers.ComprehensiveNotificationHandler,
+        # TUI components
+        MCPChat.UI.TUIManager,
+        MCPChat.UI.ProgressDisplay,
+        MCPChat.UI.ResourceCacheDisplay,
+        # Resource cache
+        MCPChat.MCP.ResourceCache
       ] ++ mcp_server_children()
 
     opts = [strategy: :one_for_one, name: MCPChat.Supervisor]
 
     case Supervisor.start_link(children, opts) do
       {:ok, _sup} = result ->
+        MCPChat.StartupProfiler.end_phase(:supervision_tree)
+
         # Register core processes for health monitoring
         register_health_monitors()
         # Enable notifications by default
         enable_notifications()
+
         result
 
       error ->
         error
+    end
+  end
+
+  defp get_startup_mode() do
+    # Check environment variable first
+    case System.get_env("MCP_STARTUP_MODE") do
+      "eager" ->
+        :eager
+
+      "background" ->
+        :background
+
+      "lazy" ->
+        :lazy
+
+      _ ->
+        # Config process isn't started yet, so read from file directly
+        config_path = Path.expand("~/.config/mcp_chat/config.toml")
+
+        if File.exists?(config_path) do
+          case Toml.decode_file(config_path) do
+            {:ok, config} ->
+              case get_in(config, ["startup", "mcp_connection_mode"]) do
+                "eager" -> :eager
+                "background" -> :background
+                "lazy" -> :lazy
+                # Default to lazy loading
+                _ -> :lazy
+              end
+
+            _ ->
+              :lazy
+          end
+        else
+          # Default to lazy loading
+          :lazy
+        end
     end
   end
 

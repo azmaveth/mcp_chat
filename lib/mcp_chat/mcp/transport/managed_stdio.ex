@@ -1,7 +1,7 @@
 defmodule MCPChat.MCP.Transport.ManagedStdio do
   @moduledoc """
   ExMCP.Transport implementation that works with StdioProcessManager.
-  
+
   This transport connects to an MCP server running as a managed OS process,
   handling the stdio communication through the process manager.
   """
@@ -15,19 +15,19 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
   @impl ExMCP.Transport
   def connect(opts) do
     process_manager = Keyword.fetch!(opts, :process_manager)
-    
+
     # Create a receiver process to handle async messages
     receiver_pid = spawn_link(__MODULE__, :receiver_loop, [self(), process_manager])
-    
+
     # Register the receiver as the client for the process manager
     :ok = MCPChat.MCP.StdioProcessManager.set_client(process_manager, receiver_pid)
-    
+
     state = %__MODULE__{
       process_manager: process_manager,
       buffer: "",
       receiver_pid: receiver_pid
     }
-    
+
     {:ok, state}
   end
 
@@ -35,11 +35,11 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
   def send_message(message, state) do
     # Message should already be JSON-encoded, just add newline
     data = message <> "\n"
-    
+
     case MCPChat.MCP.StdioProcessManager.send_data(state.process_manager, data) do
       :ok ->
         {:ok, state}
-      
+
       {:error, reason} ->
         Logger.error("Failed to send data to stdio process: #{inspect(reason)}")
         {:error, reason}
@@ -52,10 +52,10 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
     receive do
       {:complete_message, message} ->
         {:ok, message, state}
-      
+
       {:stdio_exit, status} ->
         {:error, {:process_exit, status}}
-      
+
       {:stdio_crash, reason} ->
         {:error, {:process_crash, reason}}
     end
@@ -67,7 +67,7 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
     if state.receiver_pid && Process.alive?(state.receiver_pid) do
       Process.exit(state.receiver_pid, :shutdown)
     end
-    
+
     # Stop the managed process
     MCPChat.MCP.StdioProcessManager.stop_process(state.process_manager)
     :ok
@@ -88,21 +88,22 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
       {:stdio_data, data} ->
         # Append new data to buffer
         new_buffer = buffer <> data
-        
+
         # Process complete messages (newline-delimited JSON)
         {messages, remaining_buffer} = extract_messages(new_buffer)
-        
+
         # Send each complete message to the parent
         Enum.each(messages, fn message ->
           send(parent, {:complete_message, message})
         end)
-        
+
         receiver_loop(parent, process_manager, remaining_buffer)
-      
+
       {:stdio_exit, status} ->
         send(parent, {:stdio_exit, status})
-        # Exit the receiver loop
-      
+
+      # Exit the receiver loop
+
       {:stdio_crash, reason} ->
         send(parent, {:stdio_crash, reason})
         # Exit the receiver loop
@@ -111,25 +112,25 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
 
   defp extract_messages(buffer) do
     lines = String.split(buffer, "\n")
-    
+
     case lines do
       [] ->
         {[], ""}
-      
+
       [single] ->
         # No newline found, keep buffering
         {[], single}
-      
+
       multiple ->
         # Last element might be incomplete
         {complete, [maybe_incomplete]} = Enum.split(multiple, -1)
-        
-        messages = 
+
+        messages =
           complete
           |> Enum.reject(&(&1 == ""))
           |> Enum.map(&validate_json/1)
           |> Enum.reject(&is_nil/1)
-        
+
         {messages, maybe_incomplete}
     end
   end
@@ -139,7 +140,7 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
     case Jason.decode(line) do
       {:ok, _} ->
         line
-      
+
       {:error, reason} ->
         Logger.error("Received invalid JSON from stdio: #{inspect(reason)}, line: #{inspect(line)}")
         nil

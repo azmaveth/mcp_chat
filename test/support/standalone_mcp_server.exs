@@ -8,21 +8,28 @@ defmodule StandaloneMCPServer do
   A completely standalone MCP server that uses only Elixir stdlib.
   """
 
-  def start do
+  def start() do
     loop(%{initialized: false})
   end
 
   defp loop(state) do
     case IO.gets("") do
-      :eof -> :ok
-      {:error, _} -> :ok
+      :eof ->
+        :ok
+
+      {:error, _} ->
+        :ok
+
       line ->
         line = String.trim(line)
+
         if line != "" do
           {response, new_state} = handle_json_rpc(line, state)
+
           if response do
             IO.puts(response)
           end
+
           loop(new_state)
         else
           loop(state)
@@ -37,18 +44,18 @@ defmodule StandaloneMCPServer do
         id = extract_id(line)
         response = build_initialize_response(id)
         {response, %{state | initialized: true}}
-      
+
       String.contains?(line, "\"method\":\"tools/list\"") ->
         id = extract_id(line)
         response = build_tools_list_response(id)
         {response, state}
-      
+
       String.contains?(line, "\"method\":\"tools/call\"") ->
         id = extract_id(line)
         tool_name = extract_tool_name(line)
         response = build_tool_call_response(id, tool_name)
         {response, state}
-      
+
       true ->
         {nil, state}
     end
@@ -82,7 +89,7 @@ defmodule StandaloneMCPServer do
   end
 
   defp build_tool_call_response(id, tool_name) do
-    ~s({"jsonrpc":"2.0","id":#{id},"error":{"code":-32601,"message":"Unknown tool: #{tool_name}"}})
+    ~s({"jsonrpc":"2.0","id":#{id},"error":{"code":-32_601,"message":"Unknown tool: #{tool_name}"}})
   end
 end
 

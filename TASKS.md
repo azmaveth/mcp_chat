@@ -408,17 +408,22 @@ history_size = 1000
 - [x] AWS Bedrock and Google Gemini support added to ex_llm
 - [x] See [/Users/azmaveth/code/ex_llm/TASKS.md] for provider details
 
-## Phase 15: Performance Optimization
-- [ ] Optimize startup time
-  - [ ] Lazy load MCP server connections
-  - [ ] Profile and optimize config loading
-  - [ ] Defer non-essential initialization
-  - [ ] Add startup time metrics
-- [ ] Memory optimization
-  - [ ] Implement message history pagination
-  - [ ] Add configurable history limits
-  - [ ] Optimize large context handling
-  - [ ] Add memory usage telemetry
+## Phase 15: Performance Optimization (COMPLETED)
+- [x] Optimize startup time
+  - [x] Lazy load MCP server connections
+  - [x] Profile and optimize config loading
+  - [x] Defer non-essential initialization
+  - [x] Add startup time metrics
+  - [x] Created MCPChat.StartupProfiler for detailed phase tracking
+  - [x] Implemented LazyServerManager with three connection modes (lazy/eager/background)
+  - [x] Added startup configuration in config.toml
+- [x] Memory optimization
+  - [x] Implement message history pagination
+  - [x] Add configurable history limits
+  - [x] Optimize large context handling
+  - [x] Created MCPChat.Memory.MessageStore with hybrid memory/disk storage
+  - [x] Implemented SessionMemoryAdapter for smart context retrieval
+  - [x] Added memory configuration section in config.toml
 - [ ] Response streaming improvements
   - [ ] Implement backpressure for streaming
   - [ ] Add streaming buffer management
@@ -430,26 +435,25 @@ history_size = 1000
   - [ ] Async context file loading
   - [ ] Background session autosave
 
-## Phase 16: Enhanced MCP Features
+## Phase 16: Enhanced MCP Features (PARTIAL)
 - [ ] MCP server health monitoring (requires ex_mcp enhancements)
   - [ ] Use ex_mcp health check protocol (when implemented)
   - [ ] Display server status in UI with indicators
   - [ ] Show health metrics (latency, uptime, success rate)
   - [ ] Auto-disable unhealthy servers
   - [ ] Health status notifications to user
-- [ ] Leverage new ex_mcp v0.2.0 features
+- [x] Leverage new ex_mcp v0.2.0 features
   - [x] Progress notifications - integrate with UI
-    - [ ] Capture progress notifications via custom client
-    - [ ] Show progress bars for long operations in renderer
-    - [ ] Display progress percentage in status line
-    - [ ] Support multiple concurrent progress indicators
-    - [ ] Add /progress command to show active operations
+    - [x] Created MCPChat.MCP.ProgressTracker GenServer
+    - [x] Implemented Owl-based MCPChat.UI.ProgressDisplay
+    - [x] Support multiple concurrent progress indicators
+    - [x] Added /tui command to control progress display
   - [x] Change notifications - react to server changes
-    - [ ] Create notification handler module
-    - [ ] Auto-refresh tool/resource/prompt lists on changes
-    - [ ] Notify user of capability changes in chat
-    - [ ] Update cached server metadata on changes
-    - [ ] Add /notifications command to show recent changes
+    - [x] Created MCPChat.MCP.Handlers.ComprehensiveNotificationHandler
+    - [x] Auto-refresh tool/resource/prompt lists on changes
+    - [x] Notify user of capability changes in chat
+    - [x] Update cached server metadata on changes
+    - [x] Added /notification command to manage notifications
   - [x] Sampling/createMessage - for server-side LLM
     - [ ] Add /sample command for server-side generation
     - [ ] Support sampling parameters (temperature, max_tokens, etc.)
@@ -469,15 +473,22 @@ history_size = 1000
     - [ ] Track most used tools
     - [ ] Average execution times
     - [ ] Success/failure rates
-- [ ] Resource management enhancements
-  - [ ] Local resource caching layer
-    - [ ] Cache frequently accessed resources
-    - [ ] Smart cache eviction
-    - [ ] Show cache hit rates
-  - [ ] Resource access patterns
-    - [ ] Track resource usage
-    - [ ] Suggest frequently used resources
-    - [ ] Resource access history
+- [x] Resource management enhancements
+  - [x] Local resource caching layer
+    - [x] Created MCPChat.MCP.ResourceCache with automatic invalidation
+    - [x] Smart cache eviction based on LRU and size limits
+    - [x] Show cache hit rates in TUI display
+    - [x] Support for resource subscriptions via ex_mcp
+    - [x] Disk persistence for larger resources
+  - [x] Resource access patterns
+    - [x] Track resource usage with hit counts
+    - [x] Display most frequently accessed resources
+    - [x] Resource access history with timestamps
+  - [x] TUI components for resource cache
+    - [x] Created MCPChat.UI.ResourceCacheDisplay
+    - [x] Summary and detailed view modes
+    - [x] Real-time cache statistics
+    - [x] Integration with /tui command
 - [ ] MCP server marketplace integration
   - [ ] Browse npmjs.com for @modelcontextprotocol packages
   - [ ] Parse package.json for MCP metadata

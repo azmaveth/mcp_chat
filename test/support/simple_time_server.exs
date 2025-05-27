@@ -9,7 +9,7 @@ defmodule SimpleMCPServer do
   Implements basic JSON-RPC 2.0 protocol over stdio.
   """
 
-  def start do
+  def start() do
     # Start receiving messages
     loop(%{initialized: false})
   end
@@ -18,25 +18,32 @@ defmodule SimpleMCPServer do
     case read_message() do
       {:ok, message} ->
         {response, new_state} = handle_message(message, state)
+
         if response do
           send_message(response)
         end
+
         loop(new_state)
-      
+
       :eof ->
         :ok
     end
   end
 
-  defp read_message do
+  defp read_message() do
     case IO.gets("") do
-      :eof -> :eof
-      {:error, _} -> :eof
+      :eof ->
+        :eof
+
+      {:error, _} ->
+        :eof
+
       line ->
         # Simple JSON parsing
         case Jason.decode(String.trim(line)) do
           {:ok, message} -> {:ok, message}
-          {:error, _} -> read_message()  # Skip invalid lines
+          # Skip invalid lines
+          {:error, _} -> read_message()
         end
     end
   end
@@ -61,6 +68,7 @@ defmodule SimpleMCPServer do
         }
       }
     }
+
     {response, %{state | initialized: true}}
   end
 
@@ -81,32 +89,35 @@ defmodule SimpleMCPServer do
         ]
       }
     }
+
     {response, state}
   end
 
   defp handle_message(%{"jsonrpc" => "2.0", "method" => "tools/call", "id" => id, "params" => params}, state) do
     tool_name = params["name"]
-    
-    result = case tool_name do
-      "get_current_time" ->
-        %{
-          "content" => [
-            %{
-              "type" => "text",
-              "text" => "Current time: #{DateTime.utc_now() |> DateTime.to_string()}"
-            }
-          ]
-        }
-      
-      _ ->
-        %{"error" => "Unknown tool: #{tool_name}"}
-    end
-    
+
+    result =
+      case tool_name do
+        "get_current_time" ->
+          %{
+            "content" => [
+              %{
+                "type" => "text",
+                "text" => "Current time: #{DateTime.utc_now() |> DateTime.to_string()}"
+              }
+            ]
+          }
+
+        _ ->
+          %{"error" => "Unknown tool: #{tool_name}"}
+      end
+
     response = %{
       "jsonrpc" => "2.0",
       "id" => id,
       "result" => result
     }
+
     {response, state}
   end
 

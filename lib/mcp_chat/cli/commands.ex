@@ -14,7 +14,9 @@ defmodule MCPChat.CLI.Commands do
     LLM,
     MCP,
     Context,
-    Alias
+    Alias,
+    Notification,
+    TUI
   }
 
   # Map of command to handler module
@@ -51,7 +53,13 @@ defmodule MCPChat.CLI.Commands do
     "strategy" => Context,
 
     # Alias command
-    "alias" => Alias
+    "alias" => Alias,
+
+    # Notification command
+    "notification" => Notification,
+
+    # TUI command
+    "tui" => TUI
   }
 
   @doc """

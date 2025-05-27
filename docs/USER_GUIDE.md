@@ -282,6 +282,96 @@ Use aliases:
 /claude4  # Switches to Claude 4
 ```
 
+### TUI (Text User Interface) Components
+
+MCP Chat includes beautiful text-based UI components for monitoring operations:
+
+#### Progress Display
+Track long-running MCP operations with real-time progress bars:
+```
+/tui show progress  # Show progress display
+/tui hide          # Hide all displays
+```
+
+Features:
+- Multiple concurrent progress bars
+- Color-coded status indicators
+- Automatic updates for MCP operations
+
+#### Resource Cache Display
+Monitor the local resource cache:
+```
+/tui show cache      # Summary view
+/tui show cache full # Detailed view with resource list
+/tui show both       # Show both progress and cache
+```
+
+Cache statistics shown:
+- Total resources and cache size
+- Hit rate percentage
+- Average response time
+- Memory usage
+- Last cleanup time
+
+#### TUI Controls
+```
+/tui toggle   # Cycle through display modes
+/tui status   # Show current display status
+```
+
+Keyboard shortcuts (when TUI is active):
+- `p` - Show progress
+- `c` - Show cache
+- `b` - Show both
+- `h` - Hide all
+- `d` - Detailed cache view
+- `s` - Summary cache view
+
+### Performance Optimization
+
+MCP Chat includes several performance features:
+
+#### Startup Modes
+Configure how MCP servers connect at startup:
+```toml
+[startup]
+mcp_connection_mode = "lazy"  # Options: lazy, eager, background
+```
+
+- **lazy**: Connect when first used (fastest startup)
+- **eager**: Connect all at startup (slower startup, no delays)
+- **background**: Connect after UI loads (balanced)
+
+Enable startup profiling:
+```bash
+MCP_CHAT_STARTUP_PROFILING=true ./mcp_chat
+```
+
+#### Memory Management
+Configure message storage limits:
+```toml
+[memory]
+memory_limit = 100      # Messages in memory
+page_size = 20          # Messages per page
+disk_cache_enabled = true
+```
+
+#### Resource Caching
+Enable local caching for MCP resources:
+```toml
+[resource_cache]
+enabled = true
+max_size = 104857600    # 100MB
+ttl = 3600              # 1 hour
+cleanup_interval = 300  # 5 minutes
+```
+
+Benefits:
+- Faster resource access
+- Reduced server load
+- Automatic cache invalidation
+- LRU eviction policy
+
 ### Conversation Templates
 
 Use system prompts to set conversation context:

@@ -1,18 +1,18 @@
 defmodule MCPChat.StdioDebugTest do
   use ExUnit.Case, async: false
-  
+
   alias MCPChat.MCP.StdioProcessManager
-  
+
   @moduletag :debug
 
   test "debug stdio communication" do
     # Create a minimal echo server for testing
     test_script = Path.join(System.tmp_dir!(), "debug_echo_server.exs")
-    
+
     File.write!(test_script, """
     # Simple echo server
     defmodule EchoServer do
-      def loop do
+      def loop() do
         case IO.gets("") do
           :eof -> :ok
           {:error, _} -> :ok
@@ -22,30 +22,30 @@ defmodule MCPChat.StdioDebugTest do
         end
       end
     end
-    
+
     EchoServer.loop()
     """)
-    
+
     # Start process manager
     opts = [
       command: "elixir",
       args: [test_script],
       env: []
     ]
-    
+
     {:ok, manager} = StdioProcessManager.start_link(opts)
     :ok = StdioProcessManager.set_client(manager, self())
-    
+
     # Start the process
     {:ok, _port} = StdioProcessManager.start_process(manager)
-    
+
     # Send test data
     :ok = StdioProcessManager.send_data(manager, "Hello, World!\n")
-    
+
     # Should receive echo
     assert_receive {:stdio_data, data}, 2000
     IO.puts("Received: #{inspect(data)}")
-    
+
     # Clean up
     StdioProcessManager.stop_process(manager)
     File.rm!(test_script)
@@ -54,7 +54,7 @@ defmodule MCPChat.StdioDebugTest do
   test "test MCP initialization sequence" do
     # Create a minimal MCP server that logs everything
     test_script = Path.join(System.tmp_dir!(), "debug_mcp_server.exs")
-    
+
     File.write!(test_script, ~S"""
     # Debug MCP server
     defmodule DebugMCPServer do
@@ -68,7 +68,7 @@ defmodule MCPChat.StdioDebugTest do
             :ok
           line ->
             IO.puts(:stderr, "Received[#{msg_count}]: #{String.trim(line)}")
-            
+
             # Try to parse as JSON and respond appropriately
             case Jason.decode(String.trim(line)) do
               {:ok, %{"method" => "initialize", "id" => id}} ->
@@ -84,19 +84,19 @@ defmodule MCPChat.StdioDebugTest do
                 json = Jason.encode!(response)
                 IO.puts(:stderr, "Sending: #{json}")
                 IO.puts(json)
-                
+
               {:ok, msg} ->
                 IO.puts(:stderr, "Parsed message: #{inspect(msg)}")
-                
+
               {:error, reason} ->
                 IO.puts(:stderr, "Failed to parse JSON: #{inspect(reason)}")
             end
-            
+
             loop(msg_count + 1)
         end
       end
     end
-    
+
     # Simple JSON encoding if Jason not available
     if Code.ensure_loaded?(Jason) do
       DebugMCPServer.loop()
@@ -105,24 +105,24 @@ defmodule MCPChat.StdioDebugTest do
       IO.puts(~s({"error":"Jason not available"}))
     end
     """)
-    
+
     # Start the server directly to see output
     config = %{
       "name" => "debug-mcp-server",
       "command" => "elixir -e 'Code.require_file(\"#{test_script}\")'",
       "env" => %{}
     }
-    
+
     # Just start the wrapper and see what happens
     {:ok, wrapper} = MCPChat.MCP.ServerWrapper.start_link(config)
-    
+
     # Give it time to initialize
-    Process.sleep(1000)
-    
+    Process.sleep(1_000)
+
     # Try to get status
     status = MCPChat.MCP.ServerWrapper.get_status(wrapper)
     IO.puts("Status: #{inspect(status)}")
-    
+
     # Clean up
     GenServer.stop(wrapper)
     File.rm!(test_script)
