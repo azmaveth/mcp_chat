@@ -410,6 +410,17 @@ mcp_connection_mode = "lazy"
 # Enable startup time profiling (set via MCP_CHAT_STARTUP_PROFILING=true env var)
 # profiling_enabled = false
 
+# Parallel connection settings
+[startup.parallel]
+# Maximum number of concurrent server connections
+max_concurrency = 4
+
+# Connection timeout in milliseconds
+connection_timeout = 10000
+
+# Enable progress reporting during parallel connections
+show_progress = true
+
 # ==============================================================================
 # Memory Management Settings
 # ==============================================================================

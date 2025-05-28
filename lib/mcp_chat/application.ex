@@ -46,8 +46,6 @@ defmodule MCPChat.Application do
         # New v0.2.0 MCP features
         MCPChat.MCP.NotificationRegistry,
         MCPChat.MCP.ProgressTracker,
-        # Comprehensive notification handler
-        MCPChat.MCP.Handlers.ComprehensiveNotificationHandler,
         # TUI components
         MCPChat.UI.TUIManager,
         MCPChat.UI.ProgressDisplay,

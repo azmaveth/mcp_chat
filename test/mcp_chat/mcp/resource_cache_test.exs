@@ -10,13 +10,15 @@ defmodule MCPChat.MCP.ResourceCacheTest do
     File.mkdir_p!(@cache_dir)
 
     # Start cache with test configuration
-    {:ok, cache} = ResourceCache.start_link(
-      name: :test_cache,
-      cache_dir: @cache_dir,
-      max_size: 1024 * 1024,  # 1MB
-      ttl: 60,
-      cleanup_interval: 300
-    )
+    {:ok, cache} =
+      ResourceCache.start_link(
+        name: :test_cache,
+        cache_dir: @cache_dir,
+        # 1MB
+        max_size: 1_024 * 1_024,
+        ttl: 60,
+        cleanup_interval: 300
+      )
 
     on_exit(fn ->
       GenServer.stop(cache)
@@ -33,16 +35,18 @@ defmodule MCPChat.MCP.ResourceCacheTest do
       content = "test content"
 
       # First call should miss cache
-      result1 = ResourceCache.get_resource(cache, server, uri, fn ->
-        {:ok, content}
-      end)
+      result1 =
+        ResourceCache.get_resource(cache, server, uri, fn ->
+          {:ok, content}
+        end)
 
       assert {:ok, ^content} = result1
 
       # Second call should hit cache
-      result2 = ResourceCache.get_resource(cache, server, uri, fn ->
-        {:ok, "different content"}
-      end)
+      result2 =
+        ResourceCache.get_resource(cache, server, uri, fn ->
+          {:ok, "different content"}
+        end)
 
       assert {:ok, ^content} = result2
     end
@@ -51,9 +55,10 @@ defmodule MCPChat.MCP.ResourceCacheTest do
       server = "test_server"
       uri = "test://error"
 
-      result = ResourceCache.get_resource(cache, server, uri, fn ->
-        {:error, "fetch failed"}
-      end)
+      result =
+        ResourceCache.get_resource(cache, server, uri, fn ->
+          {:error, "fetch failed"}
+        end)
 
       assert {:error, "fetch failed"} = result
     end
@@ -61,27 +66,31 @@ defmodule MCPChat.MCP.ResourceCacheTest do
     test "respects TTL", %{cache: cache} do
       # Start new cache with short TTL
       GenServer.stop(cache)
-      {:ok, cache} = ResourceCache.start_link(
-        name: :test_cache_ttl,
-        cache_dir: @cache_dir,
-        ttl: 0  # Immediate expiration
-      )
+
+      {:ok, cache} =
+        ResourceCache.start_link(
+          name: :test_cache_ttl,
+          cache_dir: @cache_dir,
+          # Immediate expiration
+          ttl: 0
+        )
 
       server = "test_server"
       uri = "test://ttl"
-      
+
       # First call
       ResourceCache.get_resource(cache, server, uri, fn ->
         {:ok, "content1"}
       end)
 
       # Second call should fetch again due to expiration
-      result = ResourceCache.get_resource(cache, server, uri, fn ->
-        {:ok, "content2"}
-      end)
+      result =
+        ResourceCache.get_resource(cache, server, uri, fn ->
+          {:ok, "content2"}
+        end)
 
       assert {:ok, "content2"} = result
-      
+
       GenServer.stop(cache)
     end
   end
@@ -101,9 +110,10 @@ defmodule MCPChat.MCP.ResourceCacheTest do
       :ok = ResourceCache.invalidate_resource(cache, server, uri)
 
       # Next call should fetch fresh
-      result = ResourceCache.get_resource(cache, server, uri, fn ->
-        {:ok, "fresh content"}
-      end)
+      result =
+        ResourceCache.get_resource(cache, server, uri, fn ->
+          {:ok, "fresh content"}
+        end)
 
       assert {:ok, "fresh content"} = result
     end
@@ -131,8 +141,10 @@ defmodule MCPChat.MCP.ResourceCacheTest do
     test "returns cache statistics", %{cache: cache} do
       # Make some cache operations
       ResourceCache.get_resource(cache, "server", "uri1", fn -> {:ok, "content1"} end)
-      ResourceCache.get_resource(cache, "server", "uri1", fn -> {:ok, "ignored"} end)  # Hit
-      ResourceCache.get_resource(cache, "server", "uri2", fn -> {:ok, "content2"} end)  # Miss
+      # Hit
+      ResourceCache.get_resource(cache, "server", "uri1", fn -> {:ok, "ignored"} end)
+      # Miss
+      ResourceCache.get_resource(cache, "server", "uri2", fn -> {:ok, "content2"} end)
 
       stats = ResourceCache.get_stats(cache)
 
@@ -148,30 +160,34 @@ defmodule MCPChat.MCP.ResourceCacheTest do
   describe "size limits" do
     test "enforces max size with LRU eviction", %{cache: _cache} do
       # Start cache with very small size limit
-      {:ok, small_cache} = ResourceCache.start_link(
-        name: :small_cache,
-        cache_dir: @cache_dir,
-        max_size: 100  # 100 bytes
-      )
+      {:ok, small_cache} =
+        ResourceCache.start_link(
+          name: :small_cache,
+          cache_dir: @cache_dir,
+          # 100 bytes
+          max_size: 100
+        )
 
       # Add resources that exceed the limit
-      ResourceCache.get_resource(small_cache, "server", "uri1", fn -> 
+      ResourceCache.get_resource(small_cache, "server", "uri1", fn ->
         {:ok, String.duplicate("a", 60)}
       end)
-      
-      ResourceCache.get_resource(small_cache, "server", "uri2", fn -> 
+
+      ResourceCache.get_resource(small_cache, "server", "uri2", fn ->
         {:ok, String.duplicate("b", 60)}
       end)
 
       # First resource should be evicted
-      result1 = ResourceCache.get_resource(small_cache, "server", "uri1", fn -> 
-        {:ok, "fresh1"}
-      end)
-      
+      result1 =
+        ResourceCache.get_resource(small_cache, "server", "uri1", fn ->
+          {:ok, "fresh1"}
+        end)
+
       # Second should still be cached
-      result2 = ResourceCache.get_resource(small_cache, "server", "uri2", fn -> 
-        {:ok, "ignored"}
-      end)
+      result2 =
+        ResourceCache.get_resource(small_cache, "server", "uri2", fn ->
+          {:ok, "ignored"}
+        end)
 
       assert {:ok, "fresh1"} = result1
       assert {:ok, content} = result2
@@ -194,9 +210,10 @@ defmodule MCPChat.MCP.ResourceCacheTest do
         "method" => "notifications/resources/updated",
         "params" => %{"uri" => uri}
       }
-      
+
       send(cache, {:notification, server, notification})
-      Process.sleep(50)  # Allow message to be processed
+      # Allow message to be processed
+      Process.sleep(50)
 
       # Should fetch fresh content
       result = ResourceCache.get_resource(cache, server, uri, fn -> {:ok, "new content"} end)

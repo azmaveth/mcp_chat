@@ -12,6 +12,7 @@ defmodule MCPChat.MCP.LazyServerManager do
   require Logger
 
   alias MCPChat.MCP.ServerManager
+  alias MCPChat.MCP.ParallelConnectionManager
 
   defstruct [
     :server_configs,
@@ -66,6 +67,21 @@ defmodule MCPChat.MCP.LazyServerManager do
   """
   def stats() do
     GenServer.call(__MODULE__, :stats)
+  end
+
+  @doc """
+  Prepare servers for parallel connection.
+  Returns list of {name, config} tuples ready for parallel processing.
+  """
+  def prepare_parallel_connections() do
+    GenServer.call(__MODULE__, :prepare_parallel_connections)
+  end
+
+  @doc """
+  Connect multiple servers in parallel.
+  """
+  def connect_servers_parallel(server_configs, opts \\ []) do
+    GenServer.call(__MODULE__, {:connect_parallel, server_configs, opts}, 30_000)
   end
 
   # Server Callbacks
@@ -157,6 +173,54 @@ defmodule MCPChat.MCP.LazyServerManager do
     }
 
     {:reply, stats, state}
+  end
+
+  def handle_call(:prepare_parallel_connections, _from, state) do
+    # Return disconnected servers ready for parallel connection
+    server_configs =
+      state.server_configs
+      |> Enum.filter(fn {name, _config} ->
+        get_connection_state(state, name) == :disconnected
+      end)
+
+    {:reply, server_configs, state}
+  end
+
+  def handle_call({:connect_parallel, server_configs, opts}, _from, state) do
+    # Mark all servers as connecting
+    new_state =
+      Enum.reduce(server_configs, state, fn {name, _config}, acc_state ->
+        update_connection_state(acc_state, name, :connecting)
+      end)
+
+    # Use ParallelConnectionManager to connect servers
+    case ParallelConnectionManager.connect_servers_parallel(server_configs, opts) do
+      {:ok, results} ->
+        # Update connection states based on results
+        final_state =
+          Enum.reduce(results, new_state, fn {name, result}, acc_state ->
+            case result do
+              {:ok, _} ->
+                Logger.debug("Server #{name} connected successfully (parallel)")
+                update_connection_state(acc_state, name, :connected)
+
+              {:error, reason} ->
+                Logger.error("Failed to connect to server #{name} (parallel): #{inspect(reason)}")
+                update_connection_state(acc_state, name, :disconnected)
+            end
+          end)
+
+        {:reply, {:ok, results}, final_state}
+
+      {:error, reason} ->
+        # Mark all as disconnected on failure
+        failed_state =
+          Enum.reduce(server_configs, new_state, fn {name, _config}, acc_state ->
+            update_connection_state(acc_state, name, :disconnected)
+          end)
+
+        {:reply, {:error, reason}, failed_state}
+    end
   end
 
   @impl true
@@ -331,24 +395,36 @@ defmodule MCPChat.MCP.LazyServerManager do
   end
 
   defp connect_all_servers(state) do
-    results =
-      state.server_configs
-      |> Enum.map(fn {name, config} ->
-        Logger.info("Connecting to MCP server: #{name}")
-        result = ServerManager.start_server(config)
-        {name, result}
-      end)
+    Logger.info("Connecting to all MCP servers in parallel...")
 
-    # Update connection states based on results
-    new_connection_states =
-      results
-      |> Enum.map(fn
-        {name, {:ok, _}} -> {name, :connected}
-        {name, _} -> {name, :disconnected}
-      end)
-      |> Enum.into(%{})
+    server_configs = Enum.to_list(state.server_configs)
 
-    {:noreply, %{state | connection_states: new_connection_states}}
+    case ParallelConnectionManager.connect_servers_parallel(server_configs, []) do
+      {:ok, results} ->
+        # Update connection states based on results
+        new_connection_states =
+          results
+          |> Enum.map(fn
+            {name, {:ok, _}} -> {name, :connected}
+            {name, _} -> {name, :disconnected}
+          end)
+          |> Enum.into(%{})
+
+        Logger.info("Parallel connection completed: #{map_size(new_connection_states)} servers processed")
+        {:noreply, %{state | connection_states: new_connection_states}}
+
+      {:error, reason} ->
+        Logger.error("Parallel connection failed: #{inspect(reason)}")
+
+        # Mark all as disconnected
+        new_connection_states =
+          state.server_configs
+          |> Map.keys()
+          |> Enum.map(fn name -> {name, :disconnected} end)
+          |> Enum.into(%{})
+
+        {:noreply, %{state | connection_states: new_connection_states}}
+    end
   end
 
   defp update_connection_state(state, name, status) do

@@ -161,7 +161,7 @@ defmodule MCPChat.CLI.Chat do
 
   defp stream_with_enhanced_consumer(stream, options) do
     alias MCPChat.Streaming.EnhancedConsumer
-    
+
     # Get streaming configuration
     config = [
       buffer_capacity: Config.get(:streaming, :buffer_capacity, 100),
@@ -169,7 +169,7 @@ defmodule MCPChat.CLI.Chat do
       min_batch_size: Config.get(:streaming, :min_batch_size, 3),
       max_batch_size: Config.get(:streaming, :max_batch_size, 10)
     ]
-    
+
     # Process with enhanced consumer
     case EnhancedConsumer.process_with_manager(stream, config) do
       {:ok, response, metrics} ->
@@ -177,16 +177,16 @@ defmodule MCPChat.CLI.Chat do
         if Config.get(:debug, :log_streaming_metrics, false) do
           Logger.debug("Streaming metrics: #{inspect(metrics)}")
         end
-        
+
         {:ok, response}
-        
+
       {:error, reason} ->
         Logger.error("Enhanced streaming failed: #{inspect(reason)}")
         # Fallback to simple streaming
         stream_simple(stream)
     end
   end
-  
+
   defp stream_simple(stream) do
     try do
       response =

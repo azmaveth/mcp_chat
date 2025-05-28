@@ -4,7 +4,7 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandlerTest do
 
   setup do
     {:ok, handler} = ComprehensiveNotificationHandler.start_link(name: :test_handler)
-    
+
     on_exit(fn ->
       GenServer.stop(handler)
     end)
@@ -15,25 +15,28 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandlerTest do
   describe "handle_notification/3" do
     test "handles connection notifications", %{handler: handler} do
       # Server connected
-      :ok = ComprehensiveNotificationHandler.handle_notification(
-        handler,
-        "test_server",
-        %{"method" => "notifications/server/connected", "params" => %{}}
-      )
+      :ok =
+        ComprehensiveNotificationHandler.handle_notification(
+          handler,
+          "test_server",
+          %{"method" => "notifications/server/connected", "params" => %{}}
+        )
 
       # Server disconnected
-      :ok = ComprehensiveNotificationHandler.handle_notification(
-        handler,
-        "test_server",
-        %{"method" => "notifications/server/disconnected", "params" => %{"reason" => "test"}}
-      )
+      :ok =
+        ComprehensiveNotificationHandler.handle_notification(
+          handler,
+          "test_server",
+          %{"method" => "notifications/server/disconnected", "params" => %{"reason" => "test"}}
+        )
 
       # Server error
-      :ok = ComprehensiveNotificationHandler.handle_notification(
-        handler,
-        "test_server",
-        %{"method" => "notifications/server/error", "params" => %{"error" => "test error"}}
-      )
+      :ok =
+        ComprehensiveNotificationHandler.handle_notification(
+          handler,
+          "test_server",
+          %{"method" => "notifications/server/error", "params" => %{"error" => "test error"}}
+        )
 
       # Check history
       history = ComprehensiveNotificationHandler.get_history(handler)
@@ -49,11 +52,12 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandlerTest do
       ]
 
       for notification <- notifications do
-        :ok = ComprehensiveNotificationHandler.handle_notification(
-          handler,
-          "test_server",
-          notification
-        )
+        :ok =
+          ComprehensiveNotificationHandler.handle_notification(
+            handler,
+            "test_server",
+            notification
+          )
       end
 
       history = ComprehensiveNotificationHandler.get_history(handler)
@@ -68,11 +72,12 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandlerTest do
       ]
 
       for notification <- notifications do
-        :ok = ComprehensiveNotificationHandler.handle_notification(
-          handler,
-          "test_server",
-          notification
-        )
+        :ok =
+          ComprehensiveNotificationHandler.handle_notification(
+            handler,
+            "test_server",
+            notification
+          )
       end
 
       history = ComprehensiveNotificationHandler.get_history(handler)
@@ -81,34 +86,36 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandlerTest do
 
     test "handles progress notifications", %{handler: handler} do
       token = "progress-123"
-      
+
       # Progress start
-      :ok = ComprehensiveNotificationHandler.handle_notification(
-        handler,
-        "test_server",
-        %{
-          "method" => "notifications/progress",
-          "params" => %{
-            "progressToken" => token,
-            "progress" => 0,
-            "total" => 100
+      :ok =
+        ComprehensiveNotificationHandler.handle_notification(
+          handler,
+          "test_server",
+          %{
+            "method" => "notifications/progress",
+            "params" => %{
+              "progressToken" => token,
+              "progress" => 0,
+              "total" => 100
+            }
           }
-        }
-      )
+        )
 
       # Progress update
-      :ok = ComprehensiveNotificationHandler.handle_notification(
-        handler,
-        "test_server",
-        %{
-          "method" => "notifications/progress",
-          "params" => %{
-            "progressToken" => token,
-            "progress" => 50,
-            "total" => 100
+      :ok =
+        ComprehensiveNotificationHandler.handle_notification(
+          handler,
+          "test_server",
+          %{
+            "method" => "notifications/progress",
+            "params" => %{
+              "progressToken" => token,
+              "progress" => 50,
+              "total" => 100
+            }
           }
-        }
-      )
+        )
 
       history = ComprehensiveNotificationHandler.get_history(handler)
       assert length(history) == 2
@@ -130,11 +137,12 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandlerTest do
 
     test "configure categories", %{handler: handler} do
       # Disable specific category
-      :ok = ComprehensiveNotificationHandler.configure_category(
-        handler,
-        :resource,
-        enabled: false
-      )
+      :ok =
+        ComprehensiveNotificationHandler.configure_category(
+          handler,
+          :resource,
+          enabled: false
+        )
 
       config = ComprehensiveNotificationHandler.get_config(handler)
       refute config.categories.resource.enabled
@@ -142,18 +150,20 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandlerTest do
 
     test "respects category settings", %{handler: handler} do
       # Disable resource notifications
-      :ok = ComprehensiveNotificationHandler.configure_category(
-        handler,
-        :resource,
-        enabled: false
-      )
+      :ok =
+        ComprehensiveNotificationHandler.configure_category(
+          handler,
+          :resource,
+          enabled: false
+        )
 
       # Send resource notification
-      :ok = ComprehensiveNotificationHandler.handle_notification(
-        handler,
-        "test_server",
-        %{"method" => "notifications/resources/list_changed", "params" => %{}}
-      )
+      :ok =
+        ComprehensiveNotificationHandler.handle_notification(
+          handler,
+          "test_server",
+          %{"method" => "notifications/resources/list_changed", "params" => %{}}
+        )
 
       # Should not be in history
       history = ComprehensiveNotificationHandler.get_history(handler)
@@ -164,12 +174,14 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandlerTest do
   describe "batching" do
     test "batches notifications when enabled", %{handler: handler} do
       # Enable batching for resources
-      :ok = ComprehensiveNotificationHandler.configure_category(
-        handler,
-        :resource,
-        batch_enabled: true,
-        batch_window: 100  # 100ms
-      )
+      :ok =
+        ComprehensiveNotificationHandler.configure_category(
+          handler,
+          :resource,
+          batch_enabled: true,
+          # 100ms
+          batch_window: 100
+        )
 
       # Send multiple notifications quickly
       for i <- 1..5 do
@@ -206,7 +218,8 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandlerTest do
       end
 
       history = ComprehensiveNotificationHandler.get_history(handler, :all)
-      assert length(history) == 100  # Default max
+      # Default max
+      assert length(history) == 100
     end
 
     test "clears history", %{handler: handler} do
@@ -242,12 +255,12 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandlerTest do
   describe "send_test_notification/1" do
     test "sends test notifications for all categories", %{handler: handler} do
       :ok = ComprehensiveNotificationHandler.send_test_notification(handler)
-      
+
       # Wait for processing
       Process.sleep(50)
 
       history = ComprehensiveNotificationHandler.get_history(handler)
-      
+
       # Should have test notifications for each category
       categories = history |> Enum.map(& &1.type) |> Enum.uniq()
       assert :server_connected in categories

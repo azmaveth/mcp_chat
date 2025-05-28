@@ -201,10 +201,52 @@ Enable metrics logging:
 log_streaming_metrics = true
 ```
 
+## Parallel MCP Server Connections
+
+### Concurrent Server Initialization
+Implemented `MCPChat.MCP.ParallelConnectionManager` for concurrent server connections:
+
+1. **Parallel Processing**: Connect to multiple servers simultaneously
+   - Configurable concurrency limits
+   - Individual timeouts per server
+   - Error isolation between servers
+   
+2. **Progress Tracking**: Real-time connection feedback
+   - Optional progress callbacks
+   - Detailed timing metrics
+   - Success/failure reporting
+   
+3. **Integration with Connection Modes**:
+   - **Eager Mode**: All servers connect in parallel at startup
+   - **Background Mode**: Parallel connections start after UI loads
+   - **Lazy Mode**: Parallel connections prepared for on-demand use
+
+Configure in `config.toml`:
+```toml
+[startup.parallel]
+max_concurrency = 4        # Concurrent connections limit
+connection_timeout = 10000 # Timeout per server (ms)
+show_progress = true       # Enable progress reporting
+```
+
+### Connection Performance
+Parallel connections provide significant performance improvements:
+- **Startup Time**: Reduces eager mode startup from sequential to concurrent
+- **Scalability**: Efficiently handle many MCP servers
+- **Reliability**: Server failures don't block other connections
+- **Resource Usage**: Bounded concurrency prevents resource exhaustion
+
+### Connection Metrics
+Track parallel connection performance:
+- **Total Duration**: Overall connection time
+- **Individual Timings**: Per-server connection times
+- **Success Rate**: Percentage of successful connections
+- **Concurrency Usage**: Peak concurrent connections
+
 ## Future Optimizations
 
 Planned improvements:
-- [ ] Parallel MCP server initialization
+- [x] Parallel MCP server initialization ✅
 - [x] Streaming response backpressure ✅
 - [ ] Concurrent tool execution
 - [ ] Background session autosave

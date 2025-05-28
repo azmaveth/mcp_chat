@@ -46,6 +46,8 @@ defmodule MCPChat.MCP.NotificationRegistry do
 
   @impl true
   def init(_opts) do
+    # Register default notification handlers after startup
+    Process.send_after(self(), :register_default_handlers, 100)
     {:ok, %__MODULE__{}}
   end
 
@@ -127,6 +129,54 @@ defmodule MCPChat.MCP.NotificationRegistry do
     else
       Logger.debug("Unknown notification method: #{method}")
       {:noreply, state}
+    end
+  end
+
+  @impl true
+  def handle_info(:register_default_handlers, state) do
+    # Register ComprehensiveNotificationHandler for all notification types
+    notification_types = [
+      :server_connected,
+      :server_disconnected,
+      :server_error,
+      :resources_list_changed,
+      :resource_added,
+      :resource_removed,
+      :resources_updated,
+      :tools_list_changed,
+      :tool_added,
+      :tool_removed,
+      :prompts_list_changed,
+      :prompt_added,
+      :prompt_removed,
+      :progress,
+      :progress_start,
+      :progress_complete,
+      :progress_error,
+      :custom_notification
+    ]
+
+    handler_module = MCPChat.MCP.Handlers.ComprehensiveNotificationHandler
+
+    case handler_module.init([]) do
+      {:ok, handler_state} ->
+        # Register handler for each notification type
+        new_handlers =
+          Enum.reduce(notification_types, state.handlers, fn type, acc ->
+            Map.update(acc, type, [handler_module], &[handler_module | &1])
+          end)
+
+        new_handler_states = Map.put(state.handler_states, handler_module, handler_state)
+
+        Logger.info(
+          "Registered notification handler: #{inspect(handler_module)} for types: #{inspect(notification_types)}"
+        )
+
+        {:noreply, %{state | handlers: new_handlers, handler_states: new_handler_states}}
+
+      {:error, reason} ->
+        Logger.error("Failed to register ComprehensiveNotificationHandler: #{inspect(reason)}")
+        {:noreply, state}
     end
   end
 
