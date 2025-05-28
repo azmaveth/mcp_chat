@@ -429,11 +429,11 @@ history_size = 1000
   - [x] Add streaming buffer management
   - [x] Optimize chunk processing
   - [x] Handle slow consumers gracefully
-- [x] Concurrent operations (PARTIAL)
+- [x] Concurrent operations (COMPLETED)
   - [x] Parallel MCP server initialization ✅
   - [x] Concurrent tool execution where safe ✅
-  - [ ] Async context file loading
-  - [ ] Background session autosave
+  - [x] Async context file loading ✅
+  - [x] Background session autosave ✅
 
 ## Phase 16: Enhanced MCP Features (PARTIAL)
 - [ ] MCP server health monitoring (requires ex_mcp enhancements)
