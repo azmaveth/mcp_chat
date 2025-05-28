@@ -21,7 +21,8 @@ defmodule MCPChat.CLI.Commands.Utility do
       "clear" => "Clear the screen",
       "config" => "Show current configuration",
       "cost" => "Show session cost",
-      "export" => "Export conversation (usage: /export [format] [path])"
+      "export" => "Export conversation (usage: /export [format] [path])",
+      "resume" => "Resume the last interrupted response"
     }
   end
 
@@ -44,6 +45,10 @@ defmodule MCPChat.CLI.Commands.Utility do
 
   def handle_command("export", args) do
     export_conversation(args)
+  end
+
+  def handle_command("resume", args) do
+    resume_interrupted_response(args)
   end
 
   def handle_command(cmd, _args) do
@@ -209,4 +214,67 @@ defmodule MCPChat.CLI.Commands.Utility do
 
   defp format_cost(cost) when cost < 0.01, do: "#{Float.round(cost, 4)}"
   defp format_cost(cost), do: "#{Float.round(cost, 2)}"
+
+  defp resume_interrupted_response(_args) do
+    alias MCPChat.LLM.ExLLMAdapter
+    alias MCPChat.CLI.Renderer
+
+    # Check if we have a recovery ID
+    case Session.get_last_recovery_id() do
+      nil ->
+        Renderer.show_error("No interrupted response to resume")
+
+      recovery_id ->
+        # Show recoverable streams
+        recoverable = ExLLMAdapter.list_recoverable_streams()
+
+        # Find our recovery ID in the list
+        case Enum.find(recoverable, &(&1.id == recovery_id)) do
+          nil ->
+            Renderer.show_error("Previous response is no longer recoverable")
+            Session.clear_last_recovery_id()
+
+          stream_info ->
+            Renderer.show_info("Resuming interrupted response...")
+            Renderer.show_text("• Provider: #{stream_info.provider}")
+            Renderer.show_text("• Model: #{stream_info.model}")
+            Renderer.show_text("• Chunks received: #{stream_info.chunks_received}")
+            Renderer.show_text("• Tokens processed: #{stream_info.token_count}")
+
+            # Get partial response
+            case ExLLMAdapter.get_partial_response(recovery_id) do
+              {:ok, chunks} ->
+                # Show what we have so far
+                partial_content = chunks |> Enum.map_join(& &1.content, "")
+
+                if String.length(partial_content) > 0 do
+                  Renderer.show_text("\n--- Partial response ---")
+                  Renderer.show_text(partial_content)
+                  Renderer.show_text("--- Continuing... ---\n")
+                end
+
+                # Resume the stream
+                case ExLLMAdapter.resume_stream(recovery_id) do
+                  {:ok, stream} ->
+                    # Process the resumed stream
+                    # Note: This needs to be integrated with the chat loop
+                    # For now, just show success
+                    Renderer.show_success("Response resumed successfully")
+
+                    # Clear the recovery ID since we're resuming
+                    Session.clear_last_recovery_id()
+
+                    # Return the stream for the chat loop to handle
+                    {:resume_stream, stream}
+
+                  {:error, reason} ->
+                    Renderer.show_error("Failed to resume: #{inspect(reason)}")
+                end
+
+              {:error, reason} ->
+                Renderer.show_error("Failed to get partial response: #{inspect(reason)}")
+            end
+        end
+    end
+  end
 end

@@ -296,6 +296,14 @@ min_batch_size = 3
 # Maximum chunks per write operation
 max_batch_size = 10
 
+# Stream recovery - automatically save partial responses for resumption
+enable_recovery = true
+
+# Recovery strategy when resuming interrupted streams
+# Options: "exact" (continue from exact cutoff), "paragraph" (from last complete paragraph), 
+#          "summarize" (summarize partial content then continue)
+recovery_strategy = "paragraph"
+
 # MCP Server Mode Configuration
 # ==============================================================================
 

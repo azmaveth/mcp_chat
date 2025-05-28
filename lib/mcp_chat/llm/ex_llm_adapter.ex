@@ -68,6 +68,9 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Add config provider to options
     ex_llm_options = [{:config_provider, ExLLM.ConfigProvider.Env} | ex_llm_options]
 
+    # Add recovery options if requested
+    ex_llm_options = maybe_add_recovery_options(ex_llm_options, options)
+
     # Call ExLLM streaming through circuit breaker
     breaker = get_circuit_breaker()
 
@@ -77,7 +80,13 @@ defmodule MCPChat.LLM.ExLLMAdapter do
       {:ok, {:ok, stream}} ->
         # Convert the stream to MCPChat format
         converted_stream = Stream.map(stream, &convert_stream_chunk/1)
-        {:ok, converted_stream}
+
+        # Store recovery ID if recovery is enabled
+        if recovery_id = Keyword.get(ex_llm_options, :recovery_id) do
+          {:ok, converted_stream, recovery_id}
+        else
+          {:ok, converted_stream}
+        end
 
       {:ok, {:error, reason}} ->
         {:error, reason}
@@ -285,6 +294,53 @@ defmodule MCPChat.LLM.ExLLMAdapter do
       nil -> false
       _pid -> true
     end
+  end
+
+  defp maybe_add_recovery_options(ex_llm_options, mcp_options) do
+    if Keyword.get(mcp_options, :enable_recovery, false) do
+      recovery_opts = [
+        recovery: [
+          enabled: true,
+          strategy: Keyword.get(mcp_options, :recovery_strategy, :paragraph),
+          storage: :memory
+        ]
+      ]
+
+      ex_llm_options ++ recovery_opts
+    else
+      ex_llm_options
+    end
+  end
+
+  @doc """
+  Resume an interrupted stream using the recovery ID.
+  """
+  def resume_stream(recovery_id, options \\ []) do
+    strategy = Keyword.get(options, :strategy, :paragraph)
+
+    case ExLLM.StreamRecovery.resume_stream(recovery_id, strategy: strategy) do
+      {:ok, stream} ->
+        # Convert the resumed stream to MCPChat format
+        converted_stream = Stream.map(stream, &convert_stream_chunk/1)
+        {:ok, converted_stream}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  List all recoverable streams.
+  """
+  def list_recoverable_streams() do
+    ExLLM.StreamRecovery.list_recoverable_streams()
+  end
+
+  @doc """
+  Get partial response for a recovery ID.
+  """
+  def get_partial_response(recovery_id) do
+    ExLLM.StreamRecovery.get_partial_response(recovery_id)
   end
 
   defp get_circuit_breaker() do

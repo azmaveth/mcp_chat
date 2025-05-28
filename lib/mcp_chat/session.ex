@@ -47,6 +47,18 @@ defmodule MCPChat.Session do
     GenServer.call(__MODULE__, {:load_session, identifier})
   end
 
+  def set_last_recovery_id(recovery_id) do
+    GenServer.cast(__MODULE__, {:set_last_recovery_id, recovery_id})
+  end
+
+  def get_last_recovery_id() do
+    GenServer.call(__MODULE__, :get_last_recovery_id)
+  end
+
+  def clear_last_recovery_id() do
+    GenServer.cast(__MODULE__, :clear_last_recovery_id)
+  end
+
   def list_saved_sessions() do
     GenServer.call(__MODULE__, :list_saved_sessions)
   end
@@ -136,7 +148,8 @@ defmodule MCPChat.Session do
     state = %{
       current_session: SessionCore.new_session(nil, config_provider: config_provider),
       sessions: [],
-      config_provider: config_provider
+      config_provider: config_provider,
+      last_recovery_id: nil
     }
 
     {:ok, state}
@@ -252,6 +265,11 @@ defmodule MCPChat.Session do
   end
 
   @impl true
+  def handle_call(:get_last_recovery_id, _from, state) do
+    {:reply, state.last_recovery_id, state}
+  end
+
+  @impl true
   def handle_cast(:clear_session, state) do
     updated_session = SessionCore.clear_messages(state.current_session)
     updated_session = SessionCore.set_context(updated_session, %{})
@@ -288,6 +306,16 @@ defmodule MCPChat.Session do
     updated_session = SessionCore.set_system_prompt(state.current_session, prompt)
     new_state = %{state | current_session: updated_session}
     {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_cast({:set_last_recovery_id, recovery_id}, state) do
+    {:noreply, %{state | last_recovery_id: recovery_id}}
+  end
+
+  @impl true
+  def handle_cast(:clear_last_recovery_id, state) do
+    {:noreply, %{state | last_recovery_id: nil}}
   end
 
   # Private Functions - only those specific to GenServer behavior

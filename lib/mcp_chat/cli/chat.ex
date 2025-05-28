@@ -57,6 +57,11 @@ defmodule MCPChat.CLI.Chat do
         # Alias returned a message to send
         process_input(text)
 
+      {:resume_stream, stream} ->
+        # Handle resumed stream
+        handle_resumed_stream(stream)
+        :continue
+
       :exit ->
         :exit
 
@@ -144,9 +149,35 @@ defmodule MCPChat.CLI.Chat do
   defp get_llm_adapter(_), do: MCPChat.LLM.ExLLMAdapter
 
   defp stream_response(adapter, messages, options) do
+    # Add recovery options if enabled
+    options = maybe_add_recovery_options(options)
+
     case adapter.stream_chat(messages, options) do
-      {:ok, stream} ->
+      {:ok, stream, recovery_id} ->
+        # Store recovery ID in session for potential resume
+        Session.set_last_recovery_id(recovery_id)
+
         # Use enhanced streaming if enabled
+        result =
+          if Config.get(:streaming, :enhanced, true) do
+            stream_with_enhanced_consumer(stream, options)
+          else
+            # Fallback to simple streaming
+            stream_simple(stream)
+          end
+
+        # Clear recovery ID on successful completion
+        case result do
+          {:ok, _response} ->
+            Session.clear_last_recovery_id()
+            result
+
+          error ->
+            error
+        end
+
+      {:ok, stream} ->
+        # No recovery ID - proceed normally
         if Config.get(:streaming, :enhanced, true) do
           stream_with_enhanced_consumer(stream, options)
         else
@@ -156,6 +187,17 @@ defmodule MCPChat.CLI.Chat do
 
       error ->
         error
+    end
+  end
+
+  defp maybe_add_recovery_options(options) do
+    if Config.get([:streaming, :enable_recovery], true) do
+      Keyword.merge(options,
+        enable_recovery: true,
+        recovery_strategy: Config.get([:streaming, :recovery_strategy], :paragraph)
+      )
+    else
+      options
     end
   end
 
@@ -200,6 +242,35 @@ defmodule MCPChat.CLI.Chat do
       {:ok, response}
     rescue
       e -> {:error, Exception.message(e)}
+    end
+  end
+
+  defp handle_resumed_stream(stream) do
+    # Process the resumed stream
+    case stream_simple(stream) do
+      {:ok, continuation} ->
+        # Get the partial response that was already shown
+        case Session.get_last_recovery_id() do
+          nil ->
+            # Just add the continuation as a new message
+            Session.add_message("assistant", continuation)
+
+          recovery_id ->
+            # Get the partial content and combine
+            case MCPChat.LLM.ExLLMAdapter.get_partial_response(recovery_id) do
+              {:ok, chunks} ->
+                partial = chunks |> Enum.map_join(& &1.content, "")
+                full_response = partial <> continuation
+                Session.add_message("assistant", full_response)
+
+              _ ->
+                # Fallback to just the continuation
+                Session.add_message("assistant", continuation)
+            end
+        end
+
+      {:error, reason} ->
+        Renderer.show_error("Failed to process resumed stream: #{inspect(reason)}")
     end
   end
 end
