@@ -291,24 +291,27 @@ history_size = 1000
   - [x] Add telemetry and monitoring hooks - Integrated in HealthMonitor
 - [x] See [SUPERVISION.md](SUPERVISION.md) for current supervision structure
 
-## Phase 12: Interrupted Response Recovery (MOVED to ex_llm)
-- [ ] Core functionality moved to ex_llm library
-  - [ ] See [/Users/azmaveth/code/ex_llm/TASKS.md] for streaming recovery implementation
-  - [ ] ex_llm will handle:
+## Phase 12: Interrupted Response Recovery (COMPLETED)
+- [x] Core functionality provided by ex_llm library
+  - [x] ExLLM.StreamRecovery module handles all core recovery features
+  - [x] ex_llm provides:
     - Saving partial responses during streaming
     - Detecting interruptions (network, timeouts, errors)
-    - Resume mechanisms and strategies
+    - Resume mechanisms and strategies (exact, paragraph, summarize)
     - Token counting for partial responses
     - Storage of interrupted stream data
-- [ ] MCP Chat integration (after ex_llm implementation):
-  - [ ] `/resume` command to continue last interrupted response
-  - [ ] Session-level persistence of interrupted responses
-  - [ ] UI/UX improvements:
+- [x] MCP Chat integration:
+  - [x] `/resume` command to continue last interrupted response
+  - [x] Session-level persistence of interrupted responses
+  - [x] ExLLMAdapter integration with recovery options
+  - [x] Stream recovery configuration in config.toml
+  - [x] Integration with chat history and context
+  - [x] Comprehensive test suite
+  - [ ] UI/UX improvements (future enhancements):
     - [ ] Show indicator when response is resumable
     - [ ] Display partial response differently (e.g., dimmed or italic)
     - [ ] Prompt user to resume on reconnection
     - [ ] Show estimated tokens/cost saved by resuming
-  - [ ] Integration with chat history and context
 
 ## Phase 13: CLI Commands Refactoring (COMPLETED)
 - [x] Refactor monolithic CLI commands module

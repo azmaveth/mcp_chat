@@ -78,6 +78,13 @@ The system auto-detects available backends. Debug messages about acceleration ar
 - Supports stdio (local) and SSE (remote) transports
 - Server state managed by `MCPChat.MCP.ServerManager` GenServer
 
+### Interrupted Response Recovery
+- Automatic saving of partial responses during streaming interruptions
+- Use `/resume` command to continue from where the response was interrupted
+- Three recovery strategies: `exact` (continue from cutoff), `paragraph` (from last complete paragraph), `summarize` (summarize and continue)
+- Configurable via `[streaming]` section in config.toml
+- Built on ExLLM.StreamRecovery module for robust recovery handling
+
 ### Testing Strategy
 - Unit tests for all core modules
 - Integration tests for LLM backends and MCP functionality
@@ -95,6 +102,7 @@ Key sections:
 - `[ui]` - Interface preferences
 - `[session]` - Session management settings
 - `[context]` - Token limits and truncation strategies
+- `[streaming]` - Streaming behavior and recovery settings
 
 Environment variables override config values:
 - `ANTHROPIC_API_KEY`
