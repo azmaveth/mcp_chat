@@ -242,6 +242,14 @@ defmodule MCPChat.Config do
       ui: %{
         theme: "dark",
         history_size: 1_000
+      },
+      session: %{
+        autosave: %{
+          enabled: true,
+          interval_minutes: 5,
+          keep_count: 10,
+          compress_large: true
+        }
       }
     }
   end

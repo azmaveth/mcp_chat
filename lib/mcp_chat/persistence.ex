@@ -113,6 +113,14 @@ defmodule MCPChat.Persistence do
     end
   end
 
+  @doc """
+  Get the sessions directory path.
+  """
+  def get_sessions_dir(opts \\ []) do
+    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    get_sessions_dir(path_provider)
+  end
+
   # Private Functions
 
   defp get_sessions_dir(path_provider) do

@@ -153,6 +153,12 @@ defmodule MCPChat.Session do
   def handle_call({:add_message, role, content}, _from, state) do
     updated_session = SessionCore.add_message(state.current_session, role, content)
     new_state = %{state | current_session: updated_session}
+
+    # Trigger autosave on message addition
+    if Process.whereis(MCPChat.Session.Autosave) do
+      MCPChat.Session.Autosave.trigger_save()
+    end
+
     {:reply, :ok, new_state}
   end
 

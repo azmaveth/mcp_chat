@@ -23,6 +23,8 @@ defmodule MCPChat.Application do
         MCPChat.Config,
         # Session manager
         MCPChat.Session,
+        # Session autosave
+        {MCPChat.Session.Autosave, autosave_config()},
         # Health monitoring
         MCPChat.HealthMonitor,
         # Circuit breakers for external services
@@ -221,5 +223,17 @@ defmodule MCPChat.Application do
     end
   rescue
     _ -> :ok
+  end
+
+  defp autosave_config() do
+    config = MCPChat.Config.get(:session)[:autosave] || %{}
+
+    [
+      enabled: Map.get(config, :enabled, true),
+      interval: Map.get(config, :interval_minutes, 5) * 60 * 1_000,
+      keep_count: Map.get(config, :keep_count, 10),
+      compress_large: Map.get(config, :compress_large, true),
+      session_name_prefix: Map.get(config, :prefix, "autosave")
+    ]
   end
 end
