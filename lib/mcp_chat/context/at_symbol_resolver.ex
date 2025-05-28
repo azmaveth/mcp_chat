@@ -235,7 +235,7 @@ defmodule MCPChat.Context.AtSymbolResolver do
 
     case find_resource_server(resource_name) do
       {:ok, server_name} ->
-        case ServerManager.get_resource(server_name, resource_name, timeout: timeout) do
+        case ServerManager.read_resource(server_name, resource_name) do
           {:ok, resource} ->
             content = format_resource_content(resource)
             {content, nil, %{server: server_name, resource_name: resource_name, type: "mcp_resource"}}
@@ -250,12 +250,12 @@ defmodule MCPChat.Context.AtSymbolResolver do
   end
 
   defp resolve_mcp_prompt(prompt_name, opts) do
-    timeout = Keyword.get(opts, :mcp_timeout)
+    _timeout = Keyword.get(opts, :mcp_timeout)
 
     case find_prompt_server(prompt_name) do
       {:ok, server_name} ->
-        # For now, get the prompt template - in the future we could execute it
-        case ServerManager.get_prompt(server_name, prompt_name, %{}, timeout: timeout) do
+        # Get the prompt template with any arguments
+        case ServerManager.get_prompt(server_name, prompt_name, %{}) do
           {:ok, prompt} ->
             content = format_prompt_content(prompt)
             {content, nil, %{server: server_name, prompt_name: prompt_name, type: "mcp_prompt"}}
@@ -270,14 +270,14 @@ defmodule MCPChat.Context.AtSymbolResolver do
   end
 
   defp resolve_mcp_tool(tool_spec, opts) do
-    timeout = Keyword.get(opts, :mcp_timeout)
+    _timeout = Keyword.get(opts, :mcp_timeout)
 
     # Parse tool spec: tool_name or tool_name:arg1=val1,arg2=val2
     {tool_name, args} = parse_tool_spec(tool_spec)
 
     case find_tool_server(tool_name) do
       {:ok, server_name} ->
-        case ServerManager.call_tool(server_name, tool_name, args, timeout: timeout) do
+        case ServerManager.call_tool(server_name, tool_name, args) do
           {:ok, result} ->
             content = format_tool_result(result)
             {content, nil, %{server: server_name, tool_name: tool_name, args: args, type: "mcp_tool"}}
@@ -348,55 +348,101 @@ defmodule MCPChat.Context.AtSymbolResolver do
     end
   end
 
-  defp find_resource_server(resource_name) do
-    case get_available_resources() do
-      resources when is_list(resources) ->
-        if resource_name in resources do
-          # For now, return the first server that has this resource
-          # In reality, we'd need to track which server has which resource
-          {:ok, "default"}
-        else
-          {:error, "Resource not found: #{resource_name}"}
-        end
+  defp find_resource_server(resource_uri) do
+    try do
+      # Get all servers and their resources
+      all_resources = ServerManager.list_all_resources()
 
-      _ ->
-        {:error, "No MCP servers available"}
+      # Find which server has the requested resource
+      resource_found =
+        Enum.find(all_resources, fn {_server_name, resources} ->
+          Enum.any?(resources, fn resource ->
+            case resource do
+              %{uri: ^resource_uri} -> true
+              %{name: ^resource_uri} -> true
+              %{"uri" => ^resource_uri} -> true
+              %{"name" => ^resource_uri} -> true
+              _ -> false
+            end
+          end)
+        end)
+
+      case resource_found do
+        {server_name, _resources} -> {:ok, server_name}
+        nil -> {:error, "Resource not found: #{resource_uri}"}
+      end
+    rescue
+      _ -> {:error, "No MCP servers available or not started"}
     end
   end
 
   defp find_prompt_server(prompt_name) do
-    case get_available_prompts() do
-      prompts when is_list(prompts) ->
-        if prompt_name in prompts do
-          {:ok, "default"}
-        else
-          {:error, "Prompt not found: #{prompt_name}"}
-        end
+    try do
+      # Get all servers and their prompts
+      all_prompts = ServerManager.list_all_prompts()
 
-      _ ->
-        {:error, "No MCP servers available"}
+      # Find which server has the requested prompt
+      prompt_found =
+        Enum.find(all_prompts, fn {_server_name, prompts} ->
+          Enum.any?(prompts, fn prompt ->
+            case prompt do
+              %{name: ^prompt_name} -> true
+              %{"name" => ^prompt_name} -> true
+              _ -> false
+            end
+          end)
+        end)
+
+      case prompt_found do
+        {server_name, _prompts} -> {:ok, server_name}
+        nil -> {:error, "Prompt not found: #{prompt_name}"}
+      end
+    rescue
+      _ -> {:error, "No MCP servers available or not started"}
     end
   end
 
   defp find_tool_server(tool_name) do
-    case get_available_tools() do
-      tools when is_list(tools) ->
-        if tool_name in tools do
-          {:ok, "default"}
-        else
-          {:error, "Tool not found: #{tool_name}"}
-        end
+    try do
+      # Get all servers and their tools
+      all_tools = ServerManager.list_all_tools()
 
-      _ ->
-        {:error, "No MCP servers available"}
+      # Find which server has the requested tool
+      tool_found =
+        Enum.find(all_tools, fn {_server_name, tools} ->
+          Enum.any?(tools, fn tool ->
+            case tool do
+              %{name: ^tool_name} -> true
+              %{"name" => ^tool_name} -> true
+              _ -> false
+            end
+          end)
+        end)
+
+      case tool_found do
+        {server_name, _tools} -> {:ok, server_name}
+        nil -> {:error, "Tool not found: #{tool_name}"}
+      end
+    rescue
+      _ -> {:error, "No MCP servers available or not started"}
     end
   end
 
   defp get_available_resources() do
     try do
-      # This would be implemented once MCP integration is stable
-      # ServerManager.list_all_resources()
-      []
+      ServerManager.list_all_resources()
+      |> Enum.flat_map(fn {_server_name, resources} ->
+        Enum.map(resources, fn resource ->
+          case resource do
+            %{name: name} -> name
+            %{"name" => name} -> name
+            %{uri: uri} -> uri
+            %{"uri" => uri} -> uri
+            _ -> nil
+          end
+        end)
+      end)
+      |> Enum.filter(& &1)
     rescue
       _ -> []
     end
@@ -404,9 +450,17 @@ defmodule MCPChat.Context.AtSymbolResolver do
 
   defp get_available_prompts() do
     try do
-      # This would be implemented once MCP integration is stable
-      # ServerManager.list_all_prompts()
-      []
+      ServerManager.list_all_prompts()
+      |> Enum.flat_map(fn {_server_name, prompts} ->
+        Enum.map(prompts, fn prompt ->
+          case prompt do
+            %{name: name} -> name
+            %{"name" => name} -> name
+            _ -> nil
+          end
+        end)
+      end)
+      |> Enum.filter(& &1)
     rescue
       _ -> []
     end
@@ -414,9 +468,17 @@ defmodule MCPChat.Context.AtSymbolResolver do
 
   defp get_available_tools() do
     try do
-      # This would be implemented once MCP integration is stable
-      # ServerManager.list_all_tools()
-      []
+      ServerManager.list_all_tools()
+      |> Enum.flat_map(fn {_server_name, tools} ->
+        Enum.map(tools, fn tool ->
+          case tool do
+            %{name: name} -> name
+            %{"name" => name} -> name
+            _ -> nil
+          end
+        end)
+      end)
+      |> Enum.filter(& &1)
     rescue
       _ -> []
     end
@@ -441,8 +503,23 @@ defmodule MCPChat.Context.AtSymbolResolver do
   end
 
   defp format_resource_content(resource) do
-    # Format MCP resource content appropriately
+    # Format MCP resource content appropriately (ExMCP format)
     case resource do
+      # ExMCP format - direct text content
+      %{text: text} when is_binary(text) ->
+        text
+
+      %{"text" => text} when is_binary(text) ->
+        text
+
+      # ExMCP format - multiple content items
+      %{contents: contents} when is_list(contents) ->
+        format_content_list(contents)
+
+      %{"contents" => contents} when is_list(contents) ->
+        format_content_list(contents)
+
+      # Legacy format support
       %{"contents" => [%{"text" => text}]} ->
         text
 
@@ -464,8 +541,19 @@ defmodule MCPChat.Context.AtSymbolResolver do
   end
 
   defp format_prompt_content(prompt) do
-    # Format MCP prompt content appropriately
+    # Format MCP prompt content appropriately (ExMCP format)
     case prompt do
+      # ExMCP format - list of messages
+      messages when is_list(messages) ->
+        messages
+        |> Enum.map(fn
+          %{role: role, content: content} -> format_message_content(role, content)
+          %{"role" => role, "content" => content} -> format_message_content(role, content)
+          other -> inspect(other)
+        end)
+        |> Enum.join("\n")
+
+      # Legacy format support
       %{"messages" => messages} when is_list(messages) ->
         messages
         |> Enum.map(fn
@@ -484,8 +572,13 @@ defmodule MCPChat.Context.AtSymbolResolver do
   end
 
   defp format_tool_result(result) do
-    # Format MCP tool result appropriately
+    # Format MCP tool result appropriately (ExMCP format)
     case result do
+      # ExMCP format - list of content items
+      content_list when is_list(content_list) ->
+        format_content_list(content_list)
+
+      # Legacy format support
       %{"content" => [%{"text" => text}]} ->
         text
 
@@ -507,5 +600,33 @@ defmodule MCPChat.Context.AtSymbolResolver do
       other ->
         inspect(other)
     end
+  end
+
+  # Helper functions for content formatting
+
+  defp format_content_list(contents) when is_list(contents) do
+    contents
+    |> Enum.map(fn
+      %{type: "text", text: text} -> text
+      %{"type" => "text", "text" => text} -> text
+      %{type: "blob"} -> "[Binary content]"
+      %{"type" => "blob"} -> "[Binary content]"
+      %{type: "image"} -> "[Image content]"
+      %{"type" => "image"} -> "[Image content]"
+      other -> inspect(other)
+    end)
+    |> Enum.join("\n")
+  end
+
+  defp format_message_content(role, content) do
+    content_text =
+      case content do
+        %{type: "text", text: text} -> text
+        %{"type" => "text", "text" => text} -> text
+        text when is_binary(text) -> text
+        other -> inspect(other)
+      end
+
+    "#{role}: #{content_text}"
   end
 end
