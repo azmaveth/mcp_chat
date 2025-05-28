@@ -5,6 +5,7 @@ defmodule MCPChat.CLI.Chat do
 
   alias MCPChat.{Session, Config}
   alias MCPChat.CLI.{Commands, Renderer}
+  alias MCPChat.Context.AtSymbolResolver
   # alias MCPChat.LLM
 
   def start() do
@@ -71,14 +72,22 @@ defmodule MCPChat.CLI.Chat do
   end
 
   defp process_input(message) do
-    # Add user message to session
+    # Process @ symbol references if any
+    {processed_message, at_metadata} = process_at_symbols(message)
+
+    # Add user message to session (original message for history)
     Session.add_message("user", message)
+
+    # Display @ symbol processing results if any
+    if at_metadata.total_tokens > 0 do
+      display_at_symbol_info(at_metadata)
+    end
 
     # Show thinking indicator
     Renderer.show_thinking()
 
-    # Get LLM response
-    case get_llm_response(message) do
+    # Get LLM response using processed message
+    case get_llm_response(processed_message) do
       {:ok, response} ->
         Session.add_message("assistant", response)
         Renderer.show_assistant_message(response)
@@ -94,10 +103,13 @@ defmodule MCPChat.CLI.Chat do
     :continue
   end
 
-  defp get_llm_response(_message) do
+  defp get_llm_response(processed_message) do
     session = Session.get_current_session()
     # Get messages with context management
-    messages = Session.get_messages_for_llm()
+    base_messages = Session.get_messages_for_llm()
+
+    # Replace the last user message with the processed version (with @ content resolved)
+    messages = replace_last_user_message(base_messages, processed_message)
 
     # Get the appropriate LLM adapter
     adapter = get_llm_adapter(session.llm_backend)
@@ -271,6 +283,106 @@ defmodule MCPChat.CLI.Chat do
 
       {:error, reason} ->
         Renderer.show_error("Failed to process resumed stream: #{inspect(reason)}")
+    end
+  end
+
+  # @ Symbol Processing Functions
+
+  defp process_at_symbols(message) do
+    require Logger
+
+    # Check if message contains @ symbols
+    if String.contains?(message, "@") do
+      Logger.debug("Processing @ symbols in message")
+
+      # Get resolution options from config
+      options = [
+        max_file_size: Config.get([:context, :max_file_size], 1_024 * 1_024),
+        http_timeout: Config.get([:context, :http_timeout], 10_000),
+        mcp_timeout: Config.get([:context, :mcp_timeout], 30_000),
+        validate_content: Config.get([:context, :validate_content], true)
+      ]
+
+      # Resolve @ symbols
+      case AtSymbolResolver.resolve_all(message, options) do
+        %{resolved_text: resolved_text} = metadata ->
+          {resolved_text, metadata}
+
+        error ->
+          Logger.error("Failed to process @ symbols: #{inspect(error)}")
+          {message, %{resolved_text: message, results: [], total_tokens: 0, errors: []}}
+      end
+    else
+      # No @ symbols to process
+      {message, %{resolved_text: message, results: [], total_tokens: 0, errors: []}}
+    end
+  end
+
+  defp display_at_symbol_info(metadata) do
+    if length(metadata.results) > 0 do
+      # Show summary of included content
+      Renderer.show_info("📄 Included content from #{length(metadata.results)} @ references:")
+
+      # Show each included item
+      Enum.each(metadata.results, fn result ->
+        ref = result.reference
+
+        case result.error do
+          nil ->
+            size_info =
+              case result.metadata do
+                %{size: size} -> " (#{format_bytes(size)})"
+                %{status: 200} -> " (web content)"
+                _ -> ""
+              end
+
+            icon = get_reference_icon(ref.type)
+            Renderer.show_info("  #{icon} #{ref.type}:#{ref.identifier}#{size_info}")
+
+          error ->
+            icon = get_reference_icon(ref.type)
+            Renderer.show_error("  #{icon} #{ref.type}:#{ref.identifier} - #{error}")
+        end
+      end)
+
+      # Show token estimate
+      if metadata.total_tokens > 0 do
+        Renderer.show_info("📊 Estimated tokens added: #{metadata.total_tokens}")
+      end
+
+      # Show errors if any
+      if length(metadata.errors) > 0 do
+        Renderer.show_error("⚠️  #{length(metadata.errors)} @ references failed to resolve")
+      end
+
+      # Add spacing
+      IO.puts("")
+    end
+  end
+
+  defp get_reference_icon(:file), do: "📄"
+  defp get_reference_icon(:url), do: "🌐"
+  defp get_reference_icon(:resource), do: "📚"
+  defp get_reference_icon(:prompt), do: "💬"
+  defp get_reference_icon(:tool), do: "🔧"
+  defp get_reference_icon(_), do: "❓"
+
+  defp format_bytes(bytes) when bytes < 1_024, do: "#{bytes} B"
+  defp format_bytes(bytes) when bytes < 1_024 * 1_024, do: "#{Float.round(bytes / 1_024, 1)} KB"
+  defp format_bytes(bytes), do: "#{Float.round(bytes / (1_024 * 1_024), 1)} MB"
+
+  defp replace_last_user_message(messages, processed_content) do
+    # Find the last user message and replace its content
+    messages
+    |> Enum.reverse()
+    |> case do
+      [%{"role" => "user"} = last_msg | rest] ->
+        updated_msg = %{last_msg | "content" => processed_content}
+        [updated_msg | rest] |> Enum.reverse()
+
+      other ->
+        # No user message found, return as-is
+        other
     end
   end
 end
