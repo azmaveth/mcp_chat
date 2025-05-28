@@ -30,6 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Comprehensive notification handler for all MCP event types
   - Event history tracking and batching
   - Configurable notification settings per category
+  - `/notification` command for runtime control
+- **Enhanced Streaming**:
+  - StreamManager for async processing with backpressure
+  - StreamBuffer circular buffer for efficient memory usage
+  - EnhancedConsumer with intelligent chunk batching
+  - Configurable streaming parameters (buffer size, batch intervals)
+  - Comprehensive streaming metrics and monitoring
+  - Graceful handling of slow terminals
 
 ### Changed
 - Improved startup performance with lazy loading options

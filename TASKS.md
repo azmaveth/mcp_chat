@@ -111,11 +111,11 @@ Architecture Benefits (ACHIEVED):
 ### Phase 3: LLM Backend Integration (COMPLETED - See ex_llm)
 - [x] LLM functionality extracted to ex_llm library
 - [x] All provider adapters moved to [/Users/azmaveth/code/ex_llm/TASKS.md]
-- [ ] TODO: Migrate mcp_chat to use ExLLMAdapter exclusively
-  - [ ] Update CLI commands to use ExLLMAdapter with provider parameter
-  - [ ] Update MCP server handler to use ExLLMAdapter
-  - [ ] Remove redundant adapter files from mcp_chat/lib/mcp_chat/llm/
-  - [ ] Update tests to use ExLLMAdapter
+- [x] TODO: Migrate mcp_chat to use ExLLMAdapter exclusively (COMPLETED)
+  - [x] Update CLI commands to use ExLLMAdapter with provider parameter
+  - [x] Update MCP server handler to use ExLLMAdapter
+  - [x] Remove redundant adapter files from mcp_chat/lib/mcp_chat/llm/
+  - [x] Update tests to use ExLLMAdapter
 
 ### Phase 4: CLI Chat Interface
 - [x] Build interactive chat loop
@@ -310,8 +310,8 @@ history_size = 1000
     - [ ] Show estimated tokens/cost saved by resuming
   - [ ] Integration with chat history and context
 
-## Phase 13: CLI Commands Refactoring
-- [ ] Refactor monolithic CLI commands module (in progress)
+## Phase 13: CLI Commands Refactoring (COMPLETED)
+- [x] Refactor monolithic CLI commands module
   - [x] Create base behavior for command modules
   - [x] Split commands into logical modules:
     - [x] Session commands (new, save, load, sessions, history)
@@ -320,14 +320,14 @@ history_size = 1000
     - [x] MCP commands (servers, discover, connect, disconnect, tools, resources, prompts)
     - [x] Context commands (context, system, tokens, strategy)
     - [x] Alias commands (alias add/remove/list)
-  - [ ] Fix compilation issues with refactored modules
+  - [x] Fix compilation issues with refactored modules
     - [x] Update function references to use correct module names
     - [x] Fix renderer function calls (render_* -> show_*)
     - [x] Fix config get calls
     - [x] Fix cost/context data structure references
     - [x] Fix remaining compilation error in utility module
   - [x] Update tests for refactored command structure
-  - [ ] Benefits:
+  - [x] Benefits achieved:
     - Reduced cyclomatic complexity (from 37 to <10 per module)
     - Better code organization and maintainability
     - Easier to add new commands
@@ -424,11 +424,11 @@ history_size = 1000
   - [x] Created MCPChat.Memory.MessageStore with hybrid memory/disk storage
   - [x] Implemented SessionMemoryAdapter for smart context retrieval
   - [x] Added memory configuration section in config.toml
-- [ ] Response streaming improvements
-  - [ ] Implement backpressure for streaming
-  - [ ] Add streaming buffer management
-  - [ ] Optimize chunk processing
-  - [ ] Handle slow consumers gracefully
+- [x] Response streaming improvements (COMPLETED)
+  - [x] Implement backpressure for streaming
+  - [x] Add streaming buffer management
+  - [x] Optimize chunk processing
+  - [x] Handle slow consumers gracefully
 - [ ] Concurrent operations
   - [ ] Parallel MCP server initialization
   - [ ] Concurrent tool execution where safe

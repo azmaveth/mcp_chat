@@ -277,6 +277,25 @@ auto_connect = true
 # }
 
 # ==============================================================================
+# Streaming Configuration
+# ==============================================================================
+
+[streaming]
+# Use enhanced streaming with buffering and backpressure (default: true)
+enhanced = true
+
+# Buffer capacity - maximum chunks to buffer before applying backpressure
+buffer_capacity = 100
+
+# Write interval in milliseconds - how often to flush buffered chunks
+write_interval = 25
+
+# Minimum chunks to batch together before writing
+min_batch_size = 3
+
+# Maximum chunks per write operation
+max_batch_size = 10
+
 # MCP Server Mode Configuration
 # ==============================================================================
 

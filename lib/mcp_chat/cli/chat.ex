@@ -146,22 +146,60 @@ defmodule MCPChat.CLI.Chat do
   defp stream_response(adapter, messages, options) do
     case adapter.stream_chat(messages, options) do
       {:ok, stream} ->
-        try do
-          response =
-            stream
-            |> Enum.reduce("", fn chunk, acc ->
-              Renderer.show_stream_chunk(chunk.delta)
-              acc <> chunk.delta
-            end)
-
-          Renderer.end_stream()
-          {:ok, response}
-        rescue
-          e -> {:error, Exception.message(e)}
+        # Use enhanced streaming if enabled
+        if Config.get(:streaming, :enhanced, true) do
+          stream_with_enhanced_consumer(stream, options)
+        else
+          # Fallback to simple streaming
+          stream_simple(stream)
         end
 
       error ->
         error
+    end
+  end
+
+  defp stream_with_enhanced_consumer(stream, options) do
+    alias MCPChat.Streaming.EnhancedConsumer
+    
+    # Get streaming configuration
+    config = [
+      buffer_capacity: Config.get(:streaming, :buffer_capacity, 100),
+      write_interval: Config.get(:streaming, :write_interval, 25),
+      min_batch_size: Config.get(:streaming, :min_batch_size, 3),
+      max_batch_size: Config.get(:streaming, :max_batch_size, 10)
+    ]
+    
+    # Process with enhanced consumer
+    case EnhancedConsumer.process_with_manager(stream, config) do
+      {:ok, response, metrics} ->
+        # Log metrics if debug mode
+        if Config.get(:debug, :log_streaming_metrics, false) do
+          Logger.debug("Streaming metrics: #{inspect(metrics)}")
+        end
+        
+        {:ok, response}
+        
+      {:error, reason} ->
+        Logger.error("Enhanced streaming failed: #{inspect(reason)}")
+        # Fallback to simple streaming
+        stream_simple(stream)
+    end
+  end
+  
+  defp stream_simple(stream) do
+    try do
+      response =
+        stream
+        |> Enum.reduce("", fn chunk, acc ->
+          Renderer.show_stream_chunk(chunk.delta)
+          acc <> chunk.delta
+        end)
+
+      Renderer.end_stream()
+      {:ok, response}
+    rescue
+      e -> {:error, Exception.message(e)}
     end
   end
 end
