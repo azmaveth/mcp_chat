@@ -181,6 +181,22 @@ Example:
 /alias morning /new /system "You are a helpful morning assistant" Hello! What's on the agenda today?
 ```
 
+### Notification Management
+
+- `/notification on` - Enable all notifications
+- `/notification off` - Disable all notifications  
+- `/notification status` - Show notification settings
+- `/notification history [n]` - Show last n notification events
+- `/notification clear` - Clear notification history
+- `/notification test` - Send test notifications
+
+Configure notification settings per category:
+```
+/notification config connection on    # Connection events
+/notification config resource off     # Resource changes
+/notification config progress on      # Progress updates
+```
+
 ## MCP Server Integration
 
 ### Quick Setup
@@ -336,10 +352,11 @@ Configure how MCP servers connect at startup:
 ```toml
 [startup]
 mcp_connection_mode = "lazy"  # Options: lazy, eager, background
+profiling_enabled = false     # Enable startup time profiling
 ```
 
 - **lazy**: Connect when first used (fastest startup)
-- **eager**: Connect all at startup (slower startup, no delays)
+- **eager**: Connect all at startup (slower startup, no delays)  
 - **background**: Connect after UI loads (balanced)
 
 Enable startup profiling:
@@ -347,14 +364,31 @@ Enable startup profiling:
 MCP_CHAT_STARTUP_PROFILING=true ./mcp_chat
 ```
 
+Or in config:
+```toml
+[startup]
+profiling_enabled = true
+```
+
+When enabled, shows detailed timing for each startup phase.
+
 #### Memory Management
 Configure message storage limits:
 ```toml
 [memory]
-memory_limit = 100      # Messages in memory
-page_size = 20          # Messages per page
-disk_cache_enabled = true
+memory_limit = 100          # Messages kept in memory
+session_cache_size = 5      # Number of sessions to cache
+page_size = 20              # Messages per page for pagination
+max_disk_size = 10485760    # Max disk storage per session (10MB)
+disk_cache_enabled = true   # Enable disk storage for old messages
+cache_dir = "~/.config/mcp_chat/cache"  # Cache directory
 ```
+
+Features:
+- Hybrid memory/disk storage prevents memory bloat
+- Automatic pagination for large conversations
+- Smart context retrieval for token management
+- Per-session storage limits
 
 #### Resource Caching
 Enable local caching for MCP resources:

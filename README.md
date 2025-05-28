@@ -151,6 +151,8 @@ To exit: type `/exit` in the chat, then `Ctrl-C` twice to exit IEx.
 - `/servers` - List connected MCP servers
 - `/discover` - Auto-discover MCP servers
 - `/save` - Save current session
+- `/notification` - Manage MCP event notifications
+- `/tui` - Control text UI displays (progress, cache)
 
 ### New MCP Features (v0.2.0)
 
