@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Async Context File Loading**: Non-blocking file loading with progress tracking
+  - AsyncFileLoader module with concurrent file processing
+  - Progress tracking integration with real-time updates
+  - Batch file loading with configurable concurrency limits
+  - Memory-efficient streaming for large files
+  - CLI commands: `/context add-async` and `/context add-batch`
+  - Content validation and preprocessing with line ending normalization
 - **TUI Components**: Beautiful text-based UI components using Owl library
   - Progress display with real-time updates for MCP operations
   - Resource cache display with summary and detailed views
@@ -45,6 +52,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Integration with all connection modes (lazy/eager/background)
   - Individual error isolation prevents one server blocking others
   - Significant startup time improvements in eager mode
+- **Concurrent Tool Execution**:
+  - ConcurrentToolExecutor for safe parallel tool execution
+  - Safety checks to prevent unsafe concurrent operations
+  - Server-based grouping with configurable concurrency limits
+  - Progress tracking and timeout handling for long operations
+  - /concurrent command for testing and managing concurrent operations
+  - Tool safety analysis and execution statistics
 
 ### Changed
 - Improved startup performance with lazy loading options

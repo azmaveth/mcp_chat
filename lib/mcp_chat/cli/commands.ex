@@ -16,7 +16,8 @@ defmodule MCPChat.CLI.Commands do
     Context,
     Alias,
     Notification,
-    TUI
+    TUI,
+    ConcurrentTools
   }
 
   # Map of command to handler module
@@ -59,7 +60,10 @@ defmodule MCPChat.CLI.Commands do
     "notification" => Notification,
 
     # TUI command
-    "tui" => TUI
+    "tui" => TUI,
+
+    # Concurrent tools command
+    "concurrent" => ConcurrentTools
   }
 
   @doc """

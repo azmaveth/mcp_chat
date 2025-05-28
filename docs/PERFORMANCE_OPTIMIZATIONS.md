@@ -243,11 +243,60 @@ Track parallel connection performance:
 - **Success Rate**: Percentage of successful connections
 - **Concurrency Usage**: Peak concurrent connections
 
+## Concurrent Tool Execution
+
+### Safe Parallel Tool Execution
+Implemented `MCPChat.MCP.ConcurrentToolExecutor` for concurrent tool execution:
+
+1. **Safety-First Approach**: Automatic detection of unsafe tools
+   - File system operations (write_file, delete_file, etc.)
+   - State modification tools (set_config, update_settings)
+   - System operations (restart_service, shutdown)
+   
+2. **Execution Grouping**: Smart organization of concurrent operations
+   - Tools from same server execute sequentially by default
+   - Safe tools can run in parallel across servers
+   - Configurable concurrency limits
+   
+3. **Progress and Monitoring**: Real-time execution feedback
+   - Progress tracking for long-running operations
+   - Individual timeout handling per tool
+   - Comprehensive execution statistics
+   
+4. **CLI Integration**: `/concurrent` command for testing and management
+   - `/concurrent test` - Run concurrent execution tests
+   - `/concurrent execute server:tool:args` - Execute tools in parallel
+   - `/concurrent safety tool_name` - Check tool safety
+   - `/concurrent stats` - View execution statistics
+
+Configure in `config.toml`:
+```toml
+[concurrent]
+max_concurrency = 4        # Maximum parallel executions
+timeout = 30000            # Per-tool timeout (ms)
+same_server_sequential = true  # Execute same-server tools sequentially
+safety_checks = true      # Enable safety analysis
+```
+
+### Tool Safety Analysis
+The system automatically classifies tools as safe or unsafe:
+- **Unsafe tools**: write_file, delete_file, create_directory, set_config, etc.
+- **Pattern detection**: Tools containing "write", "delete", "create", "update", "modify"
+- **Override capability**: Safety checks can be disabled for advanced users
+
+### Execution Performance
+Concurrent tool execution provides significant improvements:
+- **Parallel I/O**: Network and file operations run simultaneously
+- **Server isolation**: Failures in one server don't block others
+- **Resource efficiency**: Better utilization of available resources
+- **Progress visibility**: Real-time feedback on long operations
+
 ## Future Optimizations
 
 Planned improvements:
 - [x] Parallel MCP server initialization ✅
 - [x] Streaming response backpressure ✅
-- [ ] Concurrent tool execution
+- [x] Concurrent tool execution ✅
 - [ ] Background session autosave
+- [ ] Async context file loading
 - [ ] Memory usage telemetry

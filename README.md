@@ -153,6 +153,7 @@ To exit: type `/exit` in the chat, then `Ctrl-C` twice to exit IEx.
 - `/save` - Save current session
 - `/notification` - Manage MCP event notifications
 - `/tui` - Control text UI displays (progress, cache)
+- `/concurrent` - Manage concurrent tool execution
 
 ### New MCP Features (v0.2.0)
 

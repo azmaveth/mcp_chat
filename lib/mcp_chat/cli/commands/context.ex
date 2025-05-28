@@ -12,6 +12,7 @@ defmodule MCPChat.CLI.Commands.Context do
   use MCPChat.CLI.Commands.Base
 
   alias MCPChat.{Session, Context}
+  alias MCPChat.Context.AsyncFileLoader
 
   @impl true
   def commands() do
@@ -30,6 +31,8 @@ defmodule MCPChat.CLI.Commands.Context do
     %{
       "stats" => "Show context statistics (default)",
       "add" => "Add a file to context (usage: add <file_path>)",
+      "add-async" => "Add a file to context asynchronously (usage: add-async <file_path>)",
+      "add-batch" => "Add multiple files to context (usage: add-batch <file1> <file2> ...)",
       "rm" => "Remove a file from context (usage: rm <file_name>)",
       "list" => "List files in context",
       "clear" => "Clear all manually added files from context"
@@ -69,6 +72,14 @@ defmodule MCPChat.CLI.Commands.Context do
 
   defp handle_context_subcommand(["add" | args]) do
     add_file_to_context(args)
+  end
+
+  defp handle_context_subcommand(["add-async" | args]) do
+    add_file_to_context_async(args)
+  end
+
+  defp handle_context_subcommand(["add-batch" | args]) do
+    add_batch_to_context_async(args)
   end
 
   defp handle_context_subcommand(["rm" | args]) do
@@ -345,6 +356,116 @@ defmodule MCPChat.CLI.Commands.Context do
       Session.update_session(%{context: updated_context})
       show_success("Cleared #{count} files from context")
     end
+  end
+
+  defp add_file_to_context_async(args) do
+    case args do
+      [] ->
+        show_error("Usage: /context add-async <file_path>")
+
+      [file_path | _] ->
+        file_path = Path.expand(file_path)
+
+        show_info("Loading #{file_path} asynchronously...")
+
+        # Set up callbacks
+        success_callback = fn result ->
+          file_size = result.result.size
+          duration = result.result.load_duration_ms
+          show_success("Added #{result.result.name} to context (#{format_bytes(file_size)}) - loaded in #{duration}ms")
+        end
+
+        error_callback = fn error ->
+          show_error("Failed to load file: #{inspect(error)}")
+        end
+
+        progress_callback = fn update ->
+          case update.phase do
+            :starting ->
+              show_info("Starting async file load...")
+
+            :completed ->
+              if update.failed > 0 do
+                show_warning("File load completed with #{update.failed} errors")
+              end
+          end
+        end
+
+        case AsyncFileLoader.add_to_context_async(file_path,
+               success_callback: success_callback,
+               error_callback: error_callback,
+               progress_callback: progress_callback
+             ) do
+          {:ok, operation_id} ->
+            show_info("Async load started (operation: #{String.slice(operation_id, -8, 8)})")
+
+          {:error, reason} ->
+            show_error("Failed to start async load: #{inspect(reason)}")
+        end
+    end
+
+    :ok
+  end
+
+  defp add_batch_to_context_async(args) do
+    case args do
+      [] ->
+        show_error("Usage: /context add-batch <file1> <file2> [file3] ...")
+
+      file_paths ->
+        expanded_paths = Enum.map(file_paths, &Path.expand/1)
+
+        show_info("Loading #{length(expanded_paths)} files asynchronously...")
+
+        # Set up callbacks
+        batch_callback = fn %{successful: successful, failed: failed} ->
+          if length(successful) > 0 do
+            total_size =
+              Enum.reduce(successful, 0, fn result, acc ->
+                acc + result.result.size
+              end)
+
+            show_success("Added #{length(successful)} files to context (#{format_bytes(total_size)} total)")
+          end
+
+          if length(failed) > 0 do
+            show_warning("Failed to load #{length(failed)} files:")
+
+            Enum.each(failed, fn result ->
+              show_error("  - #{result.file_path}: #{inspect(result.error)}")
+            end)
+          end
+        end
+
+        error_callback = fn error ->
+          show_error("Batch load failed: #{inspect(error)}")
+        end
+
+        progress_callback = fn update ->
+          case update.phase do
+            :starting ->
+              show_info("Starting batch load of #{update.total_files} files...")
+
+            :completed ->
+              show_info("Batch load completed: #{update.successful} successful, #{update.failed} failed")
+          end
+        end
+
+        case AsyncFileLoader.add_batch_to_context_async(expanded_paths,
+               batch_callback: batch_callback,
+               error_callback: error_callback,
+               progress_callback: progress_callback,
+               max_concurrency: 3
+             ) do
+          {:ok, operation_id} ->
+            show_info("Batch async load started (operation: #{String.slice(operation_id, -8, 8)})")
+
+          {:error, reason} ->
+            show_error("Failed to start batch load: #{inspect(reason)}")
+        end
+    end
+
+    :ok
   end
 
   # Helper functions
