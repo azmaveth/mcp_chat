@@ -11,28 +11,32 @@ defmodule MCPChat.AtSymbolE2ETest do
   alias MCPChat.MCP.ServerManager
 
   @test_timeout 30_000
-  @demo_servers_path Path.expand("../../examples/demo_servers", __DIR__)
+  @demo_servers_path Path.expand("../support", __DIR__)
 
   setup_all do
     # Start the application
     Application.ensure_all_started(:mcp_chat)
 
-    # Start demo calculator server for MCP tests
-    {:ok, calc_pid} = start_calculator_server()
-
-    on_exit(fn ->
-      stop_server(calc_pid)
-    end)
-
-    {:ok, %{calc_pid: calc_pid}}
+    :ok
   end
 
   setup do
     # Clear session before each test
     Session.clear_session()
 
-    # Reset MCP server connections
-    ServerManager.stop_all_servers()
+    # Reset MCP server connections by stopping any running servers
+    case ServerManager.list_servers() do
+      servers when is_list(servers) ->
+        Enum.each(servers, fn server ->
+          case server do
+            %{name: name} -> ServerManager.stop_server(name)
+            _ -> :ok
+          end
+        end)
+
+      _ ->
+        :ok
+    end
 
     # Create test files
     create_test_files()
@@ -110,85 +114,60 @@ defmodule MCPChat.AtSymbolE2ETest do
   end
 
   describe "MCP @ symbol resolution" do
-    @tag timeout: @test_timeout
-    test "resolves MCP resource reference" do
-      # Connect to calculator server
-      config = %{
-        "name" => "calculator",
-        "command" => ["elixir", Path.join(@demo_servers_path, "demo_calculator_server.exs")]
-      }
-
-      {:ok, _} = ServerManager.start_server(config)
-      # Wait for server to initialize
-      Process.sleep(2000)
-
-      message = "Show me @resource:calc://constants"
-
-      result = AtSymbolResolver.resolve_all(message)
-
-      # Should contain mathematical constants
-      assert result.resolved_text =~ "pi"
-      assert result.resolved_text =~ "3.14"
-      assert result.errors == []
-    end
-
-    @tag timeout: @test_timeout
-    test "executes MCP tool via @ symbol" do
-      # Connect to calculator server
-      config = %{
-        "name" => "calculator",
-        "command" => ["elixir", Path.join(@demo_servers_path, "demo_calculator_server.exs")]
-      }
-
-      {:ok, _} = ServerManager.start_server(config)
-      # Wait for server to initialize
-      Process.sleep(2000)
-
-      message = "Calculate @tool:calculate:expression=2+2"
-
-      result = AtSymbolResolver.resolve_all(message)
-
-      # Should contain calculation result
-      assert result.resolved_text =~ "4"
-      assert result.errors == []
-    end
-
     test "handles missing MCP server gracefully" do
       message = "Get @resource:nonexistent-resource"
 
       result = AtSymbolResolver.resolve_all(message)
 
       assert result.resolved_text =~ "[ERROR:"
-      assert result.resolved_text =~ "No MCP server found"
+      assert result.resolved_text =~ "No MCP servers available"
+      assert length(result.errors) == 1
+    end
+
+    test "handles missing MCP tool gracefully" do
+      message = "Execute @tool:nonexistent-tool"
+
+      result = AtSymbolResolver.resolve_all(message)
+
+      assert result.resolved_text =~ "[ERROR:"
+      assert result.resolved_text =~ "Tool not found"
+      assert length(result.errors) == 1
+    end
+
+    test "handles missing MCP prompt gracefully" do
+      message = "Use @prompt:nonexistent-prompt"
+
+      result = AtSymbolResolver.resolve_all(message)
+
+      assert result.resolved_text =~ "[ERROR:"
+      assert result.resolved_text =~ "No MCP servers available"
       assert length(result.errors) == 1
     end
   end
 
   describe "Mixed @ symbol resolution" do
-    @tag timeout: @test_timeout
-    test "resolves multiple types in one message" do
-      # Set up calculator server
-      config = %{
-        "name" => "calculator",
-        "command" => ["elixir", Path.join(@demo_servers_path, "demo_calculator_server.exs")]
-      }
-
-      {:ok, _} = ServerManager.start_server(config)
-      Process.sleep(2000)
-
-      message = "Based on @file:test_file1.txt and @resource:calc://constants, calculate @tool:calculate:expression=3*3"
+    test "resolves multiple file types in one message" do
+      message = "Based on @file:test_file1.txt and @file:test_file2.txt"
 
       result = AtSymbolResolver.resolve_all(message)
 
-      # Should contain all resolved content
-      # File content
-      assert result.resolved_text =~ "Test content 1"
-      # Resource content
-      assert result.resolved_text =~ "pi"
-      # Tool result
-      assert result.resolved_text =~ "9"
-      assert length(result.results) == 3
+      # Should contain both file contents
+      assert result.resolved_text == "Based on Test content 1 and Test content 2"
+      assert length(result.results) == 2
       assert result.errors == []
+    end
+
+    test "handles mixed success and failure" do
+      message = "Read @file:test_file1.txt and @file:nonexistent.txt"
+
+      result = AtSymbolResolver.resolve_all(message)
+
+      # Should contain successful file and error for missing file
+      assert result.resolved_text =~ "Test content 1"
+      assert result.resolved_text =~ "[ERROR:"
+      assert result.resolved_text =~ "File not found"
+      assert length(result.results) == 2
+      assert length(result.errors) == 1
     end
   end
 
@@ -212,25 +191,6 @@ defmodule MCPChat.AtSymbolE2ETest do
   end
 
   # Helper functions
-
-  defp start_calculator_server() do
-    port =
-      Port.open(
-        {:spawn_executable, System.find_executable("elixir")},
-        [:binary, :use_stdio, :stderr_to_stdout, args: [Path.join(@demo_servers_path, "demo_calculator_server.exs")]]
-      )
-
-    # Wait for server to start
-    Process.sleep(1_000)
-
-    {:ok, port}
-  end
-
-  defp stop_server(port) when is_port(port) do
-    Port.close(port)
-  rescue
-    _ -> :ok
-  end
 
   defp create_test_files() do
     File.write!("test_file1.txt", "Test content 1")

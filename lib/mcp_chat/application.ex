@@ -226,14 +226,14 @@ defmodule MCPChat.Application do
   end
 
   defp autosave_config() do
-    config = MCPChat.Config.get(:session)[:autosave] || %{}
-
+    # Default configuration - actual config will be loaded after Config starts
     [
-      enabled: Map.get(config, :enabled, true),
-      interval: Map.get(config, :interval_minutes, 5) * 60 * 1_000,
-      keep_count: Map.get(config, :keep_count, 10),
-      compress_large: Map.get(config, :compress_large, true),
-      session_name_prefix: Map.get(config, :prefix, "autosave")
+      enabled: true,
+      # 5 minutes
+      interval: 5 * 60 * 1_000,
+      keep_count: 10,
+      compress_large: true,
+      session_name_prefix: "autosave"
     ]
   end
 end
