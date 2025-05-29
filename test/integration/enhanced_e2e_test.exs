@@ -701,6 +701,127 @@ defmodule MCPChat.EnhancedE2ETest do
   defp factorial(0), do: 1
   defp factorial(n) when n > 0, do: n * factorial(n - 1)
 
+  describe "@ Symbol Context Inclusion" do
+    @tag timeout: @test_timeout
+    test "resolves file references in chat messages", %{model: model} do
+      # Create test file
+      test_file = "/tmp/test_at_symbol.txt"
+      File.write!(test_file, "The answer to everything is 42")
+
+      # Use @ symbol in message
+      message = "What does @file:#{test_file} say about the answer?"
+
+      # Resolve @ symbols
+      resolved = MCPChat.Context.AtSymbolResolver.resolve_all(message)
+
+      assert resolved.resolved_text =~ "The answer to everything is 42"
+      assert length(resolved.results) == 1
+      assert resolved.errors == []
+
+      # Clean up
+      File.rm(test_file)
+    end
+
+    @tag timeout: @test_timeout
+    test "resolves MCP resource references", %{model: model} do
+      # Start calculator server with resources
+      {:ok, _} = start_mcp_server("calculator", calculator_server_config())
+      Process.sleep(2_000)
+
+      # Use @ symbol to reference MCP resource
+      message = "Show me the constants from @resource:calc://constants"
+
+      # Resolve @ symbols
+      resolved = MCPChat.Context.AtSymbolResolver.resolve_all(message)
+
+      # Should contain mathematical constants
+      assert resolved.resolved_text =~ "pi"
+      assert resolved.resolved_text =~ "3.14"
+      assert resolved.errors == []
+    end
+
+    @tag timeout: @test_timeout
+    test "executes MCP tools via @ symbols", %{model: model} do
+      # Start calculator server
+      {:ok, _} = start_mcp_server("calculator", calculator_server_config())
+      Process.sleep(2_000)
+
+      # Use @ symbol to execute tool
+      message = "Calculate @tool:calculate:expression=10*5 for me"
+
+      # Resolve @ symbols
+      resolved = MCPChat.Context.AtSymbolResolver.resolve_all(message)
+
+      # Should contain calculation result
+      assert resolved.resolved_text =~ "50"
+      assert resolved.errors == []
+    end
+
+    @tag timeout: @test_timeout
+    test "handles multiple @ symbols in one message", %{model: model} do
+      # Create test files
+      file1 = "/tmp/test_file1.txt"
+      file2 = "/tmp/test_file2.txt"
+      File.write!(file1, "First file content")
+      File.write!(file2, "Second file content")
+
+      # Start calculator server
+      {:ok, _} = start_mcp_server("calculator", calculator_server_config())
+      Process.sleep(2_000)
+
+      # Message with multiple @ symbols
+      message = "Compare @file:#{file1} with @file:#{file2} and calculate @tool:calculate:expression=2+2"
+
+      # Resolve @ symbols
+      resolved = MCPChat.Context.AtSymbolResolver.resolve_all(message)
+
+      # Should contain all resolved content
+      assert resolved.resolved_text =~ "First file content"
+      assert resolved.resolved_text =~ "Second file content"
+      assert resolved.resolved_text =~ "4"
+      assert length(resolved.results) == 3
+      assert resolved.errors == []
+
+      # Clean up
+      File.rm(file1)
+      File.rm(file2)
+    end
+
+    @tag timeout: @test_timeout
+    test "integrates @ symbols with full chat flow", %{model: model} do
+      # Create test file
+      test_file = "/tmp/chat_test_file.txt"
+      File.write!(test_file, "Elixir is a dynamic, functional language")
+
+      # Add message with @ symbol
+      user_message = "Summarize @file:#{test_file} in one sentence"
+      MCPChat.Session.add_message("user", user_message)
+
+      # Get messages and resolve @ symbols before sending to LLM
+      messages = MCPChat.Session.get_messages()
+      last_message = List.last(messages)
+
+      # Resolve @ symbols
+      resolved = MCPChat.Context.AtSymbolResolver.resolve_all(last_message.content)
+
+      # Create modified messages for LLM
+      resolved_messages =
+        List.update_at(messages, -1, fn msg ->
+          %{msg | content: resolved.resolved_text}
+        end)
+
+      # Get Ollama response
+      {:ok, response} = get_ollama_response(resolved_messages, model)
+
+      # Response should mention Elixir and functional language
+      assert String.downcase(response.content) =~ "elixir"
+      assert String.downcase(response.content) =~ "functional"
+
+      # Clean up
+      File.rm(test_file)
+    end
+  end
+
   defp cleanup_test_environment() do
     # Clean up any test files
     test_sessions_dir = Path.expand("~/.config/mcp_chat/test_sessions")

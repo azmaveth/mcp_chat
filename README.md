@@ -26,6 +26,7 @@ An Elixir-based CLI chat client with support for the Model Context Protocol (MCP
 - 💾 Smart memory management with hybrid disk/memory storage
 - 📈 Real-time progress tracking for MCP operations
 - 🗂️ Local resource caching with automatic invalidation
+- 📎 @ Symbol context inclusion - seamlessly include files, URLs, and MCP resources in messages
 
 ## Architecture
 
@@ -154,6 +155,17 @@ To exit: type `/exit` in the chat, then `Ctrl-C` twice to exit IEx.
 - `/notification` - Manage MCP event notifications
 - `/tui` - Control text UI displays (progress, cache)
 - `/concurrent` - Manage concurrent tool execution
+
+### @ Symbol Context Inclusion
+
+Include external content directly in your messages:
+```
+Please analyze @file:README.md and suggest improvements
+
+Compare @file:src/main.ex with @url:https://hexdocs.pm/elixir/GenServer.html
+
+Update the code based on @resource:project/requirements and @tool:github:latest_release
+```
 
 ### New MCP Features (v0.2.0)
 

@@ -406,6 +406,86 @@ Benefits:
 - Automatic cache invalidation
 - LRU eviction policy
 
+### @ Symbol Context Inclusion
+
+MCP Chat supports including external content directly in your messages using @ symbol references. This feature allows you to seamlessly integrate files, URLs, MCP resources, and more into your conversations.
+
+#### Supported @ Symbol Types
+
+1. **Files**: `@file:path` or `@f:path`
+   ```
+   Please analyze @file:README.md and suggest improvements
+   ```
+
+2. **URLs**: `@url:https://...` or `@u:https://...`
+   ```
+   Summarize @url:https://example.com/article.html
+   ```
+
+3. **MCP Resources**: `@resource:name` or `@r:name`
+   ```
+   Check the database schema in @resource:db/schema
+   ```
+
+4. **MCP Prompts**: `@prompt:name` or `@p:name`
+   ```
+   Use @prompt:code-review to analyze this code
+   ```
+
+5. **MCP Tools**: `@tool:name:args` or `@t:name:args`
+   ```
+   Calculate @tool:calculator:expression=2+2
+   ```
+
+#### Usage Examples
+
+**Including multiple files:**
+```
+Compare @file:src/main.ex with @file:test/main_test.exs
+```
+
+**Combining different types:**
+```
+Based on @url:https://docs.example.com/api and @file:config.toml, 
+please implement the missing features
+```
+
+**Using MCP resources:**
+```
+Update the code based on @resource:project/requirements
+```
+
+**Tool execution with arguments:**
+```
+Check if @tool:github:list_repos:owner=elixir-lang has any new releases
+```
+
+#### Features
+
+- **Automatic Resolution**: Content is fetched and included before sending to the LLM
+- **Error Handling**: Failed references show clear error messages
+- **Token Counting**: Included content is counted in context tokens
+- **Concurrent Fetching**: Multiple references are resolved in parallel
+- **Smart Formatting**: Content is formatted appropriately based on type
+
+#### Configuration
+
+Configure @ symbol behavior in your config.toml:
+```toml
+[context]
+max_file_size = 1048576        # 1MB max file size
+http_timeout = 10000           # 10s timeout for URLs
+mcp_timeout = 30000            # 30s timeout for MCP operations
+validate_content = true        # Validate content before inclusion
+```
+
+#### Tips
+
+1. **Use shortcuts**: `@f:` instead of `@file:`, `@r:` instead of `@resource:`
+2. **Check available resources**: Use `/resources` to see what's available
+3. **Monitor token usage**: Large files can consume many tokens
+4. **Combine with commands**: `/context` shows total tokens including @ symbol content
+
 ### Conversation Templates
 
 Use system prompts to set conversation context:
