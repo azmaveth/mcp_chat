@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Enhanced Terminal Support**: Updated ex_readline integration for improved escript functionality
+  - Integrated ex_readline v0.2.0 with automatic terminal mode detection
+  - Fixed arrow key navigation in escript mode (no more raw escape sequences)
+  - Proper Ctrl-P/N history navigation in compiled binaries
+  - Direct TTY access for escript environments
+  - Maintained backward compatibility with existing readline functionality
 - **Async Context File Loading**: Non-blocking file loading with progress tracking
   - AsyncFileLoader module with concurrent file processing
   - Progress tracking integration with real-time updates
