@@ -471,7 +471,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
 
       # Verify cleanup
       remaining = MCPChat.MCP.ServerManager.list_servers()
-      assert length(remaining) == 0
+      assert Enum.empty?(remaining)
     end
   end
 

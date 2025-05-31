@@ -241,7 +241,7 @@ defmodule MCPChat.Streaming.StreamManager do
               flush_batch(%{state | batch: new_batch})
 
             # First chunk in batch, start timer
-            length(state.batch) == 0 ->
+            Enum.empty?(state.batch) ->
               timer = Process.send_after(self(), :batch_timeout, state.batch_timeout)
               %{state | batch: new_batch, batch_timer: timer}
 

@@ -14,7 +14,7 @@ defmodule MCPChat.Session.Autosave do
   use GenServer
   require Logger
 
-  alias MCPChat.{Session, Persistence}
+  alias MCPChat.{Persistence, Session}
 
   # 5 minutes
   @default_interval 5 * 60 * 1_000
