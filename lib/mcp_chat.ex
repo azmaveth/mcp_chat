@@ -3,6 +3,8 @@ defmodule MCPChat do
   MCP Chat Client - A CLI chat interface with MCP server support.
   """
 
+  require Logger
+
   @doc """
   Start the chat client CLI.
   """
@@ -57,6 +59,9 @@ defmodule MCPChat do
   end
 
   defp start_app(opts) do
+    # Configure logger level to info by default (turn off debug logs)
+    Logger.configure(level: :info)
+
     # Start the application
     {:ok, _} = Application.ensure_all_started(:mcp_chat)
 
