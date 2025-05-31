@@ -22,6 +22,17 @@ defmodule MCPChat.Config do
     GenServer.call(__MODULE__, {:get_path, path})
   end
 
+  def get(path, default) when is_list(path) do
+    case GenServer.call(__MODULE__, {:get_path, path}) do
+      nil -> default
+      value -> value
+    end
+  end
+
+  def get(key1, key2, default) when is_atom(key1) and is_atom(key2) do
+    get([key1, key2], default)
+  end
+
   def put(path, value) when is_list(path) do
     GenServer.call(__MODULE__, {:put, path, value})
   end
