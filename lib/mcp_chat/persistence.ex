@@ -117,7 +117,13 @@ defmodule MCPChat.Persistence do
   Get the sessions directory path.
   """
   def get_sessions_dir(opts \\ []) do
-    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    path_provider =
+      if is_list(opts) do
+        Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+      else
+        opts
+      end
+
     do_get_sessions_dir(path_provider)
   end
 
@@ -224,7 +230,8 @@ defmodule MCPChat.Persistence do
       context: session.context,
       created_at: DateTime.to_iso8601(session.created_at),
       updated_at: DateTime.to_iso8601(session.updated_at),
-      token_usage: session.token_usage
+      token_usage: session.token_usage,
+      metadata: session.metadata
     }
 
     Jason.encode!(data, pretty: true)
@@ -248,7 +255,8 @@ defmodule MCPChat.Persistence do
           context: json["context"] || %{},
           created_at: parse_datetime(json["created_at"]),
           updated_at: parse_datetime(json["updated_at"]),
-          token_usage: json["token_usage"] || %{input_tokens: 0, output_tokens: 0}
+          token_usage: json["token_usage"] || %{input_tokens: 0, output_tokens: 0},
+          metadata: json["metadata"]
         }
 
         {:ok, session}

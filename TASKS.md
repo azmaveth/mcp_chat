@@ -8,6 +8,7 @@ An Elixir-based MCP (Model Context Protocol) client that provides a CLI chat int
 - Configuration via TOML files and environment variables
 - Interactive chat interface with history and context management
 - Real-time streaming responses
+- Permanent session management with automatic saving
 
 ## Architecture
 
@@ -437,6 +438,37 @@ history_size = 1000
   - [x] Concurrent tool execution where safe ✅
   - [x] Async context file loading ✅
   - [x] Background session autosave ✅
+
+## Phase 15a: Enhanced MCP Server Connection Management
+- [ ] Implement lazy MCP server connections
+  - [ ] Servers connect only when their tools/resources are first accessed
+  - [ ] Maintain server connection state without blocking startup
+  - [ ] Dynamically update available tools list as servers connect/disconnect
+  - [ ] Allow disconnection of servers without restarting client
+  - [ ] Benefits:
+    - [ ] Faster startup times by avoiding initial connection overhead
+    - [ ] Better handling of temporarily unavailable servers
+    - [ ] Dynamic server management during runtime
+    - [ ] Reduced resource usage for unused servers
+  - [ ] Implementation approach:
+    - [ ] Modify LazyServerManager to track connection state per server
+    - [ ] Update tool/resource/prompt listings to check connection state
+    - [ ] Add connection hooks to update UI when servers connect/disconnect
+    - [ ] Handle tool calls to trigger lazy connection if needed
+    - [ ] Update /mcp connect/disconnect commands for runtime management
+
+## Phase 15.5: Permanent Session Management (COMPLETED)
+- [x] Implement permanent session storage
+  - [x] Sessions automatically saved with datetime and directory-based naming
+  - [x] Immediate saving on every message (no data loss)
+  - [x] CLI flags for session management:
+    - [x] `-c/--continue` flag to continue most recent session
+    - [x] `-r/--resume <path>` flag to resume specific session
+    - [x] `-l/--list-sessions` flag to list all saved sessions
+  - [x] Session metadata tracking (start directory, timestamps)
+  - [x] Beautiful session info display when resuming
+  - [x] Session listing with time ago, message count, and file size
+  - [x] Fixed autosave ArgumentError with infinity interval
 
 ## Phase 16: Enhanced MCP Features (PARTIAL)
 - [ ] MCP server health monitoring (requires ex_mcp enhancements)

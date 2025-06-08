@@ -8,8 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Permanent Session Management**: All chat sessions are now automatically saved permanently
+  - Sessions are saved with datetime and directory-based naming (e.g., `mcp_chat_20250531_161140`)
+  - Automatic saving on every message for zero data loss
+  - CLI flags for session management:
+    - `-c/--continue`: Continue the most recent chat session
+    - `-r/--resume <path>`: Resume a specific session by filename or ID
+    - `-l/--list-sessions`: List all saved chat sessions with details
+  - Session metadata tracking (start directory, timestamps)
+  - Beautiful session info display when resuming with recent message preview
+  - Session listing shows time ago, message count, and file size
 - **Enhanced Terminal Support**: Updated ex_readline integration for improved escript functionality
-  - Integrated ex_readline v0.2.0 with automatic terminal mode detection
+  - Integrated ex_readline v0.2.1 with automatic terminal mode detection
   - Fixed arrow key navigation in escript mode (no more raw escape sequences)
   - Proper Ctrl-P/N history navigation in compiled binaries
   - Direct TTY access for escript environments
@@ -70,10 +80,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved startup performance with lazy loading options
 - Enhanced memory efficiency for long conversations
 - Better resource management with caching
+- **Logger Configuration**: Default log level set to `:info` to reduce debug noise
+- **Autosave Behavior**: Sessions now saved immediately on every message (no more periodic saves)
 
 ### Fixed
 - Memory usage for large conversation histories
 - Startup delays when connecting to multiple MCP servers
+- **Config Module**: Added missing `get/2` and `get/3` functions with default value support
+- **Circuit Breaker**: Fixed Task ownership issue by handling tasks in owner process
+- **Credo Issues**: Fixed all warnings (replaced `length()` with `Enum.empty?()`, fixed alias ordering)
 
 ## [0.2.0] - 2025-05-26
 

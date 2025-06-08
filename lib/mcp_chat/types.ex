@@ -18,7 +18,8 @@ defmodule MCPChat.Types do
       :context,
       :created_at,
       :updated_at,
-      :token_usage
+      :token_usage,
+      :metadata
     ]
 
     @type t :: %__MODULE__{
@@ -28,7 +29,8 @@ defmodule MCPChat.Types do
             context: map(),
             created_at: DateTime.t(),
             updated_at: DateTime.t(),
-            token_usage: token_usage()
+            token_usage: token_usage(),
+            metadata: map() | nil
           }
 
     @type message :: %{

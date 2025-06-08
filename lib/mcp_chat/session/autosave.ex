@@ -14,14 +14,12 @@ defmodule MCPChat.Session.Autosave do
   use GenServer
   require Logger
 
-  alias MCPChat.{Persistence, Session}
+  alias MCPChat.Session
 
   # 5 minutes
   @default_interval 5 * 60 * 1_000
   # 30 seconds
   @default_debounce 30 * 1_000
-  # 1MB
-  @compression_threshold 1_000_000
 
   defmodule State do
     @moduledoc false
@@ -253,45 +251,21 @@ defmodule MCPChat.Session.Autosave do
     end
   end
 
-  defp do_save_async(state) do
+  defp do_save_async(_state) do
     try do
-      # Get current session
-      session = Session.get_current_session()
+      # Use SessionManager to save the current session
+      case MCPChat.SessionManager.save_current_session() do
+        :ok ->
+          # Get session to calculate hash for change detection
+          session = Session.get_current_session()
+          session_hash = calculate_session_hash(session)
+          session_size = estimate_session_size(session)
 
-      # Check if session has changed
-      session_hash = calculate_session_hash(session)
+          {:ok, %{hash: session_hash, size: session_size}}
 
-      if session_hash == state.last_saved_hash and not is_nil(state.last_saved_hash) do
-        {:ok, :no_changes}
-      else
-        # Determine if we need compression
-        session_size = estimate_session_size(session)
-
-        save_opts =
-          if state.config.compress_large and session_size > @compression_threshold do
-            [compress: true]
-          else
-            []
-          end
-
-        # Generate autosave name with timestamp
-        timestamp = DateTime.utc_now() |> DateTime.to_unix()
-        name = "#{state.config.session_name_prefix}_#{timestamp}"
-
-        # Perform the save
-        case Persistence.save_session(session, name, save_opts) do
-          {:ok, path} ->
-            Logger.debug("Autosave completed: #{path}")
-
-            # Clean up old autosaves if needed
-            cleanup_old_autosaves(state.config.session_name_prefix)
-
-            {:ok, %{path: path, hash: session_hash, size: session_size}}
-
-          {:error, reason} ->
-            Logger.error("Autosave failed: #{inspect(reason)}")
-            {:error, reason}
-        end
+        {:error, reason} ->
+          Logger.error("Autosave failed: #{inspect(reason)}")
+          {:error, reason}
       end
     rescue
       e ->
@@ -306,7 +280,7 @@ defmodule MCPChat.Session.Autosave do
   end
 
   defp handle_save_result({:ok, save_info}, state) do
-    Logger.info("Autosave successful: #{save_info.path}")
+    Logger.debug("Autosave successful")
 
     new_state = %{
       state
@@ -348,48 +322,8 @@ defmodule MCPChat.Session.Autosave do
     :erlang.term_to_binary(session) |> byte_size()
   end
 
-  defp cleanup_old_autosaves(prefix, keep_count \\ 5) do
-    # Run cleanup in a separate process to avoid blocking
-    Task.start(fn ->
-      sessions_dir = Persistence.get_sessions_dir()
-
-      # List all autosave files
-      autosave_pattern = "#{prefix}_*.json"
-
-      case File.ls(sessions_dir) do
-        {:ok, files} ->
-          autosave_files =
-            files
-            |> Enum.filter(fn file ->
-              String.starts_with?(file, prefix) and String.ends_with?(file, ".json")
-            end)
-            |> Enum.map(fn file ->
-              path = Path.join(sessions_dir, file)
-              stat = File.stat!(path)
-              {file, stat.mtime}
-            end)
-            |> Enum.sort_by(fn {_file, mtime} -> mtime end, :desc)
-            |> Enum.drop(keep_count)
-
-          # Delete old autosaves
-          Enum.each(autosave_files, fn {file, _mtime} ->
-            path = Path.join(sessions_dir, file)
-
-            case File.rm(path) do
-              :ok ->
-                Logger.debug("Deleted old autosave: #{file}")
-
-              {:error, reason} ->
-                Logger.warning("Failed to delete old autosave #{file}: #{reason}")
-            end
-          end)
-
-        {:error, _reason} ->
-          # Ignore errors in cleanup
-          :ok
-      end
-    end)
-  end
+  # Old autosave cleanup is no longer needed
+  # Sessions are permanent unless explicitly deleted
 
   defp time_until_next_save(%{timer_ref: nil}), do: nil
 

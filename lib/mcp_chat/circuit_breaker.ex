@@ -21,7 +21,8 @@ defmodule MCPChat.CircuitBreaker do
     :success_threshold,
     :timeout,
     :reset_timeout,
-    :half_open_requests
+    :half_open_requests,
+    :pending_calls
   ]
 
   @default_failure_threshold 5
@@ -82,7 +83,8 @@ defmodule MCPChat.CircuitBreaker do
       success_threshold: opts[:success_threshold] || @default_success_threshold,
       timeout: opts[:timeout] || @default_timeout,
       reset_timeout: opts[:reset_timeout] || @default_reset_timeout,
-      half_open_requests: 0
+      half_open_requests: 0,
+      pending_calls: %{}
     }
 
     {:ok, state}
@@ -141,16 +143,44 @@ defmodule MCPChat.CircuitBreaker do
   end
 
   @impl true
-  def handle_info({:call_result, from, result}, state) do
-    new_state = handle_call_result(result, state)
-    GenServer.reply(from, result)
-    {:noreply, new_state}
+  def handle_info({:check_task, task_ref}, state) do
+    case Map.get(state.pending_calls, task_ref) do
+      {task, from} ->
+        case Task.yield(task, 0) do
+          {:ok, result} ->
+            # Task completed successfully
+            new_state = %{state | pending_calls: Map.delete(state.pending_calls, task_ref)}
+            updated_state = handle_call_result(result, new_state)
+            GenServer.reply(from, result)
+            {:noreply, updated_state}
+
+          nil ->
+            # Task still running, check again later
+            Process.send_after(self(), {:check_task, task_ref}, 100)
+            {:noreply, state}
+        end
+
+      nil ->
+        # Task not found, already completed or timed out
+        {:noreply, state}
+    end
   end
 
   @impl true
-  def handle_info({:timeout, _ref}, state) do
-    # Handle timeout messages (can be ignored)
-    {:noreply, state}
+  def handle_info({:task_timeout, task_ref, from}, state) do
+    case Map.get(state.pending_calls, task_ref) do
+      {task, ^from} ->
+        # Kill the task and reply with timeout
+        Task.shutdown(task, :brutal_kill)
+        new_state = %{state | pending_calls: Map.delete(state.pending_calls, task_ref)}
+        updated_state = handle_call_result({:error, :timeout}, new_state)
+        GenServer.reply(from, {:error, :timeout})
+        {:noreply, updated_state}
+
+      _ ->
+        # Task already completed or different from
+        {:noreply, state}
+    end
   end
 
   @impl true
@@ -173,23 +203,16 @@ defmodule MCPChat.CircuitBreaker do
         end
       end)
 
-    # Monitor the task
-    Process.send_after(self(), {:timeout, task.ref}, state.timeout)
+    # Monitor the task for completion and timeout
+    Process.send_after(self(), {:task_timeout, task.ref, from}, state.timeout)
 
-    # Store the from reference for later reply
-    spawn(fn ->
-      result =
-        case Task.yield(task, state.timeout) || Task.shutdown(task) do
-          {:ok, {:ok, value}} -> {:ok, value}
-          {:ok, {:error, reason}} -> {:error, reason}
-          nil -> {:error, :timeout}
-          {:exit, reason} -> {:error, {:exit, reason}}
-        end
+    # Store the task and from reference to handle completion
+    new_state = %{state | pending_calls: Map.put(state.pending_calls || %{}, task.ref, {task, from})}
 
-      send(state.name, {:call_result, from, result})
-    end)
+    # Send ourselves a message to check task completion
+    send(self(), {:check_task, task.ref})
 
-    {:noreply, state}
+    new_state
   end
 
   defp handle_call_result({:ok, _}, state) do

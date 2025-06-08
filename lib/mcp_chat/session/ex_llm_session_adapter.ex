@@ -116,15 +116,34 @@ defmodule MCPChat.Session.ExLLMSessionAdapter do
     # Handle field updates manually since ExLLM doesn't have generic update
     updated =
       Enum.reduce(updates, ex_llm_session, fn
-        {:name, value}, acc -> %{acc | name: value}
-        {:context, value}, acc -> %{acc | context: value}
-        {:llm_backend, value}, acc -> %{acc | llm_backend: value}
+        {:name, value}, acc ->
+          %{acc | name: value}
+
+        {:context, value}, acc ->
+          %{acc | context: value}
+
+        {:llm_backend, value}, acc ->
+          %{acc | llm_backend: value}
+
+        {:metadata, _value}, acc ->
+          # ExLLM doesn't have metadata, so we'll handle it in conversion
+          acc
+
         # Ignore unknown fields
-        {_key, _value}, acc -> acc
+        {_key, _value}, acc ->
+          acc
       end)
 
-    %{updated | updated_at: DateTime.utc_now()}
-    |> to_mcp_chat_session()
+    result =
+      %{updated | updated_at: DateTime.utc_now()}
+      |> to_mcp_chat_session()
+
+    # Apply metadata updates after conversion
+    if updates[:metadata] do
+      %{result | metadata: updates[:metadata]}
+    else
+      result
+    end
   end
 
   @doc """
@@ -227,7 +246,9 @@ defmodule MCPChat.Session.ExLLMSessionAdapter do
       context: session.context,
       created_at: session.created_at,
       updated_at: session.updated_at,
-      token_usage: session.token_usage
+      token_usage: session.token_usage,
+      # ExLLM doesn't have metadata
+      metadata: nil
     }
   end
 
