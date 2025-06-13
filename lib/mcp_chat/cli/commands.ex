@@ -111,11 +111,11 @@ defmodule MCPChat.CLI.Commands do
         handler_module ->
           case handler_module.handle_command(cmd, args) do
             :ok ->
-              :ok
+              :continue
 
             {:error, message} ->
               MCPChat.CLI.Renderer.show_error(message)
-              :ok
+              :continue
           end
       end
     end
@@ -128,6 +128,6 @@ defmodule MCPChat.CLI.Commands do
   defp handle_special_command(cmd, _args) do
     MCPChat.CLI.Renderer.show_error("Unknown command: /#{cmd}")
     MCPChat.CLI.Renderer.show_info("Type /help for available commands")
-    :ok
+    :continue
   end
 end
