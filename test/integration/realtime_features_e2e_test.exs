@@ -231,14 +231,14 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
         Enum.map(tokens, fn token ->
           Task.async(fn ->
             # Simulate different operations
-            case token do
-              t when String.contains?(t, "op-1") ->
+            cond do
+              String.contains?(token, "op-1") ->
                 MCPChat.MCP.ServerManager.call_tool("calc", "calculate", %{expression: "sum(1..1_000)"})
 
-              t when String.contains?(t, "op-2") ->
+              String.contains?(token, "op-2") ->
                 MCPChat.MCP.ServerManager.call_tool("data", "generate_products", %{count: 50})
 
-              _ ->
+              true ->
                 MCPChat.MCP.ServerManager.call_tool("data", "generate_users", %{count: 30})
             end
           end)

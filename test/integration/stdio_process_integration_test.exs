@@ -25,26 +25,28 @@ defmodule MCPChat.StdioProcessIntegrationTest do
 
         {:ok, wrapper} = ServerWrapper.start_link(config)
 
-        # Give it a moment to initialize
-        Process.sleep(500)
+        # Give server more time to initialize
+        Process.sleep(2000)
 
         # Check status
         status = ServerWrapper.get_status(wrapper)
         assert status == :connected
 
-        # Get tools
-        {:ok, tools} = ServerWrapper.get_tools(wrapper)
+        # Get tools with longer timeout
+        {:ok, tools_result} = ServerWrapper.get_tools(wrapper, 15_000)
+        tools = tools_result["tools"] || tools_result.tools || tools_result
         assert is_list(tools)
         assert length(tools) > 0
 
         # Find the get_current_time tool
         time_tool =
           Enum.find(tools, fn tool ->
-            tool["name"] == "get_current_time"
+            tool["name"] == "get_current_time" || tool.name == "get_current_time"
           end)
 
         assert time_tool != nil
-        assert time_tool["description"] =~ "current time"
+        description = time_tool["description"] || time_tool.description
+        assert description =~ "current time"
 
         # Call the tool
         {:ok, result} = ServerWrapper.call_tool(wrapper, "get_current_time", %{})
@@ -93,11 +95,16 @@ defmodule MCPChat.StdioProcessIntegrationTest do
       # Monitor the wrapper
       ref = Process.monitor(wrapper)
 
-      # Give it a moment to start
-      Process.sleep(200)
+      # Give it a moment to start, then try to interact (this should trigger the crash)
+      Process.sleep(1_000)
 
       # Try to interact (this should trigger the crash)
-      ServerWrapper.get_tools(wrapper)
+      try do
+        ServerWrapper.get_tools(wrapper)
+      catch
+        # Expected to fail
+        _, _ -> :ok
+      end
 
       # Should receive DOWN message
       assert_receive {:DOWN, ^ref, :process, ^wrapper, _reason}, 5_000

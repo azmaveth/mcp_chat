@@ -330,7 +330,7 @@ defmodule MCPChat.CLI.Commands.LLM do
   end
 
   defp fetch_and_display_local_models() do
-    case MCPChat.LLM.ExLLMAdapter.list_models(provider: :local) do
+    case MCPChat.LLM.ExLLMAdapter.list_models(provider: :bumblebee) do
       {:ok, models} ->
         show_info("\nAvailable models to load:")
 

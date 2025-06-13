@@ -34,6 +34,7 @@ defmodule MCPChat.CLI.Commands do
     "clear" => Utility,
     "config" => Utility,
     "cost" => Utility,
+    "stats" => Utility,
     "export" => Utility,
 
     # LLM commands

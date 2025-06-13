@@ -10,21 +10,22 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
 
   require Logger
 
-  defstruct [:process_manager, :buffer, :receiver_pid]
+  # The transport state no longer needs a buffer; it's managed in the receiver process.
+  defstruct [:process_manager, :receiver_pid]
 
   @impl ExMCP.Transport
   def connect(opts) do
     process_manager = Keyword.fetch!(opts, :process_manager)
 
-    # Create a receiver process to handle async messages
-    receiver_pid = spawn_link(__MODULE__, :receiver_loop, [self(), process_manager])
+    # The receiver process is spawned and linked. It manages its own state
+    # and no longer needs the parent PID for sending messages.
+    receiver_pid = spawn_link(__MODULE__, :receiver_server_loop, [process_manager])
 
-    # Register the receiver as the client for the process manager
+    # Register the receiver to get {:stdio_data, ...} messages.
     :ok = MCPChat.MCP.StdioProcessManager.set_client(process_manager, receiver_pid)
 
     state = %__MODULE__{
       process_manager: process_manager,
-      buffer: "",
       receiver_pid: receiver_pid
     }
 
@@ -33,7 +34,6 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
 
   @impl ExMCP.Transport
   def send_message(message, state) do
-    # Message should already be JSON-encoded, just add newline
     data = message <> "\n"
 
     case MCPChat.MCP.StdioProcessManager.send_data(state.process_manager, data) do
@@ -48,27 +48,31 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
 
   @impl ExMCP.Transport
   def receive_message(state) do
-    # Block waiting for a complete message from the receiver process
+    # Request a message from the receiver server process and wait for a reply.
+    ref = make_ref()
+    send(state.receiver_pid, {:get_message, {self(), ref}})
+
     receive do
-      {:complete_message, message} ->
-        {:ok, message, state}
+      {^ref, reply} ->
+        case reply do
+          {:complete_message, message} ->
+            {:ok, message, state}
 
-      {:stdio_exit, status} ->
-        {:error, {:process_exit, status}}
+          {:stdio_exit, status} ->
+            {:error, {:process_exit, status}}
 
-      {:stdio_crash, reason} ->
-        {:error, {:process_crash, reason}}
+          {:stdio_crash, reason} ->
+            {:error, {:process_crash, reason}}
+        end
     end
   end
 
   @impl ExMCP.Transport
   def close(state) do
-    # Stop the receiver process
     if state.receiver_pid && Process.alive?(state.receiver_pid) do
       Process.exit(state.receiver_pid, :shutdown)
     end
 
-    # Stop the managed process
     MCPChat.MCP.StdioProcessManager.stop_process(state.process_manager)
     :ok
   end
@@ -81,32 +85,59 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
     end
   end
 
-  # Receiver process that handles async messages from StdioProcessManager
+  # The receiver is now a server that queues messages and requests.
   @doc false
-  def receiver_loop(parent, process_manager, buffer \\ "") do
-    receive do
-      {:stdio_data, data} ->
-        # Append new data to buffer
-        new_buffer = buffer <> data
+  def receiver_server_loop(process_manager) do
+    state = %{
+      buffer: "",
+      messages: :queue.new(),
+      requesters: :queue.new()
+    }
 
-        # Process complete messages (newline-delimited JSON)
-        {messages, remaining_buffer} = extract_messages(new_buffer)
+    do_receiver_loop(process_manager, state)
+  end
 
-        # Send each complete message to the parent
-        Enum.each(messages, fn message ->
-          send(parent, {:complete_message, message})
-        end)
+  defp do_receiver_loop(process_manager, state) do
+    # If we have a buffered message and a waiting requester, fulfill the request.
+    if !:queue.is_empty(state.messages) && !:queue.is_empty(state.requesters) do
+      {{:value, msg}, remaining_messages} = :queue.out(state.messages)
+      {{:value, {requester_pid, ref}}, remaining_requesters} = :queue.out(state.requesters)
 
-        receiver_loop(parent, process_manager, remaining_buffer)
+      send(requester_pid, {ref, msg})
 
-      {:stdio_exit, status} ->
-        send(parent, {:stdio_exit, status})
+      do_receiver_loop(process_manager, %{
+        state
+        | messages: remaining_messages,
+          requesters: remaining_requesters
+      })
+    else
+      # Otherwise, wait for an incoming event.
+      receive do
+        {:stdio_data, data} ->
+          new_buffer = state.buffer <> data
+          {messages, remaining_buffer} = extract_messages(new_buffer)
 
-      # Exit the receiver loop
+          new_message_queue =
+            Enum.reduce(messages, state.messages, fn msg, q ->
+              :queue.in({:complete_message, msg}, q)
+            end)
 
-      {:stdio_crash, reason} ->
-        send(parent, {:stdio_crash, reason})
-        # Exit the receiver loop
+          do_receiver_loop(process_manager, %{
+            state
+            | buffer: remaining_buffer,
+              messages: new_message_queue
+          })
+
+        {:get_message, {requester_pid, ref} = requester} ->
+          new_requester_queue = :queue.in(requester, state.requesters)
+          do_receiver_loop(process_manager, %{state | requesters: new_requester_queue})
+
+        {:stdio_exit, status} ->
+          for {pid, ref} <- :queue.to_list(state.requesters), do: send(pid, {ref, {:stdio_exit, status}})
+
+        {:stdio_crash, reason} ->
+          for {pid, ref} <- :queue.to_list(state.requesters), do: send(pid, {ref, {:stdio_crash, reason}})
+      end
     end
   end
 
@@ -118,11 +149,9 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
         {[], ""}
 
       [single] ->
-        # No newline found, keep buffering
         {[], single}
 
       multiple ->
-        # Last element might be incomplete
         {complete, [maybe_incomplete]} = Enum.split(multiple, -1)
 
         messages =
@@ -136,7 +165,6 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
   end
 
   defp validate_json(line) do
-    # Just validate it's valid JSON, don't decode
     case Jason.decode(line) do
       {:ok, _} ->
         line

@@ -131,11 +131,14 @@ defmodule MCPChat.MCP.ProgressTrackerTest do
       {:messages, messages} = Process.info(tracker, :messages)
       # Should have scheduled a cleanup message
       # Or it might be in the timer queue
-      assert Enum.any?(messages, fn
-               {:timeout, _ref, :cleanup} -> true
-               _ -> false
-             end) or
-               {:timers, _timers} = Process.info(tracker, :timers)
+      has_cleanup_message =
+        Enum.any?(messages, fn
+          {:timeout, _ref, :cleanup} -> true
+          _ -> false
+        end)
+
+      # Check if cleanup timer exists either as message or timer
+      assert has_cleanup_message or match?({:timers, _}, Process.info(tracker, :timers))
     end
   end
 end

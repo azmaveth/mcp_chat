@@ -76,7 +76,7 @@ defmodule StandaloneMCPServer do
   end
 
   defp build_initialize_response(id) do
-    ~s({"jsonrpc":"2.0","id":#{id},"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"standalone-test-server","version":"1.0.0"}}})
+    ~s({"jsonrpc":"2.0","id":#{id},"result":{"protocolVersion":"2025-03-26","capabilities":{"tools":{}},"serverInfo":{"name":"standalone-test-server","version":"1.0.0"}}})
   end
 
   defp build_tools_list_response(id) do

@@ -4,12 +4,16 @@ defmodule McpChat.MixProject do
   def project do
     [
       app: :mcp_chat,
-      version: "0.2.0",
+      version: "0.2.1",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
-      escript: [main_module: MCPChat]
+      escript: [
+        main_module: MCPChat,
+        embed_elixir: true,
+        applications: [:ex_llm, :ex_mcp, :ex_alias, :ex_readline, :owl, :toml]
+      ]
     ]
   end
 

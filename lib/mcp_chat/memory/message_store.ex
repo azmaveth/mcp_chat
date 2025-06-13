@@ -285,7 +285,7 @@ defmodule MCPChat.Memory.MessageStore do
       messages
       # Maintain chronological order
       |> Enum.reverse()
-      |> Enum.map_join(&Jason.encode!/1, "\n")
+      |> Enum.map_join("\n", &Jason.encode!/1)
 
     case File.open(state.disk_path, [:append]) do
       {:ok, file} ->

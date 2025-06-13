@@ -108,8 +108,9 @@ defmodule MCPChat do
   end
 
   defp start_app(opts) do
-    # Configure logger level to info by default (turn off debug logs)
-    Logger.configure(level: :info)
+    # Configure logger level - use error for escript to reduce noise
+    log_level = if opts[:quiet] || !Code.ensure_loaded?(Mix), do: :error, else: :info
+    Logger.configure(level: log_level)
 
     # Start the application
     {:ok, _} = Application.ensure_all_started(:mcp_chat)

@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2024-06-13
+
+### Fixed
+- **MCP Transport Architecture**: Fixed ExMCP.Client communication issues
+  - Fixed push/pull model mismatch in ManagedStdio transport
+  - Eliminated FunctionClauseError in ExMCP.Client.handle_info/2
+  - Implemented proper pull-based message queuing with async receiver
+  - Resolved integration test timeouts and connection failures
+- **Test Suite Improvements**: Significantly improved test reliability
+  - Fixed all acceptance tests (8/8 now passing)
+  - Reduced integration test failures from 8 to 2 remaining edge cases
+  - Enhanced test infrastructure with ANSI handling and case-insensitive matching
+  - Updated standalone MCP server to use correct protocol version (2025-03-26)
+- **Process Management**: Enhanced stdio process lifecycle management
+  - Added comprehensive process status tracking (stopped, running, exited, failed)
+  - Implemented restart counting and proper exit status handling
+  - Fixed StdioProcessManager auto-start behavior for production use
+  - Enhanced ServerWrapper with health checks and better timeout handling
+- **Command System**: Fixed missing command routing
+  - Added /stats command routing to Utility module
+  - Ensured all CLI commands work properly in escript mode
+
+### Added
+- **OTP Supervision**: Built robust process supervision architecture
+  - Created StdioProcessSupervisor for automatic restart logic
+  - Configurable restart strategies with exponential backoff
+  - Restart counting and rate limiting for stability
+  - Integration with existing ServerWrapper for seamless operation
+
 ### Added
 - **Permanent Session Management**: All chat sessions are now automatically saved permanently
   - Sessions are saved with datetime and directory-based naming (e.g., `mcp_chat_20250531_161140`)

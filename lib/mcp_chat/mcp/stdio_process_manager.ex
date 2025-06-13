@@ -15,7 +15,18 @@ defmodule MCPChat.MCP.StdioProcessManager do
   use GenServer
   require Logger
 
-  defstruct [:port, :command, :args, :env, :working_dir, :buffer, :client_pid]
+  defstruct [
+    :port,
+    :command,
+    :args,
+    :env,
+    :working_dir,
+    :buffer,
+    :client_pid,
+    restart_count: 0,
+    process_status: :stopped,
+    last_exit_status: nil
+  ]
 
   @type t :: %__MODULE__{
           port: port() | nil,
@@ -24,7 +35,10 @@ defmodule MCPChat.MCP.StdioProcessManager do
           env: list({String.t(), String.t()}),
           working_dir: String.t() | nil,
           buffer: binary(),
-          client_pid: pid() | nil
+          client_pid: pid() | nil,
+          restart_count: non_neg_integer(),
+          process_status: :stopped | :running | :exited | :failed,
+          last_exit_status: non_neg_integer() | nil
         }
 
   # Client API
@@ -39,6 +53,18 @@ defmodule MCPChat.MCP.StdioProcessManager do
   - `:working_dir` - Working directory for the process (default: current dir)
   """
   def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts)
+  end
+
+  def start_link(config, extra_opts) do
+    # Merge config and extra_opts
+    opts =
+      if is_map(config) do
+        Map.to_list(config) ++ extra_opts
+      else
+        config ++ extra_opts
+      end
+
     GenServer.start_link(__MODULE__, opts)
   end
 
@@ -81,9 +107,19 @@ defmodule MCPChat.MCP.StdioProcessManager do
 
   @impl true
   def init(opts) do
+    # Convert map to keyword list if needed
+    opts =
+      if is_map(opts) do
+        Map.to_list(opts)
+      else
+        opts
+      end
+
     command = Keyword.fetch!(opts, :command)
     args = Keyword.get(opts, :args, [])
     env = Keyword.get(opts, :env, [])
+    # Convert env map to list if needed
+    env = if is_map(env), do: Map.to_list(env), else: env
     working_dir = Keyword.get(opts, :working_dir)
 
     state = %__MODULE__{
@@ -92,17 +128,33 @@ defmodule MCPChat.MCP.StdioProcessManager do
       env: env,
       working_dir: working_dir,
       buffer: <<>>,
-      client_pid: nil
+      client_pid: nil,
+      restart_count: 0,
+      process_status: :stopped,
+      last_exit_status: nil
     }
 
-    {:ok, state}
+    # Don't auto-start for tests - let the caller explicitly start
+    # Auto-start only if auto_start option is true
+    if Keyword.get(opts, :auto_start, false) do
+      case start_port(state) do
+        {:ok, port} ->
+          {:ok, %{state | port: port, process_status: :running}}
+
+        {:error, reason} ->
+          Logger.error("Failed to start process during init: #{inspect(reason)}")
+          {:ok, state}
+      end
+    else
+      {:ok, state}
+    end
   end
 
   @impl true
   def handle_call(:start_process, _from, %{port: nil} = state) do
     case start_port(state) do
       {:ok, port} ->
-        new_state = %{state | port: port}
+        new_state = %{state | port: port, process_status: :running}
         {:reply, {:ok, port}, new_state}
 
       {:error, reason} = error ->
@@ -121,15 +173,18 @@ defmodule MCPChat.MCP.StdioProcessManager do
 
   def handle_call(:stop_process, _from, %{port: port} = state) when is_port(port) do
     Port.close(port)
-    {:reply, :ok, %{state | port: nil, buffer: <<>>}}
+    {:reply, :ok, %{state | port: nil, buffer: <<>>, process_status: :stopped}}
   end
 
   def handle_call(:get_status, _from, state) do
     status = %{
+      status: state.process_status,
       running: state.port != nil,
       command: state.command,
       args: state.args,
-      client_pid: state.client_pid
+      client_pid: state.client_pid,
+      restart_count: state.restart_count,
+      last_exit_status: state.last_exit_status
     }
 
     {:reply, {:ok, status}, state}
@@ -161,12 +216,15 @@ defmodule MCPChat.MCP.StdioProcessManager do
   def handle_info({port, {:exit_status, status}}, %{port: port} = state) do
     Logger.info("Process exited with status: #{status}")
 
+    # Determine process status based on exit code
+    process_status = if status == 0, do: :exited, else: :failed
+
     # Notify client if one is set
     if state.client_pid do
       send(state.client_pid, {:stdio_exit, status})
     end
 
-    {:noreply, %{state | port: nil, buffer: <<>>}}
+    {:noreply, %{state | port: nil, buffer: <<>>, process_status: process_status, last_exit_status: status}}
   end
 
   def handle_info({:EXIT, port, reason}, %{port: port} = state) do
@@ -177,7 +235,7 @@ defmodule MCPChat.MCP.StdioProcessManager do
       send(state.client_pid, {:stdio_crash, reason})
     end
 
-    {:noreply, %{state | port: nil, buffer: <<>>}}
+    {:noreply, %{state | port: nil, buffer: <<>>, process_status: :failed}}
   end
 
   # Private Functions

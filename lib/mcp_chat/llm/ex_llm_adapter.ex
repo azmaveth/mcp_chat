@@ -121,7 +121,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   @impl MCPChat.LLM.Adapter
   def list_models() do
     # Try to list models from configured providers
-    providers = [:anthropic, :openai, :ollama, :bedrock, :gemini, :local]
+    providers = [:anthropic, :openai, :ollama, :bedrock, :gemini, :bumblebee]
     options = [{:config_provider, ExLLM.ConfigProvider.Env}]
 
     models =

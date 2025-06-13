@@ -21,6 +21,7 @@ defmodule MCPChat.CLI.Commands.Utility do
       "clear" => "Clear the screen",
       "config" => "Show current configuration",
       "cost" => "Show session cost",
+      "stats" => "Show session statistics",
       "export" => "Export conversation (usage: /export [format] [path])",
       "resume" => "Resume the last interrupted response"
     }
@@ -41,6 +42,10 @@ defmodule MCPChat.CLI.Commands.Utility do
 
   def handle_command("cost", _args) do
     show_cost()
+  end
+
+  def handle_command("stats", _args) do
+    show_stats()
   end
 
   def handle_command("export", args) do
@@ -134,6 +139,26 @@ defmodule MCPChat.CLI.Commands.Utility do
       else
         IO.puts("No token usage recorded yet.")
       end
+    end
+
+    :ok
+  end
+
+  defp show_stats() do
+    session = Session.get_current_session()
+
+    IO.puts("## Session Statistics")
+    IO.puts("")
+    IO.puts("Session ID: #{session.id}")
+    IO.puts("Messages: #{length(session.messages)}")
+    IO.puts("Created: #{session.created_at}")
+
+    if session.total_tokens > 0 do
+      IO.puts("Total tokens: #{session.total_tokens}")
+    end
+
+    if session.total_cost > 0 do
+      IO.puts("Total cost: $#{:erlang.float_to_binary(session.total_cost, decimals: 4)}")
     end
 
     :ok

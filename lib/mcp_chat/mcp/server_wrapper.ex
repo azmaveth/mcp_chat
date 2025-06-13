@@ -26,8 +26,15 @@ defmodule MCPChat.MCP.ServerWrapper do
     GenServer.call(wrapper, {:call_tool, tool, args})
   end
 
-  def get_tools(wrapper) do
-    GenServer.call(wrapper, :get_tools)
+  def get_tools(wrapper, timeout \\ 10_000) do
+    GenServer.call(wrapper, :get_tools, timeout)
+  end
+
+  @doc """
+  Wait for the server to be ready for MCP calls.
+  """
+  def wait_for_ready(wrapper, timeout \\ 10_000) do
+    GenServer.call(wrapper, :wait_for_ready, timeout)
   end
 
   def get_resources(wrapper) do
@@ -69,11 +76,10 @@ defmodule MCPChat.MCP.ServerWrapper do
           env: Map.to_list(env)
         ]
 
+        # Add auto_start option for production use
+        process_manager_opts = process_manager_opts ++ [auto_start: true]
         {:ok, process_manager} = MCPChat.MCP.StdioProcessManager.start_link(process_manager_opts)
         Process.monitor(process_manager)
-
-        # Start the process
-        {:ok, _port} = MCPChat.MCP.StdioProcessManager.start_process(process_manager)
 
         # Prepare client options with the process manager
         client_opts = build_client_opts(config, process_manager)
@@ -152,6 +158,34 @@ defmodule MCPChat.MCP.ServerWrapper do
         ExMCP.Client.list_tools(client)
       end
     end)
+  end
+
+  def handle_call(:wait_for_ready, from, state) do
+    # Check if the client process is alive and responsive
+    if Process.alive?(state.client) do
+      # Use async task with timeout to avoid hanging GenServer
+      task =
+        Task.async(fn ->
+          try do
+            if state.type == :notification do
+              MCPChat.MCP.NotificationClient.list_tools(state.client)
+            else
+              ExMCP.Client.list_tools(state.client)
+            end
+          catch
+            :exit, _ -> {:error, :timeout}
+            _ -> {:error, :exception}
+          end
+        end)
+
+      case Task.yield(task, 3_000) || Task.shutdown(task) do
+        {:ok, {:ok, _}} -> {:reply, :ready, state}
+        {:ok, {:error, _}} -> {:reply, {:error, :not_ready}, state}
+        _ -> {:reply, {:error, :not_ready}, state}
+      end
+    else
+      {:reply, {:error, :not_ready}, state}
+    end
   end
 
   def handle_call(:get_resources, _from, state) do
