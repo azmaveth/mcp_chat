@@ -202,15 +202,7 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
           show_info("Executing #{length(tool_calls)} tools concurrently...")
 
           # Execute with progress tracking
-          progress_callback = fn update ->
-            case update.phase do
-              :starting ->
-                show_info("Starting concurrent execution...")
-
-              :completed ->
-                show_info("Execution completed: #{update.completed} successful, #{update.failed} failed")
-            end
-          end
+          progress_callback = &handle_execution_progress/1
 
           case ConcurrentToolExecutor.execute_concurrent(tool_calls,
                  progress_callback: progress_callback
@@ -277,37 +269,39 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
     show_info("\nExecution Results:")
     show_info("=================")
 
-    Enum.each(results, fn result ->
-      _status_color =
-        case result.status do
-          :success -> :green
-          :failed -> :red
-          :crashed -> :red
-        end
-
-      status_text =
-        case result.status do
-          :success -> "SUCCESS"
-          :failed -> "FAILED"
-          :crashed -> "CRASHED"
-        end
-
-      IO.puts("#{result.server_name}:#{result.tool_name} - #{status_text} (#{result.duration_ms}ms)")
-
-      case result.status do
-        :success ->
-          if result.result do
-            formatted_result = format_tool_result(result.result)
-            IO.puts("  Result: #{formatted_result}")
-          end
-
-        _ ->
-          if result.error do
-            IO.puts("  Error: #{inspect(result.error)}")
-          end
-      end
-    end)
+    Enum.each(results, &display_single_result/1)
   end
+
+  defp display_single_result(result) do
+    status_text = get_status_text(result.status)
+    IO.puts("#{result.server_name}:#{result.tool_name} - #{status_text} (#{result.duration_ms}ms)")
+    display_result_details(result)
+  end
+
+  defp get_status_text(:success), do: "SUCCESS"
+  defp get_status_text(:failed), do: "FAILED"
+  defp get_status_text(:crashed), do: "CRASHED"
+
+  defp display_result_details(%{status: :success, result: result}) when result != nil do
+    formatted_result = format_tool_result(result)
+    IO.puts("  Result: #{formatted_result}")
+  end
+
+  defp display_result_details(%{error: error}) when error != nil do
+    IO.puts("  Error: #{inspect(error)}")
+  end
+
+  defp display_result_details(_result), do: :ok
+
+  defp handle_execution_progress(%{phase: :starting}) do
+    show_info("Starting concurrent execution...")
+  end
+
+  defp handle_execution_progress(%{phase: :completed} = update) do
+    show_info("Execution completed: #{update.completed} successful, #{update.failed} failed")
+  end
+
+  defp handle_execution_progress(_update), do: :ok
 
   defp format_tool_result(result) when is_map(result) do
     case Jason.encode(result) do

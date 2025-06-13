@@ -285,83 +285,90 @@ defmodule MCPChat.MCP.ConcurrentToolExecutor do
 
   defp execute_tool(execution, opts) do
     start_time = System.monotonic_time(:millisecond)
-
-    # Generate progress token if enabled
-    progress_token =
-      if opts[:enable_progress] do
-        case ProgressTracker.start_operation("tool_execution", %{
-               server: execution.server_name,
-               tool: execution.tool_name,
-               id: execution.id
-             }) do
-          {:ok, token} -> token
-          token when is_binary(token) -> token
-          _ -> nil
-        end
-      end
+    progress_token = maybe_start_progress_tracking(execution, opts)
 
     Logger.debug("Executing tool #{execution.tool_name} on server #{execution.server_name}")
 
     try do
-      # Execute the tool via ServerManager
-      case ServerManager.call_tool(execution.server_name, execution.tool_name, execution.arguments) do
-        {:ok, result} ->
-          duration_ms = System.monotonic_time(:millisecond) - start_time
-
-          if progress_token do
-            ProgressTracker.complete_operation(progress_token)
-          end
-
-          Logger.debug("Tool #{execution.tool_name} completed successfully in #{duration_ms}ms")
-
-          %ExecutionResult{
-            id: execution.id,
-            server_name: execution.server_name,
-            tool_name: execution.tool_name,
-            status: :success,
-            result: result,
-            duration_ms: duration_ms,
-            progress_token: progress_token
-          }
-
-        {:error, reason} ->
-          duration_ms = System.monotonic_time(:millisecond) - start_time
-
-          if progress_token do
-            ProgressTracker.fail_operation(progress_token, reason)
-          end
-
-          Logger.warning("Tool #{execution.tool_name} failed: #{inspect(reason)}")
-
-          %ExecutionResult{
-            id: execution.id,
-            server_name: execution.server_name,
-            tool_name: execution.tool_name,
-            status: :failed,
-            error: reason,
-            duration_ms: duration_ms,
-            progress_token: progress_token
-          }
-      end
+      ServerManager.call_tool(execution.server_name, execution.tool_name, execution.arguments)
+      |> handle_tool_result(execution, start_time, progress_token)
     rescue
       e ->
-        duration_ms = System.monotonic_time(:millisecond) - start_time
-
-        if progress_token do
-          ProgressTracker.fail_operation(progress_token, e)
-        end
-
-        Logger.error("Tool #{execution.tool_name} crashed: #{inspect(e)}")
-
-        %ExecutionResult{
-          id: execution.id,
-          server_name: execution.server_name,
-          tool_name: execution.tool_name,
-          status: :crashed,
-          error: e,
-          duration_ms: duration_ms,
-          progress_token: progress_token
-        }
+        handle_tool_crash(execution, start_time, progress_token, e)
     end
+  end
+
+  defp maybe_start_progress_tracking(execution, opts) do
+    if opts[:enable_progress] do
+      case ProgressTracker.start_operation("tool_execution", %{
+             server: execution.server_name,
+             tool: execution.tool_name,
+             id: execution.id
+           }) do
+        {:ok, token} -> token
+        token when is_binary(token) -> token
+        _ -> nil
+      end
+    end
+  end
+
+  defp handle_tool_result({:ok, result}, execution, start_time, progress_token) do
+    duration_ms = System.monotonic_time(:millisecond) - start_time
+
+    if progress_token do
+      ProgressTracker.complete_operation(progress_token)
+    end
+
+    Logger.debug("Tool #{execution.tool_name} completed successfully in #{duration_ms}ms")
+
+    %ExecutionResult{
+      id: execution.id,
+      server_name: execution.server_name,
+      tool_name: execution.tool_name,
+      status: :success,
+      result: result,
+      duration_ms: duration_ms,
+      progress_token: progress_token
+    }
+  end
+
+  defp handle_tool_result({:error, reason}, execution, start_time, progress_token) do
+    duration_ms = System.monotonic_time(:millisecond) - start_time
+
+    if progress_token do
+      ProgressTracker.fail_operation(progress_token, reason)
+    end
+
+    Logger.warning("Tool #{execution.tool_name} failed: #{inspect(reason)}")
+
+    %ExecutionResult{
+      id: execution.id,
+      server_name: execution.server_name,
+      tool_name: execution.tool_name,
+      status: :failed,
+      error: reason,
+      duration_ms: duration_ms,
+      progress_token: progress_token
+    }
+  end
+
+  defp handle_tool_crash(execution, start_time, progress_token, e) do
+    duration_ms = System.monotonic_time(:millisecond) - start_time
+
+    if progress_token do
+      ProgressTracker.fail_operation(progress_token, e)
+    end
+
+    Logger.error("Tool #{execution.tool_name} crashed: #{inspect(e)}")
+
+    %ExecutionResult{
+      id: execution.id,
+      server_name: execution.server_name,
+      tool_name: execution.tool_name,
+      status: :crashed,
+      error: e,
+      duration_ms: duration_ms,
+      progress_token: progress_token
+    }
   end
 end

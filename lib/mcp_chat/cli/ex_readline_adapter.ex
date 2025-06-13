@@ -38,7 +38,8 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
   @impl true
   def init(opts) do
     # Determine which ExReadline implementation to use
-    implementation = Keyword.get(opts, :implementation, :simple)
+    # Default to :advanced for better arrow key and terminal handling
+    implementation = Keyword.get(opts, :implementation, :advanced)
 
     # Start the appropriate ExReadline implementation
     case start_ex_readline(implementation, opts) do
