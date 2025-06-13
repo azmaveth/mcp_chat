@@ -99,7 +99,7 @@ defmodule MCPChat.Streaming.EnhancedConsumer do
     # Process stream
     result =
       try do
-        state =
+        _updated_state =
           stream
           |> Stream.each(fn chunk ->
             GenServer.cast(self(), {:chunk, chunk})
@@ -267,7 +267,7 @@ defmodule MCPChat.Streaming.EnhancedConsumer do
 
       # Check for slow write
       if write_duration > state.config.slow_consumer_threshold * 1_000 do
-        state = update_metric(state, :slow_writes)
+        _updated_state = update_metric(state, :slow_writes)
         Logger.debug("Slow write detected: #{write_duration}μs")
       end
 

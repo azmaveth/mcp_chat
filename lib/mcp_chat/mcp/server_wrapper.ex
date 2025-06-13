@@ -160,7 +160,7 @@ defmodule MCPChat.MCP.ServerWrapper do
     end)
   end
 
-  def handle_call(:wait_for_ready, from, state) do
+  def handle_call(:wait_for_ready, _from, state) do
     # Check if the client process is alive and responsive
     if Process.alive?(state.client) do
       # Use async task with timeout to avoid hanging GenServer

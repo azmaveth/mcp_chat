@@ -289,11 +289,15 @@ defmodule MCPChat.MCP.ConcurrentToolExecutor do
     # Generate progress token if enabled
     progress_token =
       if opts[:enable_progress] do
-        ProgressTracker.start_operation("tool_execution", %{
-          server: execution.server_name,
-          tool: execution.tool_name,
-          id: execution.id
-        })
+        case ProgressTracker.start_operation("tool_execution", %{
+               server: execution.server_name,
+               tool: execution.tool_name,
+               id: execution.id
+             }) do
+          {:ok, token} -> token
+          token when is_binary(token) -> token
+          _ -> nil
+        end
       end
 
     Logger.debug("Executing tool #{execution.tool_name} on server #{execution.server_name}")

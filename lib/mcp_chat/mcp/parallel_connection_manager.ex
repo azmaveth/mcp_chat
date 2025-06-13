@@ -237,7 +237,7 @@ defmodule MCPChat.MCP.ParallelConnectionManager do
     end
   end
 
-  defp wait_for_connection(pid, name, timeout) do
+  defp wait_for_connection(pid, _name, timeout) do
     # Simple health check - try to get server info
     case GenServer.call(pid, :get_info, timeout) do
       {:ok, _info} -> {:ok, pid}

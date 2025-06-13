@@ -12,7 +12,7 @@ defmodule MCPChat.Context.AtSymbolResolver do
 
   alias MCPChat.Context.AtSymbolParser
   alias MCPChat.MCP.ServerManager
-  alias MCPChat.Session
+  # alias MCPChat.Session
 
   require Logger
 
@@ -231,7 +231,7 @@ defmodule MCPChat.Context.AtSymbolResolver do
   end
 
   defp resolve_mcp_resource(resource_name, opts) do
-    timeout = Keyword.get(opts, :mcp_timeout)
+    _timeout = Keyword.get(opts, :mcp_timeout)
 
     case find_resource_server(resource_name) do
       {:ok, server_name} ->

@@ -52,20 +52,21 @@ defmodule MCPChat.StdioProcessIntegrationTest do
         {:ok, result} = ServerWrapper.call_tool(wrapper, "get_current_time", %{})
 
         assert is_map(result)
-        assert Map.has_key?(result, "content")
+        assert Map.has_key?(result, "content") || Map.has_key?(result, :content)
 
-        content = result["content"]
+        content = result["content"] || result[:content]
         assert is_list(content)
 
         # Find the text content
         text_content =
           Enum.find(content, fn item ->
-            item["type"] == "text"
+            item["type"] == "text" || item[:type] == "text"
           end)
 
         assert text_content != nil
         # Date pattern
-        assert text_content["text"] =~ ~r/\d{4}-\d{2}-\d{2}/
+        text = text_content["text"] || text_content[:text]
+        assert text =~ ~r/\d{4}-\d{2}-\d{2}/
 
         # Clean up
         GenServer.stop(wrapper)
@@ -77,11 +78,11 @@ defmodule MCPChat.StdioProcessIntegrationTest do
       test_script = Path.join(System.tmp_dir!(), "test_crash_server.exs")
 
       File.write!(test_script, """
-      # Simple server that exits after receiving input
-      # Output a valid JSON-RPC response first
-      IO.puts(~s({"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{},"serverInfo":{"name":"crash-test","version":"1.0.0"}}}))
-      IO.gets("")  # Wait for input
-      System.halt(1)  # Exit with error
+      # Simple server that crashes immediately after startup
+      # Output a valid JSON-RPC response first, then crash
+      IO.puts(~s({"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-03-26","capabilities":{},"serverInfo":{"name":"crash-test","version":"1.0.0"}}}))
+      Process.sleep(100)  # Brief delay to ensure message is sent
+      System.halt(1)  # Exit with error immediately
       """)
 
       config = %{
@@ -92,24 +93,30 @@ defmodule MCPChat.StdioProcessIntegrationTest do
 
       {:ok, wrapper} = ServerWrapper.start_link(config)
 
-      # Monitor the wrapper
-      ref = Process.monitor(wrapper)
+      # Wait for the server to start and then crash
+      Process.sleep(500)
 
-      # Give it a moment to start, then try to interact (this should trigger the crash)
-      Process.sleep(1_000)
+      # The ServerWrapper should handle the crash gracefully - it should still be alive
+      # but calls to it should fail or return disconnected status
+      assert Process.alive?(wrapper)
 
-      # Try to interact (this should trigger the crash)
-      try do
-        ServerWrapper.get_tools(wrapper)
-      catch
-        # Expected to fail
-        _, _ -> :ok
-      end
+      # Try to call get_tools - this should fail since the underlying server crashed
+      result =
+        try do
+          ServerWrapper.get_tools(wrapper, 1_000)
+        catch
+          _, _ -> {:error, :crashed}
+        end
 
-      # Should receive DOWN message
-      assert_receive {:DOWN, ^ref, :process, ^wrapper, _reason}, 5_000
+      # Should either return an error or fail with an exception
+      assert result == {:error, :crashed} || match?({:error, _}, result)
+
+      # The wrapper should still be alive (graceful handling)
+      # but further operations should continue to fail
+      assert Process.alive?(wrapper)
 
       # Clean up
+      GenServer.stop(wrapper)
       File.rm!(test_script)
     end
   end

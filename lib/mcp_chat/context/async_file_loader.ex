@@ -12,7 +12,7 @@ defmodule MCPChat.Context.AsyncFileLoader do
   """
 
   require Logger
-  alias MCPChat.{Session, Context, MCP.ProgressTracker}
+  alias MCPChat.{Session, MCP.ProgressTracker}
 
   defmodule LoadOperation do
     @moduledoc false

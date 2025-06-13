@@ -26,10 +26,11 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
       :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
 
       :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _name, _params ->
-        "progress_token_#{:rand.uniform(1_000)}"
+        {:ok, "progress_token_#{:rand.uniform(1_000)}"}
       end)
 
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _token, _result -> :ok end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _token -> :ok end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _token, _reason -> :ok end)
 
       try do
         assert {:ok, results} =
@@ -74,8 +75,9 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
       end)
 
       :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _name, _params -> "progress_token" end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _token, _result -> :ok end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _name, _params -> {:ok, "progress_token"} end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _token -> :ok end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _token, _reason -> :ok end)
 
       try do
         assert {:ok, results} = ConcurrentToolExecutor.execute_concurrent(tool_calls)
@@ -123,8 +125,9 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
       end)
 
       :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> "token" end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _, _ -> :ok end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> {:ok, "token"} end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _ -> :ok end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _, _ -> :ok end)
 
       try do
         assert {:ok, _results} =
@@ -133,20 +136,34 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
                    max_concurrency: 4
                  )
 
-        # Check execution order - tools from same server should be sequential
+        # Check execution order - tools from same server should be sequential within their group
         order = :ets.tab2list(execution_order) |> Enum.map(fn {_ts, {server, tool}} -> {server, tool} end)
 
-        # Find positions of server1 tools
-        server1_positions =
+        # Find server1 tools and their order
+        server1_tools =
           order
           |> Enum.with_index()
           |> Enum.filter(fn {{server, _tool}, _index} -> server == "server1" end)
-          |> Enum.map(fn {_tool, index} -> index end)
+          |> Enum.map(fn {{_server, tool}, index} -> {tool, index} end)
 
-        # server1 tools should be executed consecutively
-        case server1_positions do
-          [pos1, pos2] -> assert abs(pos1 - pos2) == 1
+        # Find server2 tools and their order
+        server2_tools =
+          order
+          |> Enum.with_index()
+          |> Enum.filter(fn {{server, _tool}, _index} -> server == "server2" end)
+          |> Enum.map(fn {{_server, tool}, index} -> {tool, index} end)
+
+        # Within each server, tools should be in the right order (tool1 before tool2, tool3 before tool4)
+        case server1_tools do
+          [{"tool1", pos1}, {"tool2", pos2}] -> assert pos1 < pos2, "tool1 should execute before tool2"
+          [{"tool2", pos1}, {"tool1", pos2}] -> assert pos1 > pos2, "tool1 should execute before tool2"
           _ -> flunk("Expected exactly 2 server1 tools")
+        end
+
+        case server2_tools do
+          [{"tool3", pos3}, {"tool4", pos4}] -> assert pos3 < pos4, "tool3 should execute before tool4"
+          [{"tool4", pos3}, {"tool3", pos4}] -> assert pos3 > pos4, "tool3 should execute before tool4"
+          _ -> flunk("Expected exactly 2 server2 tools")
         end
       after
         :ets.delete(execution_order)
@@ -174,8 +191,9 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
       end)
 
       :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> "token" end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _, _ -> :ok end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> {:ok, "token"} end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _ -> :ok end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _, _ -> :ok end)
 
       try do
         assert {:ok, _results} =
@@ -247,8 +265,9 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
       end)
 
       :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> "token" end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _, _ -> :ok end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> {:ok, "token"} end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _ -> :ok end)
+      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _, _ -> :ok end)
 
       try do
         assert {:ok, results} =

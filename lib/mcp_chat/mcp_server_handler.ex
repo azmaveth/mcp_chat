@@ -35,7 +35,7 @@ defmodule MCPChat.MCPServerHandler do
   end
 
   @impl true
-  def handle_list_tools(state) do
+  def handle_list_tools(_params, state) do
     tools = [
       %{
         name: "chat",
@@ -185,7 +185,7 @@ defmodule MCPChat.MCPServerHandler do
   end
 
   @impl true
-  def handle_list_resources(state) do
+  def handle_list_resources(_params, state) do
     resources = [
       %{
         uri: "chat://history",
@@ -230,7 +230,7 @@ defmodule MCPChat.MCPServerHandler do
   end
 
   @impl true
-  def handle_list_prompts(state) do
+  def handle_list_prompts(_params, state) do
     prompts = [
       %{
         name: "code_review",

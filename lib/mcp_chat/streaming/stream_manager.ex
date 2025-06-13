@@ -13,7 +13,7 @@ defmodule MCPChat.Streaming.StreamManager do
   use GenServer
   require Logger
 
-  alias MCPChat.CLI.Renderer
+  # alias MCPChat.CLI.Renderer
 
   @default_buffer_size 50
   @default_batch_size 5
@@ -211,7 +211,7 @@ defmodule MCPChat.Streaming.StreamManager do
             consume_loop(manager, consumer_pid, new_acc)
 
           {:error, :timeout} ->
-            Logger.warn("Consumer timeout, slowing down")
+            Logger.warning("Consumer timeout, slowing down")
             Process.sleep(100)
             consume_loop(manager, consumer_pid, acc)
         end

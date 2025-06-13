@@ -141,7 +141,7 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
     end
   end
 
-  defp save_history(_ex_readline_pid) do
+  defp _save_history(_ex_readline_pid) do
     # ExReadline doesn't expose get_history API, so we can't save history
     # This is a limitation of the current ex_readline implementation
     # TODO: Add history tracking to ex_readline or track history in this adapter

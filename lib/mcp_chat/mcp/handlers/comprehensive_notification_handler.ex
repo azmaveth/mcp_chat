@@ -22,7 +22,7 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandler do
   @behaviour MCPChat.MCP.NotificationHandler
   require Logger
 
-  alias MCPChat.{Session, CLI.Renderer}
+  alias MCPChat.CLI.Renderer
 
   defstruct [
     :session_pid,
@@ -100,7 +100,7 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandler do
   @impl true
   def handle_notification(server_name, type, params, state) do
     # Unknown notification type
-    Logger.warn("Unknown notification type: #{type} from server #{server_name} - #{inspect(params)}")
+    Logger.warning("Unknown notification type: #{type} from server #{server_name} - #{inspect(params)}")
     {:ok, state}
   end
 

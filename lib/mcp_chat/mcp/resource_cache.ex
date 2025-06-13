@@ -149,7 +149,7 @@ defmodule MCPChat.MCP.ResourceCache do
       :not_found ->
         # Cache miss - fetch from server
         case fetch_and_cache(server_name, uri, opts, state) do
-          {:ok, resource} = result ->
+          {:ok, _resource} = result ->
             update_stats(:miss, System.monotonic_time(:millisecond) - start_time)
 
             # Subscribe to resource changes if not already subscribed

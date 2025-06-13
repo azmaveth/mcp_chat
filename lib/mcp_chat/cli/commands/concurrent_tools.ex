@@ -278,7 +278,7 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
     show_info("=================")
 
     Enum.each(results, fn result ->
-      status_color =
+      _status_color =
         case result.status do
           :success -> :green
           :failed -> :red

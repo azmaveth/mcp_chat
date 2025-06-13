@@ -6,6 +6,8 @@ defmodule MCPChat.CLI.Chat do
   alias MCPChat.{Session, Config}
   alias MCPChat.CLI.{Commands, Renderer}
   alias MCPChat.Context.AtSymbolResolver
+
+  require Logger
   # alias MCPChat.LLM
 
   def start() do
@@ -213,7 +215,7 @@ defmodule MCPChat.CLI.Chat do
     end
   end
 
-  defp stream_with_enhanced_consumer(stream, options) do
+  defp stream_with_enhanced_consumer(stream, _options) do
     alias MCPChat.Streaming.EnhancedConsumer
 
     # Get streaming configuration

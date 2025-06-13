@@ -159,12 +159,15 @@ defmodule MCPChat.Session.Autosave do
     new_state = %{state | config: new_config}
 
     # Reschedule if interval changed
-    if config[:interval] && state.enabled do
-      new_state = cancel_timer(new_state)
-      new_state = schedule_next_save(new_state)
-    end
+    final_state =
+      if config[:interval] && state.enabled do
+        new_state = cancel_timer(new_state)
+        schedule_next_save(new_state)
+      else
+        new_state
+      end
 
-    {:reply, :ok, new_state}
+    {:reply, :ok, final_state}
   end
 
   @impl true
