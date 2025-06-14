@@ -450,6 +450,20 @@ npm install -g ./my-mcp-server
 - **Provide feedback**: Use server descriptions to explain capabilities
 - **Test configurations**: Verify servers work before relying on them
 
+### 4. Health Monitoring
+
+MCP Chat automatically monitors the health of connected servers:
+
+- **Background Health Checks**: Servers are pinged every 30 seconds to verify responsiveness
+- **Health Metrics**: Track uptime, success rate, average response time, and consecutive failures
+- **Auto-Disable**: Servers are automatically disabled after 3 consecutive health check failures
+- **Real-time Status**: Use `/mcp servers` to view current health status:
+  - ✓ HEALTHY - Server is responding normally
+  - ⚠ UNHEALTHY - Server has failed recent health checks
+  - Connection status and performance metrics are also displayed
+
+Health monitoring helps ensure reliable server connections and prevents hanging on unresponsive servers.
+
 ## Troubleshooting
 
 ### Server Won't Start

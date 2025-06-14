@@ -35,10 +35,12 @@ Welcome to the MCP Chat documentation! This directory contains comprehensive gui
 
 ## Documentation Versions
 
-This documentation is for MCP Chat version 0.2.0 (May 2025).
+This documentation is for MCP Chat version 0.2.3 (June 2025).
 
-- **Latest stable**: v0.2.0
+- **Latest stable**: v0.2.3
 - **Development**: main branch
+- **New in v0.2.3**: MCP server health monitoring with auto-disable, comprehensive health metrics
+- **New in v0.2.2**: Background server connections, enhanced status tracking
 - **New in v0.2.0**: Progress tracking, notifications, server-side LLM
 
 ## Getting Help

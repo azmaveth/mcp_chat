@@ -4,6 +4,7 @@ defmodule MCPChat do
   """
 
   require Logger
+  alias MCPChat.CLI.Chat
 
   @doc """
   Start the chat client CLI.
@@ -183,7 +184,7 @@ defmodule MCPChat do
 
   defp start_chat_interface() do
     profile_ui_setup()
-    result = MCPChat.CLI.Chat.start()
+    result = Chat.start()
     complete_ui_profiling()
     result
   end

@@ -15,6 +15,7 @@ An Elixir-based CLI chat client with support for the Model Context Protocol (MCP
 - 🚀 GPU acceleration support with EXLA (CUDA, ROCm) and EMLX (Apple Silicon/Metal)
 - 🔌 MCP client functionality - connect to local (stdio) and remote (SSE) MCP servers
 - 🛠️ MCP server functionality - expose chat as an MCP server (stdio and SSE transports)
+- 🏥 Server health monitoring - automatic health checks with auto-disable for unhealthy servers
 - 💬 Interactive CLI chat interface with rich formatting
 - 📝 Conversation history and session management
 - 🎨 Beautiful terminal UI with Owl (progress bars, cache displays)
