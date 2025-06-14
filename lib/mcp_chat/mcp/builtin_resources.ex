@@ -231,398 +231,417 @@ defmodule MCPChat.MCP.BuiltinResources do
 
   def get_prompt(name) do
     case name do
-      "getting_started" ->
-        {:ok,
-         %{
-           name: "getting_started",
-           template: """
-           Welcome to MCP Chat! I'll help you get started.
-
-           First, let me check your setup:
-           1. LLM Backend: {{backend}}
-           2. Available Models: {{models}}
-           3. MCP Servers: {{servers}}
-
-           What would you like to learn about?
-           - Basic chat features
-           - Connecting MCP servers
-           - Managing conversations
-           - Cost tracking
-           - Advanced features
-
-           Just ask, and I'll guide you through it!
-           """,
-           arguments: [
-             %{name: "backend", description: "Current LLM backend"},
-             %{name: "models", description: "Available models"},
-             %{name: "servers", description: "Connected MCP servers"}
-           ]
-         }}
-
-      "demo" ->
-        {:ok,
-         %{
-           name: "demo",
-           template: """
-           I'll demonstrate MCP Chat's capabilities!
-
-           Here's what I can show you:
-
-           1. **LLM Features**
-              - Switch between models
-              - Stream responses
-              - Track costs
-
-           2. **MCP Integration**
-              - Connect to servers
-              - Use tools
-              - Access resources
-
-           3. **Session Management**
-              - Save/load conversations
-              - Context management
-              - Token tracking
-
-           4. **Advanced Features**
-              - Command aliases
-              - Multi-agent setup
-              - Custom configurations
-
-           Which feature would you like to see in action?
-           """,
-           arguments: []
-         }}
-
-      "troubleshoot" ->
-        {:ok,
-         %{
-           name: "troubleshoot",
-           template: """
-           Let's diagnose the issue you're experiencing.
-
-           Current environment:
-           - Backend: {{backend}}
-           - Model: {{model}}
-           - MCP Servers: {{servers}}
-           - Session ID: {{session_id}}
-
-           Please describe:
-           1. What you were trying to do
-           2. What happened instead
-           3. Any error messages
-
-           I'll help identify and resolve the issue.
-           """,
-           arguments: [
-             %{name: "backend", description: "Current LLM backend"},
-             %{name: "model", description: "Current model"},
-             %{name: "servers", description: "Connected MCP servers"},
-             %{name: "session_id", description: "Current session ID"}
-           ]
-         }}
-
-      "research_mode" ->
-        {:ok,
-         %{
-           name: "research_mode",
-           template: """
-           Entering research mode for: {{topic}}
-
-           I'll help you conduct thorough research using a structured approach:
-
-           ## Phase 1: Information Gathering
-           - Search for relevant sources
-           - Collect diverse perspectives
-           - Identify key concepts
-
-           ## Phase 2: Analysis
-           - Synthesize findings
-           - Identify patterns
-           - Evaluate reliability
-
-           ## Phase 3: Summary
-           - Key insights
-           - Recommendations
-           - Further resources
-
-           {{#if mcp_tools}}
-           Available research tools: {{mcp_tools}}
-           {{/if}}
-
-           {{#if constraints}}
-           Research constraints: {{constraints}}
-           {{/if}}
-
-           Let's begin with understanding your research goals...
-           """,
-           arguments: [
-             %{name: "topic", description: "Research topic", required: true},
-             %{name: "mcp_tools", description: "Available MCP research tools", required: false},
-             %{name: "constraints", description: "Time, scope, or other constraints", required: false}
-           ]
-         }}
-
-      "code_review" ->
-        {:ok,
-         %{
-           name: "code_review",
-           template: """
-           I'll review the code at: {{file_path}}
-
-           My review will cover:
-           1. **Code Quality**
-              - Readability and clarity
-              - Following best practices
-              - Potential improvements
-
-           2. **Potential Issues**
-              - Bugs or logic errors
-              - Performance concerns
-              - Security considerations
-
-           3. **Suggestions**
-              - Refactoring opportunities
-              - Better patterns to use
-              - Testing recommendations
-
-           {{#if specific_concerns}}
-           Focusing on: {{specific_concerns}}
-           {{/if}}
-           """,
-           arguments: [
-             %{name: "file_path", description: "Path to file to review", required: true},
-             %{name: "specific_concerns", description: "Specific areas to focus on", required: false}
-           ]
-         }}
-
-      "setup_mcp_server" ->
-        {:ok,
-         %{
-           name: "setup_mcp_server",
-           template: """
-           Let's set up a new MCP server!
-
-           Server type: {{server_type}}
-
-           I'll help you:
-           1. Install the server
-           2. Configure it properly
-           3. Connect it to MCP Chat
-           4. Test the connection
-           5. Use its features
-
-           {{#if custom_server}}
-           For your custom server, I'll also help with:
-           - Creating the server implementation
-           - Defining tools and resources
-           - Testing the integration
-           {{/if}}
-           """,
-           arguments: [
-             %{name: "server_type", description: "Type of server (filesystem, github, custom, etc.)", required: true},
-             %{name: "custom_server", description: "Whether this is a custom server", required: false}
-           ]
-         }}
-
-      "explain_code" ->
-        {:ok,
-         %{
-           name: "explain_code",
-           template: """
-           I'll explain the code {{#if file_path}}in {{file_path}}{{else}}you provided{{/if}}.
-
-           {{#if mcp_context}}
-           Using MCP context from: {{mcp_context}}
-           {{/if}}
-
-           My explanation will cover:
-           1. **Purpose**: What the code does
-           2. **How it works**: Step-by-step breakdown
-           3. **Key concepts**: Important patterns and techniques
-           4. **Dependencies**: External libraries or modules used
-           5. **Potential improvements**: Suggestions if applicable
-
-           {{#if focus_area}}
-           Focusing specifically on: {{focus_area}}
-           {{/if}}
-           """,
-           arguments: [
-             %{name: "file_path", description: "Path to code file", required: false},
-             %{name: "mcp_context", description: "MCP servers to use for context", required: false},
-             %{name: "focus_area", description: "Specific aspect to focus on", required: false}
-           ]
-         }}
-
-      "debug_session" ->
-        {:ok,
-         %{
-           name: "debug_session",
-           template: """
-           Starting interactive debugging session for: {{issue_description}}
-
-           {{#if error_message}}
-           Error: {{error_message}}
-           {{/if}}
-
-           {{#if stack_trace}}
-           Stack trace:
-           {{stack_trace}}
-           {{/if}}
-
-           I'll help you:
-           1. Understand the error
-           2. Identify the root cause
-           3. Suggest fixes
-           4. Test the solution
-
-           {{#if mcp_tools}}
-           Available MCP tools: {{mcp_tools}}
-           {{/if}}
-
-           Let's start by examining the issue...
-           """,
-           arguments: [
-             %{name: "issue_description", description: "Description of the issue", required: true},
-             %{name: "error_message", description: "Error message if available", required: false},
-             %{name: "stack_trace", description: "Stack trace if available", required: false},
-             %{name: "mcp_tools", description: "Relevant MCP tools available", required: false}
-           ]
-         }}
-
-      "create_agent" ->
-        {:ok,
-         %{
-           name: "create_agent",
-           template: """
-           Let's create a multi-agent MCP Chat setup!
-
-           Agent Purpose: {{agent_purpose}}
-           {{#if agent_count}}
-           Number of agents: {{agent_count}}
-           {{/if}}
-
-           I'll help you design a multi-agent system:
-
-           ## Step 1: Define Agent Roles
-           Based on your purpose, here are suggested agent roles:
-           {{#if agent_purpose contains "research"}}
-           - Research Agent: Gathers and analyzes information
-           - Synthesis Agent: Combines findings into insights
-           - Writer Agent: Produces final reports
-           {{else if agent_purpose contains "development"}}
-           - Code Analyzer: Reviews existing code
-           - Implementation Agent: Writes new code
-           - Test Agent: Creates and runs tests
-           - Documentation Agent: Updates docs
-           {{else}}
-           - Coordinator Agent: Manages workflow
-           - Worker Agents: Perform specific tasks
-           - Quality Agent: Validates results
-           {{/if}}
-
-           ## Step 2: Agent Communication
-           We'll use BEAM message passing for agent coordination:
-           - Agents run as MCP servers (stdio mode)
-           - Main instance connects to all agents
-           - Agents can send/receive messages via tools
-
-           ## Step 3: Configuration
-           I'll generate the configuration files needed:
-           1. Individual agent configs
-           2. Main coordinator config
-           3. Startup scripts
-
-           What specific capabilities should each agent have?
-           """,
-           arguments: [
-             %{name: "agent_purpose", description: "What the multi-agent system will do", required: true},
-             %{name: "agent_count", description: "Number of agents needed", required: false}
-           ]
-         }}
-
-      "api_integration" ->
-        {:ok,
-         %{
-           name: "api_integration",
-           template: """
-           Setting up API integration for: {{service_name}}
-
-           {{#if api_type}}
-           API Type: {{api_type}}
-           {{/if}}
-
-           I'll help you integrate {{service_name}} with MCP Chat:
-
-           ## Integration Approach
-
-           {{#if api_type == "REST"}}
-           ### REST API Integration
-           1. Create MCP server wrapper
-           2. Define tools for each endpoint
-           3. Handle authentication
-           4. Implement rate limiting
-           {{else if api_type == "GraphQL"}}
-           ### GraphQL Integration
-           1. Schema introspection
-           2. Query/mutation tools
-           3. Subscription support
-           4. Type mapping
-           {{else if api_type == "WebSocket"}}
-           ### WebSocket Integration
-           1. Connection management
-           2. Message routing
-           3. Event handling
-           4. Reconnection logic
-           {{else}}
-           ### Generic API Integration
-           1. Protocol detection
-           2. Authentication setup
-           3. Tool generation
-           4. Error handling
-           {{/if}}
-
-           ## Implementation Steps
-
-           1. **MCP Server Creation**
-              ```elixir
-              defmodule {{service_name}}Server do
-                use ExMCP.Server
-
-                def handle_tool_call("{{service_name}}.request", params) do
-                  # API call implementation
-                end
-              end
-              ```
-
-           2. **Configuration**
-              ```toml
-              [mcp.servers.{{service_name|lowercase}}]
-              command = ["./{{service_name|lowercase}}_server"]
-              env = { API_KEY = "your-key" }
-              ```
-
-           3. **Usage Example**
-              ```
-              /mcp connect {{service_name|lowercase}}
-              /mcp tool {{service_name|lowercase}} request {...}
-              ```
-
-           {{#if requires_auth}}
-           Note: This service requires authentication. Make sure to set up your API credentials.
-           {{/if}}
-
-           Would you like me to generate the complete MCP server code?
-           """,
-           arguments: [
-             %{name: "service_name", description: "Name of the service to integrate", required: true},
-             %{name: "api_type", description: "Type of API (REST, GraphQL, WebSocket, etc.)", required: false},
-             %{name: "requires_auth", description: "Whether authentication is required", required: false}
-           ]
-         }}
-
-      _ ->
-        {:error, "Prompt not found"}
+      "getting_started" -> get_getting_started_prompt()
+      "demo" -> get_demo_prompt()
+      "troubleshoot" -> get_troubleshoot_prompt()
+      "research_mode" -> get_research_mode_prompt()
+      "code_review" -> get_code_review_prompt()
+      "setup_mcp_server" -> get_setup_mcp_server_prompt()
+      "explain_code" -> get_explain_code_prompt()
+      "debug_session" -> get_debug_session_prompt()
+      "create_agent" -> get_create_agent_prompt()
+      "api_integration" -> get_api_integration_prompt()
+      _ -> {:error, "Prompt not found"}
     end
+  end
+
+  defp get_getting_started_prompt() do
+    {:ok,
+     %{
+       name: "getting_started",
+       template: """
+       Welcome to MCP Chat! I'll help you get started.
+
+       First, let me check your setup:
+       1. LLM Backend: {{backend}}
+       2. Available Models: {{models}}
+       3. MCP Servers: {{servers}}
+
+       What would you like to learn about?
+       - Basic chat features
+       - Connecting MCP servers
+       - Managing conversations
+       - Cost tracking
+       - Advanced features
+
+       Just ask, and I'll guide you through it!
+       """,
+       arguments: [
+         %{name: "backend", description: "Current LLM backend"},
+         %{name: "models", description: "Available models"},
+         %{name: "servers", description: "Connected MCP servers"}
+       ]
+     }}
+  end
+
+  defp get_demo_prompt() do
+    {:ok,
+     %{
+       name: "demo",
+       template: """
+       I'll demonstrate MCP Chat's capabilities!
+
+       Here's what I can show you:
+
+       1. **LLM Features**
+          - Switch between models
+          - Stream responses
+          - Track costs
+
+       2. **MCP Integration**
+          - Connect to servers
+          - Use tools
+          - Access resources
+
+       3. **Session Management**
+          - Save/load conversations
+          - Context management
+          - Token tracking
+
+       4. **Advanced Features**
+          - Command aliases
+          - Multi-agent setup
+          - Custom configurations
+
+       Which feature would you like to see in action?
+       """,
+       arguments: []
+     }}
+  end
+
+  defp get_troubleshoot_prompt() do
+    {:ok,
+     %{
+       name: "troubleshoot",
+       template: """
+       Let's diagnose the issue you're experiencing.
+
+       Current environment:
+       - Backend: {{backend}}
+       - Model: {{model}}
+       - MCP Servers: {{servers}}
+       - Session ID: {{session_id}}
+
+       Please describe:
+       1. What you were trying to do
+       2. What happened instead
+       3. Any error messages
+
+       I'll help identify and resolve the issue.
+       """,
+       arguments: [
+         %{name: "backend", description: "Current LLM backend"},
+         %{name: "model", description: "Current model"},
+         %{name: "servers", description: "Connected MCP servers"},
+         %{name: "session_id", description: "Current session ID"}
+       ]
+     }}
+  end
+
+  defp get_research_mode_prompt() do
+    {:ok,
+     %{
+       name: "research_mode",
+       template: """
+       Entering research mode for: {{topic}}
+
+       I'll help you conduct thorough research using a structured approach:
+
+       ## Phase 1: Information Gathering
+       - Search for relevant sources
+       - Collect diverse perspectives
+       - Identify key concepts
+
+       ## Phase 2: Analysis
+       - Synthesize findings
+       - Identify patterns
+       - Evaluate reliability
+
+       ## Phase 3: Summary
+       - Key insights
+       - Recommendations
+       - Further resources
+
+       {{#if mcp_tools}}
+       Available research tools: {{mcp_tools}}
+       {{/if}}
+
+       {{#if constraints}}
+       Research constraints: {{constraints}}
+       {{/if}}
+
+       Let's begin with understanding your research goals...
+       """,
+       arguments: [
+         %{name: "topic", description: "Research topic", required: true},
+         %{name: "mcp_tools", description: "Available MCP research tools", required: false},
+         %{name: "constraints", description: "Time, scope, or other constraints", required: false}
+       ]
+     }}
+  end
+
+  defp get_code_review_prompt() do
+    {:ok,
+     %{
+       name: "code_review",
+       template: """
+       I'll review the code at: {{file_path}}
+
+       My review will cover:
+       1. **Code Quality**
+          - Readability and clarity
+          - Following best practices
+          - Potential improvements
+
+       2. **Potential Issues**
+          - Bugs or logic errors
+          - Performance concerns
+          - Security considerations
+
+       3. **Suggestions**
+          - Refactoring opportunities
+          - Better patterns to use
+          - Testing recommendations
+
+       {{#if specific_concerns}}
+       Focusing on: {{specific_concerns}}
+       {{/if}}
+       """,
+       arguments: [
+         %{name: "file_path", description: "Path to file to review", required: true},
+         %{name: "specific_concerns", description: "Specific areas to focus on", required: false}
+       ]
+     }}
+  end
+
+  defp get_setup_mcp_server_prompt() do
+    {:ok,
+     %{
+       name: "setup_mcp_server",
+       template: """
+       Let's set up a new MCP server!
+
+       Server type: {{server_type}}
+
+       I'll help you:
+       1. Install the server
+       2. Configure it properly
+       3. Connect it to MCP Chat
+       4. Test the connection
+       5. Use its features
+
+       {{#if custom_server}}
+       For your custom server, I'll also help with:
+       - Creating the server implementation
+       - Defining tools and resources
+       - Testing the integration
+       {{/if}}
+       """,
+       arguments: [
+         %{name: "server_type", description: "Type of server (filesystem, github, custom, etc.)", required: true},
+         %{name: "custom_server", description: "Whether this is a custom server", required: false}
+       ]
+     }}
+  end
+
+  defp get_explain_code_prompt() do
+    {:ok,
+     %{
+       name: "explain_code",
+       template: """
+       I'll explain the code {{#if file_path}}in {{file_path}}{{else}}you provided{{/if}}.
+
+       {{#if mcp_context}}
+       Using MCP context from: {{mcp_context}}
+       {{/if}}
+
+       My explanation will cover:
+       1. **Purpose**: What the code does
+       2. **How it works**: Step-by-step breakdown
+       3. **Key concepts**: Important patterns and techniques
+       4. **Dependencies**: External libraries or modules used
+       5. **Potential improvements**: Suggestions if applicable
+
+       {{#if focus_area}}
+       Focusing specifically on: {{focus_area}}
+       {{/if}}
+       """,
+       arguments: [
+         %{name: "file_path", description: "Path to code file", required: false},
+         %{name: "mcp_context", description: "MCP servers to use for context", required: false},
+         %{name: "focus_area", description: "Specific aspect to focus on", required: false}
+       ]
+     }}
+  end
+
+  defp get_debug_session_prompt() do
+    {:ok,
+     %{
+       name: "debug_session",
+       template: """
+       Starting interactive debugging session for: {{issue_description}}
+
+       {{#if error_message}}
+       Error: {{error_message}}
+       {{/if}}
+
+       {{#if stack_trace}}
+       Stack trace:
+       {{stack_trace}}
+       {{/if}}
+
+       I'll help you:
+       1. Understand the error
+       2. Identify the root cause
+       3. Suggest fixes
+       4. Test the solution
+
+       {{#if mcp_tools}}
+       Available MCP tools: {{mcp_tools}}
+       {{/if}}
+
+       Let's start by examining the issue...
+       """,
+       arguments: [
+         %{name: "issue_description", description: "Description of the issue", required: true},
+         %{name: "error_message", description: "Error message if available", required: false},
+         %{name: "stack_trace", description: "Stack trace if available", required: false},
+         %{name: "mcp_tools", description: "Relevant MCP tools available", required: false}
+       ]
+     }}
+  end
+
+  defp get_create_agent_prompt() do
+    {:ok,
+     %{
+       name: "create_agent",
+       template: """
+       Let's create a multi-agent MCP Chat setup!
+
+       Agent Purpose: {{agent_purpose}}
+       {{#if agent_count}}
+       Number of agents: {{agent_count}}
+       {{/if}}
+
+       I'll help you design a multi-agent system:
+
+       ## Step 1: Define Agent Roles
+       Based on your purpose, here are suggested agent roles:
+       {{#if agent_purpose contains "research"}}
+       - Research Agent: Gathers and analyzes information
+       - Synthesis Agent: Combines findings into insights
+       - Writer Agent: Produces final reports
+       {{else if agent_purpose contains "development"}}
+       - Code Analyzer: Reviews existing code
+       - Implementation Agent: Writes new code
+       - Test Agent: Creates and runs tests
+       - Documentation Agent: Updates docs
+       {{else}}
+       - Coordinator Agent: Manages workflow
+       - Worker Agents: Perform specific tasks
+       - Quality Agent: Validates results
+       {{/if}}
+
+       ## Step 2: Agent Communication
+       We'll use BEAM message passing for agent coordination:
+       - Agents run as MCP servers (stdio mode)
+       - Main instance connects to all agents
+       - Agents can send/receive messages via tools
+
+       ## Step 3: Configuration
+       I'll generate the configuration files needed:
+       1. Individual agent configs
+       2. Main coordinator config
+       3. Startup scripts
+
+       What specific capabilities should each agent have?
+       """,
+       arguments: [
+         %{name: "agent_purpose", description: "What the multi-agent system will do", required: true},
+         %{name: "agent_count", description: "Number of agents needed", required: false}
+       ]
+     }}
+  end
+
+  defp get_api_integration_prompt() do
+    {:ok,
+     %{
+       name: "api_integration",
+       template: """
+       Setting up API integration for: {{service_name}}
+
+       {{#if api_type}}
+       API Type: {{api_type}}
+       {{/if}}
+
+       I'll help you integrate {{service_name}} with MCP Chat:
+
+       ## Integration Approach
+
+       {{#if api_type == "REST"}}
+       ### REST API Integration
+       1. Create MCP server wrapper
+       2. Define tools for each endpoint
+       3. Handle authentication
+       4. Implement rate limiting
+       {{else if api_type == "GraphQL"}}
+       ### GraphQL Integration
+       1. Schema introspection
+       2. Query/mutation tools
+       3. Subscription support
+       4. Type mapping
+       {{else if api_type == "WebSocket"}}
+       ### WebSocket Integration
+       1. Connection management
+       2. Message routing
+       3. Event handling
+       4. Reconnection logic
+       {{else}}
+       ### Generic API Integration
+       1. Protocol detection
+       2. Authentication setup
+       3. Tool generation
+       4. Error handling
+       {{/if}}
+
+       ## Implementation Steps
+
+       1. **MCP Server Creation**
+          ```elixir
+          defmodule {{service_name}}Server do
+            use ExMCP.Server
+
+            def handle_tool_call("{{service_name}}.request", params) do
+              # API call implementation
+            end
+          end
+          ```
+
+       2. **Configuration**
+          ```toml
+          [mcp.servers.{{service_name|lowercase}}]
+          command = ["./{{service_name|lowercase}}_server"]
+          env = { API_KEY = "your-key" }
+          ```
+
+       3. **Usage Example**
+          ```
+          /mcp connect {{service_name|lowercase}}
+          /mcp tool {{service_name|lowercase}} request {...}
+          ```
+
+       {{#if requires_auth}}
+       Note: This service requires authentication. Make sure to set up your API credentials.
+       {{/if}}
+
+       Would you like me to generate the complete MCP server code?
+       """,
+       arguments: [
+         %{name: "service_name", description: "Name of the service to integrate", required: true},
+         %{name: "api_type", description: "Type of API (REST, GraphQL, WebSocket, etc.)", required: false},
+         %{name: "requires_auth", description: "Whether authentication is required", required: false}
+       ]
+     }}
   end
 
   # Helper to generate multi-agent examples

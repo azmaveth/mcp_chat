@@ -286,13 +286,7 @@ defmodule MCPChat.MCP.ServerWrapper do
         :stdio
 
       config[:url] || config["url"] ->
-        url = config[:url] || config["url"]
-
-        if String.starts_with?(url, "ws://") or String.starts_with?(url, "wss://") do
-          :websocket
-        else
-          :sse
-        end
+        determine_url_transport(config)
 
       config[:target] || config["target"] ->
         :beam
@@ -302,39 +296,58 @@ defmodule MCPChat.MCP.ServerWrapper do
     end
   end
 
+  defp determine_url_transport(config) do
+    url = config[:url] || config["url"]
+
+    if String.starts_with?(url, "ws://") or String.starts_with?(url, "wss://") do
+      :websocket
+    else
+      :sse
+    end
+  end
+
   defp build_client_opts(config, process_manager \\ nil) do
     base_opts = [
       server_name: config[:name] || config["name"]
     ]
 
     cond do
-      # When we have a process manager, use the managed stdio transport
       process_manager != nil ->
-        base_opts ++
-          [
-            transport: MCPChat.MCP.Transport.ManagedStdio,
-            process_manager: process_manager
-          ]
+        build_managed_stdio_opts(base_opts, process_manager)
 
       config[:command] || config["command"] ->
-        # Stdio transport (legacy path, shouldn't be reached with new code)
-        base_opts ++
-          [
-            transport: :stdio,
-            command: config[:command] || config["command"],
-            env: config[:env] || config["env"] || %{}
-          ]
+        build_stdio_opts(base_opts, config)
 
       config[:url] || config["url"] ->
-        # SSE transport
-        base_opts ++
-          [
-            transport: :sse,
-            url: config[:url] || config["url"]
-          ]
+        build_sse_opts(base_opts, config)
 
       true ->
         raise "Invalid server config: missing command or url"
     end
+  end
+
+  defp build_managed_stdio_opts(base_opts, process_manager) do
+    base_opts ++
+      [
+        transport: MCPChat.MCP.Transport.ManagedStdio,
+        process_manager: process_manager
+      ]
+  end
+
+  defp build_stdio_opts(base_opts, config) do
+    base_opts ++
+      [
+        transport: :stdio,
+        command: config[:command] || config["command"],
+        env: config[:env] || config["env"] || %{}
+      ]
+  end
+
+  defp build_sse_opts(base_opts, config) do
+    base_opts ++
+      [
+        transport: :sse,
+        url: config[:url] || config["url"]
+      ]
   end
 end

@@ -180,7 +180,33 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandler do
 
   defp format_notification(server_name, type, params) do
     case type do
-      # Connection events
+      type when type in [:server_connected, :server_disconnected, :server_error] ->
+        format_connection_event(server_name, type, params)
+
+      type when type in [:resources_list_changed, :resources_updated, :resource_added, :resource_removed] ->
+        format_resource_event(server_name, type, params)
+
+      type when type in [:tools_list_changed, :tool_added, :tool_removed] ->
+        format_tool_event(server_name, type, params)
+
+      type when type in [:prompts_list_changed, :prompt_added, :prompt_removed] ->
+        format_prompt_event(server_name, type, params)
+
+      type when type in [:progress, :progress_start, :progress_complete, :progress_error] ->
+        format_progress_event(server_name, type, params)
+
+      :custom_notification ->
+        format_custom_event(server_name, params)
+
+      _ ->
+        format_unknown_event(server_name, type, params)
+    end
+  end
+
+  # Event formatting helpers
+
+  defp format_connection_event(server_name, type, params) do
+    case type do
       :server_connected ->
         "🔌 Connected to MCP server: #{server_name}"
 
@@ -190,8 +216,11 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandler do
       :server_error ->
         error = params[:error] || "unknown error"
         "⚠️  Error with MCP server #{server_name}: #{error}"
+    end
+  end
 
-      # Resource events
+  defp format_resource_event(server_name, type, params) do
+    case type do
       :resources_list_changed ->
         "📋 Resources updated for server: #{server_name}"
 
@@ -206,8 +235,11 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandler do
       :resource_removed ->
         resource = params[:resource] || "unknown"
         "➖ Resource removed: #{resource} (#{server_name})"
+    end
+  end
 
-      # Tool events
+  defp format_tool_event(server_name, type, params) do
+    case type do
       :tools_list_changed ->
         "🔧 Tools updated for server: #{server_name}"
 
@@ -218,8 +250,11 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandler do
       :tool_removed ->
         tool = params[:tool] || "unknown"
         "🗑️  Tool removed: #{tool} (#{server_name})"
+    end
+  end
 
-      # Prompt events
+  defp format_prompt_event(server_name, type, params) do
+    case type do
       :prompts_list_changed ->
         "💬 Prompts updated for server: #{server_name}"
 
@@ -230,8 +265,15 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandler do
       :prompt_removed ->
         prompt = params[:prompt] || "unknown"
         "🗑️  Prompt removed: #{prompt} (#{server_name})"
+    end
+  end
 
-      # Progress events
+  defp format_progress_event(server_name, type, params) do
+    case type do
+      # Avoid spam from frequent updates
+      :progress ->
+        nil
+
       :progress_start ->
         operation = params[:operation] || "operation"
         "⏳ Started: #{operation} (#{server_name})"
@@ -244,20 +286,16 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandler do
         operation = params[:operation] || "operation"
         error = params[:error] || "unknown error"
         "❌ Failed: #{operation} - #{error} (#{server_name})"
-
-      :progress ->
-        # Progress updates are usually frequent, return nil to avoid spam
-        nil
-
-      # Custom events
-      :custom_notification ->
-        message = params[:message] || inspect(params)
-        "📢 #{server_name}: #{message}"
-
-      # Fallback
-      _ ->
-        "🔔 #{server_name}: #{type} - #{inspect(params)}"
     end
+  end
+
+  defp format_custom_event(server_name, params) do
+    message = params[:message] || inspect(params)
+    "📢 #{server_name}: #{message}"
+  end
+
+  defp format_unknown_event(server_name, type, params) do
+    "🔔 #{server_name}: #{type} - #{inspect(params)}"
   end
 
   # Public API for notification control

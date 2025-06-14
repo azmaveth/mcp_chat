@@ -145,91 +145,126 @@ defmodule MCPChat.UI.TUIManager do
 
   @impl true
   def handle_cast(:toggle_display, state) do
-    new_display =
-      case state.active_display do
-        :none -> :progress
-        :progress -> :cache
-        :cache -> :both
-        :both -> :none
-      end
-
-    # Update displays
-    case {state.active_display, new_display} do
-      {:none, :progress} ->
-        ProgressDisplay.show()
-
-      {:none, :cache} ->
-        ResourceCacheDisplay.show()
-
-      {:none, :both} ->
-        ProgressDisplay.show()
-        ResourceCacheDisplay.show()
-
-      {:progress, :cache} ->
-        ProgressDisplay.hide()
-        ResourceCacheDisplay.show()
-
-      {:progress, :both} ->
-        ResourceCacheDisplay.show()
-
-      {:cache, :progress} ->
-        ResourceCacheDisplay.hide()
-        ProgressDisplay.show()
-
-      {:cache, :both} ->
-        ProgressDisplay.show()
-
-      {:both, :none} ->
-        ProgressDisplay.hide()
-        ResourceCacheDisplay.hide()
-
-      {:both, :progress} ->
-        ResourceCacheDisplay.hide()
-
-      {:both, :cache} ->
-        ProgressDisplay.hide()
-
-      _ ->
-        :ok
-    end
-
+    new_display = get_next_display_mode(state.active_display)
+    transition_display(state.active_display, new_display)
     {:noreply, %{state | active_display: new_display}}
   end
 
   @impl true
   def handle_cast({:handle_key, key}, state) do
     case key do
-      # Display toggles
-      "p" ->
-        handle_cast(:show_progress, state)
+      key when key in ["p", "c", "b", "h"] ->
+        handle_display_toggle_key(state, key)
 
-      "c" ->
-        handle_cast({:show_cache, :summary}, state)
+      key when key in ["d", "s"] and state.active_display in [:cache, :both] ->
+        handle_cache_mode_key(state, key)
 
-      "b" ->
-        handle_cast(:show_both, state)
-
-      "h" ->
-        handle_cast(:hide_all, state)
-
-      # Cache display modes
-      "d" when state.active_display in [:cache, :both] ->
-        ResourceCacheDisplay.show(:detailed)
-        {:noreply, state}
-
-      "s" when state.active_display in [:cache, :both] ->
-        ResourceCacheDisplay.show(:summary)
-        {:noreply, state}
-
-      # Layout toggle
       "l" ->
-        new_layout = if state.layout_mode == :stacked, do: :side_by_side, else: :stacked
-        Logger.info("TUI layout mode: #{new_layout}")
-        {:noreply, %{state | layout_mode: new_layout}}
+        handle_layout_toggle_key(state)
 
       _ ->
         {:noreply, state}
     end
+  end
+
+  # Display transition helpers
+
+  defp get_next_display_mode(current) do
+    case current do
+      :none -> :progress
+      :progress -> :cache
+      :cache -> :both
+      :both -> :none
+    end
+  end
+
+  defp transition_display(from, to) do
+    case from do
+      :none -> transition_from_none(to)
+      :progress -> transition_from_progress(to)
+      :cache -> transition_from_cache(to)
+      :both -> transition_from_both(to)
+    end
+  end
+
+  defp show_both_displays() do
+    ProgressDisplay.show()
+    ResourceCacheDisplay.show()
+  end
+
+  defp switch_to_cache_only() do
+    ProgressDisplay.hide()
+    ResourceCacheDisplay.show()
+  end
+
+  defp switch_to_progress_only() do
+    ResourceCacheDisplay.hide()
+    ProgressDisplay.show()
+  end
+
+  defp hide_all_displays() do
+    ProgressDisplay.hide()
+    ResourceCacheDisplay.hide()
+  end
+
+  defp transition_from_none(to) do
+    case to do
+      :progress -> ProgressDisplay.show()
+      :cache -> ResourceCacheDisplay.show()
+      :both -> show_both_displays()
+      _ -> :ok
+    end
+  end
+
+  defp transition_from_progress(to) do
+    case to do
+      :cache -> switch_to_cache_only()
+      :both -> ResourceCacheDisplay.show()
+      _ -> :ok
+    end
+  end
+
+  defp transition_from_cache(to) do
+    case to do
+      :progress -> switch_to_progress_only()
+      :both -> ProgressDisplay.show()
+      _ -> :ok
+    end
+  end
+
+  defp transition_from_both(to) do
+    case to do
+      :none -> hide_all_displays()
+      :progress -> ResourceCacheDisplay.hide()
+      :cache -> ProgressDisplay.hide()
+      _ -> :ok
+    end
+  end
+
+  # Key handling helpers
+
+  defp handle_display_toggle_key(state, key) do
+    case key do
+      "p" -> handle_cast(:show_progress, state)
+      "c" -> handle_cast({:show_cache, :summary}, state)
+      "b" -> handle_cast(:show_both, state)
+      "h" -> handle_cast(:hide_all, state)
+    end
+  end
+
+  defp handle_cache_mode_key(state, key) do
+    case key do
+      "d" -> ResourceCacheDisplay.show(:detailed)
+      "s" -> ResourceCacheDisplay.show(:summary)
+    end
+
+    {:noreply, state}
+  end
+
+  defp handle_layout_toggle_key(state) do
+    new_layout = if state.layout_mode == :stacked, do: :side_by_side, else: :stacked
+    Logger.info("TUI layout mode: #{new_layout}")
+    {:noreply, %{state | layout_mode: new_layout}}
   end
 
   @impl true

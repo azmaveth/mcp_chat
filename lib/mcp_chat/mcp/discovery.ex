@@ -106,33 +106,43 @@ defmodule MCPChat.MCP.Discovery do
   def discover_known_locations(opts \\ []) do
     path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
 
-    locations =
-      case path_provider do
-        MCPChat.PathProvider.Default ->
-          case MCPChat.PathProvider.Default.get_path(:mcp_discovery_dirs) do
-            {:ok, dirs} -> dirs
-            # fallback
-            {:error, _} -> [Path.expand("~/.mcp/servers")]
-          end
-
-        provider when is_pid(provider) ->
-          case MCPChat.PathProvider.Static.get_path(provider, :mcp_discovery_dirs) do
-            {:ok, dirs} -> dirs
-            # fallback
-            {:error, _} -> ["/tmp/mcp_chat_test/mcp_servers"]
-          end
-
-        provider ->
-          case provider.get_path(:mcp_discovery_dirs) do
-            {:ok, dirs} -> dirs
-            # fallback
-            {:error, _} -> [Path.expand("~/.mcp/servers")]
-          end
-      end
-
-    locations
+    get_discovery_locations(path_provider)
     |> Enum.filter(&File.dir?/1)
     |> Enum.flat_map(&scan_directory/1)
+  end
+
+  defp get_discovery_locations(path_provider) do
+    case path_provider do
+      MCPChat.PathProvider.Default ->
+        get_default_provider_paths()
+
+      provider when is_pid(provider) ->
+        get_static_provider_paths(provider)
+
+      provider ->
+        get_custom_provider_paths(provider)
+    end
+  end
+
+  defp get_default_provider_paths() do
+    case MCPChat.PathProvider.Default.get_path(:mcp_discovery_dirs) do
+      {:ok, dirs} -> dirs
+      {:error, _} -> [Path.expand("~/.mcp/servers")]
+    end
+  end
+
+  defp get_static_provider_paths(provider) do
+    case MCPChat.PathProvider.Static.get_path(provider, :mcp_discovery_dirs) do
+      {:ok, dirs} -> dirs
+      {:error, _} -> ["/tmp/mcp_chat_test/mcp_servers"]
+    end
+  end
+
+  defp get_custom_provider_paths(provider) do
+    case provider.get_path(:mcp_discovery_dirs) do
+      {:ok, dirs} -> dirs
+      {:error, _} -> [Path.expand("~/.mcp/servers")]
+    end
   end
 
   @doc """

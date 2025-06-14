@@ -296,109 +296,61 @@ defmodule MCPChat.MCP.ExMCPAdapter do
 
     case determine_transport(config_map) do
       {:websocket, _url} ->
-        # ExMCP doesn't have WebSocket transport, so we'd need to implement it
-        # For now, we'll fall back to a different transport or error
         {:error, :websocket_not_supported}
 
       {:stdio, command_config} ->
-        # For stdio transport, we expect the server process to already be running
-        # (managed by StdioProcessManager), so we configure ExMCP to connect to it
-
-        # Parse command to get the proper executable and args
-        {cmd, args} = parse_command_for_exmcp(command_config.command, command_config.args || [])
-
-        [
-          transport: ExMCP.Transport.Stdio,
-          command: [cmd | args],
-          env: command_config.env || %{}
-        ]
+        build_stdio_config(command_config)
 
       {:sse, sse_config} ->
-        [
-          transport: ExMCP.Transport.SSE,
-          url: sse_config.url,
-          headers: Map.to_list(sse_config.headers || %{})
-        ]
+        build_sse_config(sse_config)
 
       {:beam, beam_config} ->
-        [
-          transport: ExMCP.Transport.Beam,
-          target: beam_config.target
-        ]
+        build_beam_config(beam_config)
 
       {:error, reason} ->
         {:error, reason}
     end
   end
 
+  defp build_stdio_config(command_config) do
+    # Parse command to get the proper executable and args
+    {cmd, args} = parse_command_for_exmcp(command_config.command, command_config.args || [])
+
+    [
+      transport: ExMCP.Transport.Stdio,
+      command: [cmd | args],
+      env: command_config.env || %{}
+    ]
+  end
+
+  defp build_sse_config(sse_config) do
+    [
+      transport: ExMCP.Transport.SSE,
+      url: sse_config.url,
+      headers: Map.to_list(sse_config.headers || %{})
+    ]
+  end
+
+  defp build_beam_config(beam_config) do
+    [
+      transport: ExMCP.Transport.Beam,
+      target: beam_config.target
+    ]
+  end
+
   defp determine_transport(config) do
     cond do
-      # Check for explicit transport type
-      Map.has_key?(config, :transport) or Map.has_key?(config, "transport") ->
-        transport = Map.get(config, :transport) || Map.get(config, "transport")
+      has_explicit_transport?(config) ->
+        handle_explicit_transport(config)
 
-        case transport do
-          :stdio ->
-            command = Map.get(config, :command) || Map.get(config, "command")
-            # If command is a list, it contains the command and args
-            {cmd, args} =
-              case command do
-                [cmd | args] when is_list(args) -> {cmd, args}
-                cmd when is_binary(cmd) -> {cmd, Map.get(config, :args, [])}
-                _ -> {command, []}
-              end
+      has_url_config?(config) ->
+        handle_url_config(config)
 
-            {:stdio,
-             %{
-               command: cmd,
-               args: args,
-               env: Map.get(config, :env, %{}) || Map.get(config, "env", %{})
-             }}
+      has_command_config?(config) ->
+        handle_stdio_config(config)
 
-          :sse ->
-            {:sse, %{url: Map.get(config, :url) || Map.get(config, "url"), headers: Map.get(config, :headers, %{})}}
-
-          :beam ->
-            {:beam, %{target: Map.get(config, :target) || Map.get(config, "target")}}
-
-          _ ->
-            {:error, :unknown_transport}
-        end
-
-      # Check for WebSocket URL
-      Map.has_key?(config, :url) or Map.has_key?(config, "url") ->
-        url = Map.get(config, :url) || Map.get(config, "url")
-
-        if String.starts_with?(url, "ws://") or String.starts_with?(url, "wss://") do
-          {:websocket, url}
-        else
-          {:sse, %{url: url, headers: Map.get(config, :headers, %{})}}
-        end
-
-      # Check for stdio command
-      Map.has_key?(config, :command) or Map.has_key?(config, "command") ->
-        command = Map.get(config, :command) || Map.get(config, "command")
-        # If command is a list, it contains the command and args
-        {cmd, args} =
-          case command do
-            [cmd | args] when is_list(args) -> {cmd, args}
-            cmd when is_binary(cmd) -> {cmd, Map.get(config, :args, [])}
-            _ -> {command, []}
-          end
-
-        {:stdio,
-         %{
-           command: cmd,
-           args: args,
-           env: Map.get(config, :env, %{}) || Map.get(config, "env", %{})
-         }}
-
-      # Check for BEAM target
-      Map.has_key?(config, :target) or Map.has_key?(config, "target") ->
-        {:beam,
-         %{
-           target: Map.get(config, :target) || Map.get(config, "target")
-         }}
+      has_beam_target?(config) ->
+        handle_beam_config(config)
 
       true ->
         {:error, :unknown_transport}
@@ -425,5 +377,95 @@ defmodule MCPChat.MCP.ExMCPAdapter do
 
   defp parse_command_for_exmcp(command, args) do
     {to_string(command), args}
+  end
+
+  # Transport determination helpers
+
+  defp has_explicit_transport?(config) do
+    Map.has_key?(config, :transport) or Map.has_key?(config, "transport")
+  end
+
+  defp has_url_config?(config) do
+    Map.has_key?(config, :url) or Map.has_key?(config, "url")
+  end
+
+  defp has_command_config?(config) do
+    Map.has_key?(config, :command) or Map.has_key?(config, "command")
+  end
+
+  defp has_beam_target?(config) do
+    Map.has_key?(config, :target) or Map.has_key?(config, "target")
+  end
+
+  defp handle_explicit_transport(config) do
+    transport = Map.get(config, :transport) || Map.get(config, "transport")
+
+    case transport do
+      :stdio -> build_stdio_transport_config(config)
+      :sse -> build_sse_transport_config(config)
+      :beam -> build_beam_transport_config(config)
+      _ -> {:error, :unknown_transport}
+    end
+  end
+
+  defp handle_url_config(config) do
+    url = Map.get(config, :url) || Map.get(config, "url")
+
+    if String.starts_with?(url, "ws://") or String.starts_with?(url, "wss://") do
+      {:websocket, url}
+    else
+      {:sse, %{url: url, headers: Map.get(config, :headers, %{})}}
+    end
+  end
+
+  defp handle_stdio_config(config) do
+    {:stdio, build_stdio_command_config(config)}
+  end
+
+  defp handle_beam_config(config) do
+    {:beam, %{target: Map.get(config, :target) || Map.get(config, "target")}}
+  end
+
+  defp build_stdio_transport_config(config) do
+    command = Map.get(config, :command) || Map.get(config, "command")
+    {cmd, args} = parse_command_config(command, config)
+
+    {:stdio,
+     %{
+       command: cmd,
+       args: args,
+       env: Map.get(config, :env, %{}) || Map.get(config, "env", %{})
+     }}
+  end
+
+  defp build_sse_transport_config(config) do
+    {:sse,
+     %{
+       url: Map.get(config, :url) || Map.get(config, "url"),
+       headers: Map.get(config, :headers, %{})
+     }}
+  end
+
+  defp build_beam_transport_config(config) do
+    {:beam, %{target: Map.get(config, :target) || Map.get(config, "target")}}
+  end
+
+  defp build_stdio_command_config(config) do
+    command = Map.get(config, :command) || Map.get(config, "command")
+    {cmd, args} = parse_command_config(command, config)
+
+    %{
+      command: cmd,
+      args: args,
+      env: Map.get(config, :env, %{}) || Map.get(config, "env", %{})
+    }
+  end
+
+  defp parse_command_config(command, config) do
+    case command do
+      [cmd | args] when is_list(args) -> {cmd, args}
+      cmd when is_binary(cmd) -> {cmd, Map.get(config, :args, [])}
+      _ -> {command, []}
+    end
   end
 end

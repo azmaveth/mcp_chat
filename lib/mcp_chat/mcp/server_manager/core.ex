@@ -320,6 +320,16 @@ defmodule MCPChat.MCP.ServerManager.Core do
 
   @spec start_server_supervised(map(), pid(), module()) :: {:ok, {String.t(), pid()}} | {:error, term()}
   defp start_server_supervised(config, supervisor, logger_provider) do
+    case build_server_config(config) do
+      {:ok, server_config} ->
+        start_server_with_config(server_config, supervisor, logger_provider)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp build_server_config(config) do
     name = config[:name] || config["name"]
     command = config[:command] || config["command"]
     url = config[:url] || config["url"]
@@ -327,54 +337,34 @@ defmodule MCPChat.MCP.ServerManager.Core do
 
     cond do
       name && command ->
-        # Stdio transport
-        server_config = %{
-          name: name,
-          command: command,
-          transport: :stdio,
-          env: env
-        }
-
-        child_spec = %{
-          id: {Server, name},
-          start: {Server, :start_link, [server_config, []]},
-          restart: :temporary
-        }
-
-        case DynamicSupervisor.start_child(supervisor, child_spec) do
-          {:ok, pid} ->
-            {:ok, {name, pid}}
-
-          {:error, reason} ->
-            logger_provider.error("Failed to start MCP server #{name}: #{inspect(reason)}")
-            {:error, reason}
-        end
+        {:ok, %{name: name, command: command, transport: :stdio, env: env}}
 
       name && url ->
-        # SSE transport
-        server_config = %{
-          name: name,
-          url: url,
-          transport: :sse
-        }
-
-        child_spec = %{
-          id: {Server, name},
-          start: {Server, :start_link, [server_config, []]},
-          restart: :temporary
-        }
-
-        case DynamicSupervisor.start_child(supervisor, child_spec) do
-          {:ok, pid} ->
-            {:ok, {name, pid}}
-
-          {:error, reason} ->
-            logger_provider.error("Failed to start MCP server #{name}: #{inspect(reason)}")
-            {:error, reason}
-        end
+        {:ok, %{name: name, url: url, transport: :sse}}
 
       true ->
         {:error, :invalid_config}
     end
+  end
+
+  defp start_server_with_config(server_config, supervisor, logger_provider) do
+    child_spec = build_child_spec(server_config)
+
+    case DynamicSupervisor.start_child(supervisor, child_spec) do
+      {:ok, pid} ->
+        {:ok, {server_config.name, pid}}
+
+      {:error, reason} ->
+        logger_provider.error("Failed to start MCP server #{server_config.name}: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  defp build_child_spec(server_config) do
+    %{
+      id: {Server, server_config.name},
+      start: {Server, :start_link, [server_config, []]},
+      restart: :temporary
+    }
   end
 end

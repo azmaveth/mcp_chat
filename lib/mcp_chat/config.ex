@@ -84,36 +84,7 @@ defmodule MCPChat.Config do
   @impl true
   def init(opts) do
     path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
-
-    config_path =
-      case Keyword.get(opts, :config_path) do
-        nil ->
-          case path_provider do
-            MCPChat.PathProvider.Default ->
-              case MCPChat.PathProvider.Default.get_path(:config_file) do
-                {:ok, path} -> path
-                # fallback
-                {:error, _} -> Path.expand("~/.config/mcp_chat/config.toml")
-              end
-
-            provider when is_pid(provider) ->
-              case MCPChat.PathProvider.Static.get_path(provider, :config_file) do
-                {:ok, path} -> path
-                # fallback
-                {:error, _} -> "/tmp/mcp_chat_test/config.toml"
-              end
-
-            provider ->
-              case provider.get_path(:config_file) do
-                {:ok, path} -> path
-                # fallback
-                {:error, _} -> Path.expand("~/.config/mcp_chat/config.toml")
-              end
-          end
-
-        path ->
-          Path.expand(path)
-      end
+    config_path = determine_config_path(opts, path_provider)
 
     state = %{
       config_path: config_path,
@@ -122,6 +93,47 @@ defmodule MCPChat.Config do
     }
 
     {:ok, state, {:continue, :load_config}}
+  end
+
+  defp determine_config_path(opts, path_provider) do
+    case Keyword.get(opts, :config_path) do
+      nil -> get_default_config_path(path_provider)
+      path -> Path.expand(path)
+    end
+  end
+
+  defp get_default_config_path(path_provider) do
+    case path_provider do
+      MCPChat.PathProvider.Default ->
+        get_default_provider_config_path()
+
+      provider when is_pid(provider) ->
+        get_static_provider_config_path(provider)
+
+      provider ->
+        get_custom_provider_config_path(provider)
+    end
+  end
+
+  defp get_default_provider_config_path() do
+    case MCPChat.PathProvider.Default.get_path(:config_file) do
+      {:ok, path} -> path
+      {:error, _} -> Path.expand("~/.config/mcp_chat/config.toml")
+    end
+  end
+
+  defp get_static_provider_config_path(provider) do
+    case MCPChat.PathProvider.Static.get_path(provider, :config_file) do
+      {:ok, path} -> path
+      {:error, _} -> "/tmp/mcp_chat_test/config.toml"
+    end
+  end
+
+  defp get_custom_provider_config_path(provider) do
+    case provider.get_path(:config_file) do
+      {:ok, path} -> path
+      {:error, _} -> Path.expand("~/.config/mcp_chat/config.toml")
+    end
   end
 
   @impl true

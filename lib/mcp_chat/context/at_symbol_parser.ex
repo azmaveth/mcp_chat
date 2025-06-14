@@ -97,19 +97,7 @@ defmodule MCPChat.Context.AtSymbolParser do
   def validate_reference(ref_text) do
     case parse(ref_text) do
       [reference] ->
-        cond do
-          String.trim(reference.identifier) == "" ->
-            {:error, "Empty identifier in @ reference"}
-
-          reference.type == :file and not valid_file_path?(reference.identifier) ->
-            {:error, "Invalid file path in @ reference"}
-
-          reference.type == :url and not valid_url?(reference.identifier) ->
-            {:error, "Invalid URL in @ reference"}
-
-          true ->
-            {:ok, reference}
-        end
+        validate_single_reference(reference)
 
       [] ->
         {:error, "No valid @ reference found"}
@@ -119,33 +107,79 @@ defmodule MCPChat.Context.AtSymbolParser do
     end
   end
 
+  defp validate_single_reference(reference) do
+    with :ok <- validate_identifier(reference.identifier),
+         :ok <- validate_reference_type(reference) do
+      {:ok, reference}
+    else
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp validate_identifier(identifier) do
+    if String.trim(identifier) == "" do
+      {:error, "Empty identifier in @ reference"}
+    else
+      :ok
+    end
+  end
+
+  defp validate_reference_type(reference) do
+    case reference.type do
+      :file ->
+        if valid_file_path?(reference.identifier) do
+          :ok
+        else
+          {:error, "Invalid file path in @ reference"}
+        end
+
+      :url ->
+        if valid_url?(reference.identifier) do
+          :ok
+        else
+          {:error, "Invalid URL in @ reference"}
+        end
+
+      _ ->
+        :ok
+    end
+  end
+
   @doc """
   Get suggestions for @ symbol completion.
   """
   @spec get_completion_suggestions(String.t()) :: [String.t()]
+  # Completion suggestion mappings
+  @completion_prefixes %{
+    ["@r", "@resource"] => ["@resource:", "@r:"],
+    ["@p", "@prompt"] => ["@prompt:", "@p:"],
+    ["@t", "@tool"] => ["@tool:", "@t:"],
+    ["@f", "@file"] => ["@file:", "@f:"],
+    ["@u", "@url"] => ["@url:", "@u:"]
+  }
+
+  @all_completions ["@resource:", "@r:", "@prompt:", "@p:", "@tool:", "@t:", "@file:", "@f:", "@url:", "@u:"]
+
   def get_completion_suggestions(partial) do
     cond do
-      String.starts_with?(partial, "@r") or String.starts_with?(partial, "@resource") ->
-        ["@resource:", "@r:"]
-
-      String.starts_with?(partial, "@p") or String.starts_with?(partial, "@prompt") ->
-        ["@prompt:", "@p:"]
-
-      String.starts_with?(partial, "@t") or String.starts_with?(partial, "@tool") ->
-        ["@tool:", "@t:"]
-
-      String.starts_with?(partial, "@f") or String.starts_with?(partial, "@file") ->
-        ["@file:", "@f:"]
-
-      String.starts_with?(partial, "@u") or String.starts_with?(partial, "@url") ->
-        ["@url:", "@u:"]
+      String.starts_with?(partial, "@") and String.length(partial) == 1 ->
+        @all_completions
 
       String.starts_with?(partial, "@") ->
-        ["@resource:", "@r:", "@prompt:", "@p:", "@tool:", "@t:", "@file:", "@f:", "@url:", "@u:"]
+        find_matching_completions(partial)
 
       true ->
         []
     end
+  end
+
+  defp find_matching_completions(partial) do
+    @completion_prefixes
+    |> Enum.find_value([], fn {prefixes, completions} ->
+      if Enum.any?(prefixes, &String.starts_with?(partial, &1)) do
+        completions
+      end
+    end)
   end
 
   # Private functions

@@ -363,43 +363,53 @@ defmodule MCPChat.CLI.Chat do
 
   defp display_at_symbol_info(metadata) do
     if length(metadata.results) > 0 do
-      # Show summary of included content
-      Renderer.show_info("📄 Included content from #{length(metadata.results)} @ references:")
-
-      # Show each included item
-      Enum.each(metadata.results, fn result ->
-        ref = result.reference
-
-        case result.error do
-          nil ->
-            size_info =
-              case result.metadata do
-                %{size: size} -> " (#{format_bytes(size)})"
-                %{status: 200} -> " (web content)"
-                _ -> ""
-              end
-
-            icon = get_reference_icon(ref.type)
-            Renderer.show_info("  #{icon} #{ref.type}:#{ref.identifier}#{size_info}")
-
-          error ->
-            icon = get_reference_icon(ref.type)
-            Renderer.show_error("  #{icon} #{ref.type}:#{ref.identifier} - #{error}")
-        end
-      end)
-
-      # Show token estimate
-      if metadata.total_tokens > 0 do
-        Renderer.show_info("📊 Estimated tokens added: #{metadata.total_tokens}")
-      end
-
-      # Show errors if any
-      if length(metadata.errors) > 0 do
-        Renderer.show_error("⚠️  #{length(metadata.errors)} @ references failed to resolve")
-      end
-
-      # Add spacing
+      display_reference_summary(metadata)
+      display_each_reference(metadata.results)
+      display_token_estimate(metadata)
+      display_reference_errors(metadata)
       IO.puts("")
+    end
+  end
+
+  defp display_reference_summary(metadata) do
+    Renderer.show_info("📄 Included content from #{length(metadata.results)} @ references:")
+  end
+
+  defp display_each_reference(results) do
+    Enum.each(results, &display_single_reference/1)
+  end
+
+  defp display_single_reference(result) do
+    ref = result.reference
+    icon = get_reference_icon(ref.type)
+
+    case result.error do
+      nil ->
+        size_info = format_reference_size_info(result.metadata)
+        Renderer.show_info("  #{icon} #{ref.type}:#{ref.identifier}#{size_info}")
+
+      error ->
+        Renderer.show_error("  #{icon} #{ref.type}:#{ref.identifier} - #{error}")
+    end
+  end
+
+  defp format_reference_size_info(metadata) do
+    case metadata do
+      %{size: size} -> " (#{format_bytes(size)})"
+      %{status: 200} -> " (web content)"
+      _ -> ""
+    end
+  end
+
+  defp display_token_estimate(metadata) do
+    if metadata.total_tokens > 0 do
+      Renderer.show_info("📊 Estimated tokens added: #{metadata.total_tokens}")
+    end
+  end
+
+  defp display_reference_errors(metadata) do
+    if length(metadata.errors) > 0 do
+      Renderer.show_error("⚠️  #{length(metadata.errors)} @ references failed to resolve")
     end
   end
 

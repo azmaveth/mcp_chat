@@ -83,50 +83,58 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
   def handle_capabilities(args) do
     case args do
       [] ->
-        # Show capabilities for all connected servers
-        case ServerManager.list_servers() do
-          [] ->
-            Renderer.show_info("No connected servers")
-
-          servers ->
-            Enum.each(servers, fn server ->
-              server_name =
-                cond do
-                  is_binary(server) ->
-                    server
-
-                  is_map(server) and Map.has_key?(server, :name) ->
-                    server.name
-
-                  is_map(server) and Map.has_key?(server, "name") ->
-                    server["name"]
-
-                  is_map(server) and Map.has_key?(server, :server_name) ->
-                    server.server_name
-
-                  is_map(server) and Map.has_key?(server, "server_name") ->
-                    server["server_name"]
-
-                  is_map(server) ->
-                    # Just show capabilities for supported servers only
-                    Renderer.show_info("Capabilities not available for server: #{inspect(server)}")
-                    nil
-
-                  true ->
-                    server
-                end
-
-              if server_name && is_binary(server_name) do
-                show_server_capabilities(server_name)
-              end
-            end)
-        end
+        show_all_server_capabilities()
 
       [server_name] ->
         show_server_capabilities(server_name)
 
       _ ->
         Renderer.show_error("Usage: /mcp capabilities [server_name]")
+    end
+  end
+
+  defp show_all_server_capabilities() do
+    case ServerManager.list_servers() do
+      [] ->
+        Renderer.show_info("No connected servers")
+
+      servers ->
+        Enum.each(servers, &show_capabilities_for_server/1)
+    end
+  end
+
+  defp show_capabilities_for_server(server) do
+    case extract_server_name(server) do
+      {:ok, server_name} ->
+        show_server_capabilities(server_name)
+
+      {:error, _reason} ->
+        Renderer.show_info("Capabilities not available for server: #{inspect(server)}")
+    end
+  end
+
+  defp extract_server_name(server) do
+    cond do
+      is_binary(server) ->
+        {:ok, server}
+
+      is_map(server) ->
+        extract_server_name_from_map(server)
+
+      true ->
+        {:error, :invalid_server_format}
+    end
+  end
+
+  defp extract_server_name_from_map(server) do
+    name =
+      Map.get(server, :name) || Map.get(server, "name") ||
+        Map.get(server, :server_name) || Map.get(server, "server_name")
+
+    if name && is_binary(name) do
+      {:ok, name}
+    else
+      {:error, :no_valid_name}
     end
   end
 
@@ -322,42 +330,58 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
   end
 
   defp show_capability_details(capabilities) do
-    # Tools
-    if _tools = Map.get(capabilities, "tools") do
+    show_tools_capability(capabilities)
+    show_resources_capability(capabilities)
+    show_prompts_capability(capabilities)
+    show_logging_capability(capabilities)
+    show_sampling_capability(capabilities)
+    show_experimental_capabilities(capabilities)
+  end
+
+  defp show_tools_capability(capabilities) do
+    if Map.get(capabilities, "tools") do
       Renderer.show_info("  Tools: supported")
     end
+  end
 
-    # Resources
+  defp show_resources_capability(capabilities) do
     if resources = Map.get(capabilities, "resources") do
-      subscribe = get_in(resources, ["subscribe"])
-      list_changed = get_in(resources, ["listChanged"])
-
-      features = []
-      features = if subscribe, do: ["subscribe" | features], else: features
-      features = if list_changed, do: ["list notifications" | features], else: features
-
+      features = build_resource_features(resources)
       feature_str = if features != [], do: " (#{Enum.join(features, ", ")})", else: ""
       Renderer.show_info("  Resources: supported#{feature_str}")
     end
+  end
 
-    # Prompts
+  defp build_resource_features(resources) do
+    []
+    |> maybe_add_feature(get_in(resources, ["subscribe"]), "subscribe")
+    |> maybe_add_feature(get_in(resources, ["listChanged"]), "list notifications")
+  end
+
+  defp maybe_add_feature(features, true, feature_name), do: [feature_name | features]
+  defp maybe_add_feature(features, _, _), do: features
+
+  defp show_prompts_capability(capabilities) do
     if prompts = Map.get(capabilities, "prompts") do
       list_changed = get_in(prompts, ["listChanged"])
       feature_str = if list_changed, do: " (list notifications)", else: ""
       Renderer.show_info("  Prompts: supported#{feature_str}")
     end
+  end
 
-    # Logging
-    if _logging = Map.get(capabilities, "logging") do
+  defp show_logging_capability(capabilities) do
+    if Map.get(capabilities, "logging") do
       Renderer.show_info("  Logging: supported")
     end
+  end
 
-    # Sampling (LLM)
-    if _sampling = Map.get(capabilities, "sampling") do
+  defp show_sampling_capability(capabilities) do
+    if Map.get(capabilities, "sampling") do
       Renderer.show_info("  Sampling/LLM: supported ✨")
     end
+  end
 
-    # Experimental
+  defp show_experimental_capabilities(capabilities) do
     if experimental = Map.get(capabilities, "experimental") do
       Renderer.show_info("  Experimental features:")
 

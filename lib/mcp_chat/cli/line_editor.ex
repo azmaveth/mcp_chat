@@ -123,116 +123,145 @@ defmodule MCPChat.CLI.LineEditor do
 
   defp read_loop(state) do
     case read_key() do
-      {:ok, @enter} ->
-        IO.write("\n")
-        {:ok, state.buffer}
+      {:ok, key} -> handle_key_input(state, key)
+      _ -> read_loop(state)
+    end
+  end
 
-      {:ok, @ctrl_c} ->
-        IO.write("^C\n")
-        {:error, :interrupted}
+  defp read_escape_sequence(state) do
+    case read_key() do
+      {:ok, ?[} -> handle_bracket_sequence(state)
+      {:ok, key} when key in [?b, ?f, ?d] -> handle_alt_key(state, key)
+      _ -> read_loop(state)
+    end
+  end
 
-      {:ok, @ctrl_d} ->
-        if state.buffer == "" do
-          IO.write("\n")
-          {:error, :interrupted}
-        else
-          read_loop(delete_char_at_cursor(state))
-        end
+  # Input handling helpers
 
-      {:ok, @backspace} ->
-        read_loop(backspace(state))
+  defp handle_enter(state) do
+    IO.write("\n")
+    {:ok, state.buffer}
+  end
 
-      {:ok, @escape} ->
+  defp handle_ctrl_c() do
+    IO.write("^C\n")
+    {:error, :interrupted}
+  end
+
+  defp handle_ctrl_d(state) do
+    if state.buffer == "" do
+      IO.write("\n")
+      {:error, :interrupted}
+    else
+      read_loop(delete_char_at_cursor(state))
+    end
+  end
+
+  defp handle_ctrl_l(state) do
+    clear_screen()
+    redraw_line(state)
+    read_loop(state)
+  end
+
+  defp handle_key_input(state, key) do
+    case key do
+      @enter ->
+        handle_enter(state)
+
+      @ctrl_c ->
+        handle_ctrl_c()
+
+      @ctrl_d ->
+        handle_ctrl_d(state)
+
+      @backspace ->
+        continue_with(backspace(state))
+
+      @escape ->
         read_escape_sequence(state)
 
-      {:ok, @ctrl_a} ->
-        read_loop(move_to_start(state))
+      @ctrl_l ->
+        handle_ctrl_l(state)
 
-      {:ok, @ctrl_e} ->
-        read_loop(move_to_end(state))
+      @tab ->
+        continue_with(handle_tab(state))
 
-      {:ok, @ctrl_b} ->
-        read_loop(move_left(state))
+      key when key in [@ctrl_a, @ctrl_e, @ctrl_b, @ctrl_f] ->
+        continue_with(handle_movement_key(state, key))
 
-      {:ok, @ctrl_f} ->
-        read_loop(move_right(state))
+      key when key in [@ctrl_k, @ctrl_u, @ctrl_w] ->
+        continue_with(handle_kill_key(state, key))
 
-      {:ok, @ctrl_k} ->
-        read_loop(kill_to_end(state))
+      key when key in [@ctrl_p, @ctrl_n] ->
+        continue_with(handle_history_key(state, key))
 
-      {:ok, @ctrl_u} ->
-        read_loop(kill_to_start(state))
-
-      {:ok, @ctrl_w} ->
-        read_loop(kill_word(state))
-
-      {:ok, @ctrl_l} ->
-        clear_screen()
-        redraw_line(state)
-        read_loop(state)
-
-      {:ok, @ctrl_p} ->
-        read_loop(history_prev(state))
-
-      {:ok, @ctrl_n} ->
-        read_loop(history_next(state))
-
-      {:ok, @tab} ->
-        read_loop(handle_tab(state))
-
-      {:ok, char} when char >= 32 and char <= 126 ->
-        read_loop(insert_char(state, char))
+      char when char >= 32 and char <= 126 ->
+        continue_with(insert_char(state, char))
 
       _ ->
         read_loop(state)
     end
   end
 
-  defp read_escape_sequence(state) do
+  defp continue_with(new_state) do
+    read_loop(new_state)
+  end
+
+  defp handle_movement_key(state, key) do
+    case key do
+      @ctrl_a -> move_to_start(state)
+      @ctrl_e -> move_to_end(state)
+      @ctrl_b -> move_left(state)
+      @ctrl_f -> move_right(state)
+    end
+  end
+
+  defp handle_kill_key(state, key) do
+    case key do
+      @ctrl_k -> kill_to_end(state)
+      @ctrl_u -> kill_to_start(state)
+      @ctrl_w -> kill_word(state)
+    end
+  end
+
+  defp handle_history_key(state, key) do
+    case key do
+      @ctrl_p -> history_prev(state)
+      @ctrl_n -> history_next(state)
+    end
+  end
+
+  defp handle_bracket_sequence(state) do
     case read_key() do
-      {:ok, ?[} ->
-        case read_key() do
-          # Up arrow
-          {:ok, ?A} ->
-            read_loop(history_prev(state))
+      # Up arrow
+      {:ok, ?A} -> continue_with(history_prev(state))
+      # Down arrow
+      {:ok, ?B} -> continue_with(history_next(state))
+      # Right arrow
+      {:ok, ?C} -> continue_with(move_right(state))
+      # Left arrow
+      {:ok, ?D} -> continue_with(move_left(state))
+      # Delete key
+      {:ok, ?3} -> handle_delete_sequence(state)
+      _ -> read_loop(state)
+    end
+  end
 
-          # Down arrow
-          {:ok, ?B} ->
-            read_loop(history_next(state))
+  defp handle_delete_sequence(state) do
+    case read_key() do
+      {:ok, ?~} -> continue_with(delete_char_at_cursor(state))
+      _ -> read_loop(state)
+    end
+  end
 
-          # Right arrow
-          {:ok, ?C} ->
-            read_loop(move_right(state))
-
-          # Left arrow
-          {:ok, ?D} ->
-            read_loop(move_left(state))
-
-          {:ok, ?3} ->
-            # Delete key sequence
-            case read_key() do
-              {:ok, ?~} -> read_loop(delete_char_at_cursor(state))
-              _ -> read_loop(state)
-            end
-
-          _ ->
-            read_loop(state)
-        end
-
+  defp handle_alt_key(state, key) do
+    case key do
       # Alt-b
-      {:ok, ?b} ->
-        read_loop(move_word_backward(state))
-
+      ?b -> continue_with(move_word_backward(state))
       # Alt-f
-      {:ok, ?f} ->
-        read_loop(move_word_forward(state))
-
+      ?f -> continue_with(move_word_forward(state))
       # Alt-d
-      {:ok, ?d} ->
-        read_loop(delete_word_forward(state))
-
-      _ ->
-        read_loop(state)
+      ?d -> continue_with(delete_word_forward(state))
     end
   end
 
