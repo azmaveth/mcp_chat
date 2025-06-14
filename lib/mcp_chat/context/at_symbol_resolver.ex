@@ -150,39 +150,48 @@ defmodule MCPChat.Context.AtSymbolResolver do
     validate = Keyword.get(opts, :validate_content, true)
 
     try do
-      # Resolve relative paths
       full_path = Path.expand(file_path)
-
-      # Check if file exists and is readable
-      case File.stat(full_path) do
-        {:ok, %File.Stat{type: :regular, size: size}} when size <= max_size ->
-          case File.read(full_path) do
-            {:ok, content} ->
-              if validate and not valid_text_content?(content) do
-                {nil, "File contains binary data or invalid encoding", %{size: size, path: full_path}}
-              else
-                {content, nil, %{size: size, path: full_path, encoding: "utf-8"}}
-              end
-
-            {:error, reason} ->
-              {nil, "Failed to read file: #{reason}", %{path: full_path}}
-          end
-
-        {:ok, %File.Stat{type: :regular, size: size}} ->
-          {nil, "File too large: #{size} bytes (max: #{max_size})", %{size: size, path: full_path}}
-
-        {:ok, %File.Stat{type: type}} ->
-          {nil, "Not a regular file: #{type}", %{path: full_path}}
-
-        {:error, :enoent} ->
-          {nil, "File not found", %{path: full_path}}
-
-        {:error, reason} ->
-          {nil, "File access error: #{reason}", %{path: full_path}}
-      end
+      handle_file_stat(full_path, max_size, validate)
     rescue
       e in [ArgumentError, File.Error] ->
         {nil, "Invalid file path: #{Exception.message(e)}", %{path: file_path}}
+    end
+  end
+
+  defp handle_file_stat(full_path, max_size, validate) do
+    case File.stat(full_path) do
+      {:ok, %File.Stat{type: :regular, size: size}} when size <= max_size ->
+        handle_file_read(full_path, size, validate)
+
+      {:ok, %File.Stat{type: :regular, size: size}} ->
+        {nil, "File too large: #{size} bytes (max: #{max_size})", %{size: size, path: full_path}}
+
+      {:ok, %File.Stat{type: type}} ->
+        {nil, "Not a regular file: #{type}", %{path: full_path}}
+
+      {:error, :enoent} ->
+        {nil, "File not found", %{path: full_path}}
+
+      {:error, reason} ->
+        {nil, "File access error: #{reason}", %{path: full_path}}
+    end
+  end
+
+  defp handle_file_read(full_path, size, validate) do
+    case File.read(full_path) do
+      {:ok, content} ->
+        validate_and_return_content(content, size, full_path, validate)
+
+      {:error, reason} ->
+        {nil, "Failed to read file: #{reason}", %{path: full_path}}
+    end
+  end
+
+  defp validate_and_return_content(content, size, full_path, validate) do
+    if validate and not valid_text_content?(content) do
+      {nil, "File contains binary data or invalid encoding", %{size: size, path: full_path}}
+    else
+      {content, nil, %{size: size, path: full_path, encoding: "utf-8"}}
     end
   end
 

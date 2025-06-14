@@ -55,78 +55,82 @@ defmodule MCPChat.MCP.ServerWrapper do
 
   @impl true
   def init({config, _opts}) do
-    # Check if notifications are enabled
     notifications_enabled = MCPChat.Config.get_runtime("notifications.enabled", false)
-
-    # Check transport type
     transport = determine_transport(config)
 
     case transport do
       :stdio ->
-        # For stdio transport, start the process manager first
-        command = config[:command] || config["command"]
-        env = config[:env] || config["env"] || %{}
-
-        # Parse command and args
-        {cmd, args} = parse_command(command)
-
-        process_manager_opts = [
-          command: cmd,
-          args: args,
-          env: Map.to_list(env)
-        ]
-
-        # Add auto_start option for production use
-        process_manager_opts = process_manager_opts ++ [auto_start: true]
-        {:ok, process_manager} = MCPChat.MCP.StdioProcessManager.start_link(process_manager_opts)
-        Process.monitor(process_manager)
-
-        # Prepare client options with the process manager
-        client_opts = build_client_opts(config, process_manager)
-
-        # Start appropriate client
-        {:ok, client_pid} =
-          if notifications_enabled do
-            MCPChat.MCP.NotificationClient.start_link(client_opts)
-          else
-            ExMCP.Client.start_link(client_opts)
-          end
-
-        # Monitor the client
-        Process.monitor(client_pid)
-
-        {:ok,
-         %{
-           client: client_pid,
-           process_manager: process_manager,
-           config: config,
-           type: if(notifications_enabled, do: :notification, else: :standard),
-           transport: :stdio
-         }}
+        init_stdio_transport(config, notifications_enabled)
 
       _ ->
-        # For other transports, just start the client
-        client_opts = build_client_opts(config)
-
-        {:ok, client_pid} =
-          if notifications_enabled do
-            MCPChat.MCP.NotificationClient.start_link(client_opts)
-          else
-            ExMCP.Client.start_link(client_opts)
-          end
-
-        # Monitor the client
-        Process.monitor(client_pid)
-
-        {:ok,
-         %{
-           client: client_pid,
-           process_manager: nil,
-           config: config,
-           type: if(notifications_enabled, do: :notification, else: :standard),
-           transport: transport
-         }}
+        init_other_transport(config, notifications_enabled, transport)
     end
+  end
+
+  defp init_stdio_transport(config, notifications_enabled) do
+    # Start process manager for stdio transport
+    process_manager = start_stdio_process_manager(config)
+    client_opts = build_client_opts(config, process_manager)
+    client_pid = start_client(client_opts, notifications_enabled)
+
+    Process.monitor(client_pid)
+
+    {:ok,
+     %{
+       client: client_pid,
+       process_manager: process_manager,
+       config: config,
+       type: get_client_type(notifications_enabled),
+       transport: :stdio
+     }}
+  end
+
+  defp init_other_transport(config, notifications_enabled, transport) do
+    client_opts = build_client_opts(config)
+    client_pid = start_client(client_opts, notifications_enabled)
+
+    Process.monitor(client_pid)
+
+    {:ok,
+     %{
+       client: client_pid,
+       process_manager: nil,
+       config: config,
+       type: get_client_type(notifications_enabled),
+       transport: transport
+     }}
+  end
+
+  defp start_stdio_process_manager(config) do
+    command = config[:command] || config["command"]
+    env = config[:env] || config["env"] || %{}
+    {cmd, args} = parse_command(command)
+
+    process_manager_opts = [
+      command: cmd,
+      args: args,
+      env: Map.to_list(env),
+      auto_start: true
+    ]
+
+    {:ok, process_manager} = MCPChat.MCP.StdioProcessManager.start_link(process_manager_opts)
+    Process.monitor(process_manager)
+    process_manager
+  end
+
+  defp start_client(client_opts, notifications_enabled) do
+    {:ok, client_pid} =
+      if notifications_enabled do
+        MCPChat.MCP.NotificationClient.start_link(client_opts)
+      else
+        ExMCP.Client.start_link(client_opts)
+      end
+
+    client_pid
+  end
+
+  defp get_client_type(notifications_enabled) do
+    if notifications_enabled, do: :notification, else: :standard
   end
 
   # Forward all calls to the underlying client

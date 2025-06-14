@@ -68,119 +68,115 @@ defmodule MCPChat.MCP.BuiltinResources do
 
   def read_resource(uri) do
     case uri do
-      "mcp-chat://docs/readme" ->
-        {:ok,
-         """
-         # MCP Chat Quick Reference
-
-         MCP Chat is an Elixir-based chat client with Model Context Protocol support.
-
-         ## Key Features
-         - Multiple LLM backends (Anthropic, OpenAI, Ollama, Local)
-         - MCP server integration for extended capabilities
-         - Context management with token tracking
-         - Cost tracking and estimation
-         - Session persistence
-         - Command aliases
-
-         ## Quick Start
-         1. Set your API key: `export ANTHROPIC_API_KEY="your-key"`
-         2. Run: `./mcp_chat`
-         3. Type `/help` for commands
-         4. Start chatting!
-
-         ## Useful Commands
-         - `/models` - List available models
-         - `/discover` - Find MCP servers
-         - `/cost` - Show session cost
-         - `/save` - Save your session
-
-         ## Documentation
-         - GitHub: https://github.com/azmaveth/mcp_chat
-         - MCP Protocol: https://modelcontextprotocol.io
-         """}
-
-      "mcp-chat://docs/commands" ->
-        {:ok, generate_command_reference()}
-
-      "mcp-chat://docs/mcp-servers" ->
-        {:ok,
-         """
-         # MCP Server Guide
-
-         ## Connecting to MCP Servers
-
-         ### Quick Discovery
-         ```
-         /discover
-         ```
-         Automatically finds and suggests MCP servers to connect.
-
-         ### Manual Connection
-         ```
-         /connect filesystem
-         /connect github
-         ```
-
-         ### Using MCP Tools
-         ```
-         /tools                    # List all available tools
-         /tool <server> <tool>     # Call a specific tool
-         ```
-
-         ## Popular MCP Servers
-
-         1. **Filesystem** - File operations
-            ```
-            npx -y @modelcontextprotocol/server-filesystem /path
-            ```
-
-         2. **GitHub** - Repository interaction
-            ```
-            npx -y @modelcontextprotocol/server-github
-            ```
-
-         3. **SQLite** - Database queries
-            ```
-            npx -y @modelcontextprotocol/server-sqlite db.sqlite
-            ```
-
-         ## Creating Your Own
-         See the examples directory for creating custom MCP servers.
-         """}
-
-      "mcp-chat://info/version" ->
-        {:ok,
-         """
-         MCP Chat v#{@app_version}
-         Elixir #{System.version()}
-         Erlang/OTP #{:erlang.system_info(:otp_release)}
-
-         Build: #{DateTime.utc_now() |> DateTime.to_iso8601()}
-         Platform: #{:erlang.system_info(:system_architecture)}
-         """}
-
-      "mcp-chat://info/config" ->
-        config = MCPChat.Config.get_all()
-        # Convert config to JSON format manually
-        config_string = format_config_as_json(config)
-        {:ok, config_string}
-
-      "mcp-chat://examples/multi-agent" ->
-        {:ok, generate_multi_agent_examples()}
-
-      "mcp-chat://docs/troubleshooting" ->
-        {:ok, generate_troubleshooting_guide()}
-
-      "mcp-chat://docs/api-keys" ->
-        {:ok, generate_api_key_guide()}
-
-      "mcp-chat://info/libraries" ->
-        {:ok, generate_library_info()}
-
-      _ ->
-        {:error, "Resource not found"}
+      "mcp-chat://docs/readme" -> get_readme_content()
+      "mcp-chat://docs/commands" -> {:ok, generate_command_reference()}
+      "mcp-chat://docs/mcp-servers" -> get_mcp_servers_guide()
+      "mcp-chat://info/version" -> get_version_info()
+      "mcp-chat://info/config" -> get_config_info()
+      "mcp-chat://examples/multi-agent" -> {:ok, generate_multi_agent_examples()}
+      "mcp-chat://docs/troubleshooting" -> {:ok, generate_troubleshooting_guide()}
+      "mcp-chat://docs/api-keys" -> {:ok, generate_api_key_guide()}
+      "mcp-chat://info/libraries" -> {:ok, generate_library_info()}
+      _ -> {:error, "Resource not found"}
     end
+  end
+
+  defp get_readme_content() do
+    {:ok,
+     """
+     # MCP Chat Quick Reference
+
+     MCP Chat is an Elixir-based chat client with Model Context Protocol support.
+
+     ## Key Features
+     - Multiple LLM backends (Anthropic, OpenAI, Ollama, Local)
+     - MCP server integration for extended capabilities
+     - Context management with token tracking
+     - Cost tracking and estimation
+     - Session persistence
+     - Command aliases
+
+     ## Quick Start
+     1. Set your API key: `export ANTHROPIC_API_KEY="your-key"`
+     2. Run: `./mcp_chat`
+     3. Type `/help` for commands
+     4. Start chatting!
+
+     ## Useful Commands
+     - `/models` - List available models
+     - `/discover` - Find MCP servers
+     - `/cost` - Show session cost
+     - `/save` - Save your session
+
+     ## Documentation
+     - GitHub: https://github.com/azmaveth/mcp_chat
+     - MCP Protocol: https://modelcontextprotocol.io
+     """}
+  end
+
+  defp get_mcp_servers_guide() do
+    {:ok,
+     """
+     # MCP Server Guide
+
+     ## Connecting to MCP Servers
+
+     ### Quick Discovery
+     ```
+     /discover
+     ```
+     Automatically finds and suggests MCP servers to connect.
+
+     ### Manual Connection
+     ```
+     /connect filesystem
+     /connect github
+     ```
+
+     ### Using MCP Tools
+     ```
+     /tools                    # List all available tools
+     /tool <server> <tool>     # Call a specific tool
+     ```
+
+     ## Popular MCP Servers
+
+     1. **Filesystem** - File operations
+        ```
+        npx -y @modelcontextprotocol/server-filesystem /path
+        ```
+
+     2. **GitHub** - Repository interaction
+        ```
+        npx -y @modelcontextprotocol/server-github
+        ```
+
+     3. **SQLite** - Database queries
+        ```
+        npx -y @modelcontextprotocol/server-sqlite db.sqlite
+        ```
+
+     ## Creating Your Own
+     See the examples directory for creating custom MCP servers.
+     """}
+  end
+
+  defp get_version_info() do
+    {:ok,
+     """
+     MCP Chat v#{@app_version}
+     Elixir #{System.version()}
+     Erlang/OTP #{:erlang.system_info(:otp_release)}
+
+     Build: #{DateTime.utc_now() |> DateTime.to_iso8601()}
+     Platform: #{:erlang.system_info(:system_architecture)}
+     """}
+  end
+
+  defp get_config_info() do
+    config = MCPChat.Config.get_all()
+    config_string = format_config_as_json(config)
+    {:ok, config_string}
   end
 
   # Default Prompts

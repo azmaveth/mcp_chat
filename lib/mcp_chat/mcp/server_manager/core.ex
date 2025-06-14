@@ -331,20 +331,31 @@ defmodule MCPChat.MCP.ServerManager.Core do
 
   defp build_server_config(config) do
     name = config[:name] || config["name"]
-    command = config[:command] || config["command"]
-    url = config[:url] || config["url"]
-    env = config[:env] || config["env"] || %{}
 
     cond do
-      name && command ->
-        {:ok, %{name: name, command: command, transport: :stdio, env: env}}
+      name && has_command?(config) ->
+        build_stdio_config(config, name)
 
-      name && url ->
-        {:ok, %{name: name, url: url, transport: :sse}}
+      name && has_url?(config) ->
+        build_sse_config(config, name)
 
       true ->
         {:error, :invalid_config}
     end
+  end
+
+  defp has_command?(config), do: config[:command] || config["command"]
+  defp has_url?(config), do: config[:url] || config["url"]
+
+  defp build_stdio_config(config, name) do
+    command = config[:command] || config["command"]
+    env = config[:env] || config["env"] || %{}
+    {:ok, %{name: name, command: command, transport: :stdio, env: env}}
+  end
+
+  defp build_sse_config(config, name) do
+    url = config[:url] || config["url"]
+    {:ok, %{name: name, url: url, transport: :sse}}
   end
 
   defp start_server_with_config(server_config, supervisor, logger_provider) do
