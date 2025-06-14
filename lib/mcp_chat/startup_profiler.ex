@@ -84,11 +84,10 @@ defmodule MCPChat.StartupProfiler do
   defp format_timings(timings) do
     timings
     |> Enum.sort_by(fn {phase, _} -> phase_order(phase) end)
-    |> Enum.map(fn {phase, duration} ->
+    |> Enum.map_join("\n", fn {phase, duration} ->
       percentage = if timings[:total], do: Float.round(duration / timings[:total] * 100, 1), else: 0
       "  #{format_phase(phase)} #{duration}ms (#{percentage}%)"
     end)
-    |> Enum.join("\n")
   end
 
   defp phase_order(phase) do

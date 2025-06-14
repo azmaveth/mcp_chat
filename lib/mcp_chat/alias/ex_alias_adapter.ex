@@ -34,7 +34,7 @@ defmodule MCPChat.Alias.ExAliasAdapter do
     GenServer.call(__MODULE__, {:expand_alias, input})
   end
 
-  def is_alias?(name) do
+  def alias?(name) do
     case get_alias(name) do
       {:ok, _} -> true
       {:error, :not_found} -> false

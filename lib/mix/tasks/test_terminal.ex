@@ -131,11 +131,11 @@ defmodule Mix.Tasks.TestTerminal do
   end
 
   defp mix_with_tty?() do
-    Code.ensure_loaded?(Mix) and is_tty?()
+    Code.ensure_loaded?(Mix) and tty?()
   end
 
   # Check if we're connected to a real TTY
-  defp is_tty?() do
+  defp tty?() do
     # Try to detect if stdin/stdout are connected to a terminal
     case System.cmd("tty", [], stderr_to_stdout: true) do
       {output, 0} ->

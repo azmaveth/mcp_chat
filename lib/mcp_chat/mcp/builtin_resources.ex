@@ -977,10 +977,9 @@ defmodule MCPChat.MCP.BuiltinResources do
   defp format_config_as_json(config) do
     # Simple JSON formatting for config display
     config
-    |> Enum.map(fn {key, value} ->
+    |> Enum.map_join(",\n  ", fn {key, value} ->
       ~s{"#{key}": #{format_json_value(value)}}
     end)
-    |> Enum.join(",\n  ")
     |> then(&"{\n  #{&1}\n}")
   end
 
@@ -992,10 +991,9 @@ defmodule MCPChat.MCP.BuiltinResources do
 
   defp format_json_value(value) when is_map(value) do
     value
-    |> Enum.map(fn {k, v} ->
+    |> Enum.map_join(", ", fn {k, v} ->
       ~s{"#{k}": #{format_json_value(v)}}
     end)
-    |> Enum.join(", ")
     |> then(&"{#{&1}}")
   end
 

@@ -33,7 +33,7 @@ defmodule MCPChat.UI.ProgressDisplay do
     GenServer.cast(__MODULE__, :hide)
   end
 
-  def is_visible? do
+  def visible? do
     GenServer.call(__MODULE__, :is_visible?)
   end
 

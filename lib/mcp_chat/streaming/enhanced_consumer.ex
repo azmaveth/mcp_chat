@@ -167,10 +167,10 @@ defmodule MCPChat.Streaming.EnhancedConsumer do
 
   @impl true
   def handle_info(:flush_buffer, state) do
-    if not StreamBuffer.empty?(state.buffer) do
-      {:noreply, flush_buffer(state)}
-    else
+    if StreamBuffer.empty?(state.buffer) do
       {:noreply, state}
+    else
+      {:noreply, flush_buffer(state)}
     end
   end
 
@@ -248,8 +248,7 @@ defmodule MCPChat.Streaming.EnhancedConsumer do
       # Combine chunks
       text =
         chunks
-        |> Enum.map(&(&1.delta || ""))
-        |> Enum.join()
+        |> Enum.map_join(&(&1.delta || ""))
 
       # Write with timing
       write_start = System.monotonic_time(:microsecond)

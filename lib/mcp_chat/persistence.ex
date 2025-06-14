@@ -335,7 +335,7 @@ defmodule MCPChat.Persistence do
     messages =
       session.messages
       |> Enum.reverse()
-      |> Enum.map(fn msg ->
+      |> Enum.map_join("", fn msg ->
         """
         ## #{String.capitalize(msg.role)}
         *#{format_datetime(msg.timestamp)}*
@@ -346,7 +346,6 @@ defmodule MCPChat.Persistence do
 
         """
       end)
-      |> Enum.join("")
 
     header <> messages
   end

@@ -186,16 +186,16 @@ defmodule MCPChat.CLI.LineEditor do
 
   defp handle_key_category(state, key) do
     cond do
-      is_movement_key?(key) ->
+      movement_key?(key) ->
         continue_with(handle_movement_key(state, key))
 
-      is_kill_key?(key) ->
+      kill_key?(key) ->
         continue_with(handle_kill_key(state, key))
 
-      is_history_key?(key) ->
+      history_key?(key) ->
         continue_with(handle_history_key(state, key))
 
-      is_printable_char?(key) ->
+      printable_char?(key) ->
         continue_with(insert_char(state, key))
 
       true ->
@@ -203,10 +203,10 @@ defmodule MCPChat.CLI.LineEditor do
     end
   end
 
-  defp is_movement_key?(key), do: key in [@ctrl_a, @ctrl_e, @ctrl_b, @ctrl_f]
-  defp is_kill_key?(key), do: key in [@ctrl_k, @ctrl_u, @ctrl_w]
-  defp is_history_key?(key), do: key in [@ctrl_p, @ctrl_n]
-  defp is_printable_char?(char), do: char >= 32 and char <= 126
+  defp movement_key?(key), do: key in [@ctrl_a, @ctrl_e, @ctrl_b, @ctrl_f]
+  defp kill_key?(key), do: key in [@ctrl_k, @ctrl_u, @ctrl_w]
+  defp history_key?(key), do: key in [@ctrl_p, @ctrl_n]
+  defp printable_char?(char), do: char >= 32 and char <= 126
 
   defp continue_with(new_state) do
     read_loop(new_state)

@@ -150,11 +150,11 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandler do
 
   defp notification_enabled?(type, settings) do
     # Check global enabled flag
-    if not settings.enabled do
-      false
-    else
+    if settings.enabled do
       # Check category-specific settings
       find_notification_setting(settings, type)
+    else
+      false
     end
   end
 

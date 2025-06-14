@@ -204,11 +204,11 @@ defmodule MCPChat.CLI.Commands.LLM do
   end
 
   defp attempt_model_load(args) do
-    if not local_model_support_available?() do
+    if local_model_support_available?() do
+      perform_model_load(args)
+    else
       show_error("Local model support is not available.")
       show_info("To enable local models, add the required dependencies and rebuild.")
-    else
-      perform_model_load(args)
     end
   end
 
@@ -241,10 +241,10 @@ defmodule MCPChat.CLI.Commands.LLM do
   defp show_unload_usage_and_models() do
     show_error("Usage: /unloadmodel <model-id>")
 
-    if not local_model_support_available?() do
-      show_info("\nLocal model support is not available.")
-    else
+    if local_model_support_available?() do
       display_loaded_models()
+    else
+      show_info("\nLocal model support is not available.")
     end
   end
 
@@ -260,10 +260,10 @@ defmodule MCPChat.CLI.Commands.LLM do
   end
 
   defp attempt_model_unload(args) do
-    if not local_model_support_available?() do
-      show_error("Local model support is not available.")
-    else
+    if local_model_support_available?() do
       perform_model_unload(args)
+    else
+      show_error("Local model support is not available.")
     end
   end
 
@@ -426,10 +426,10 @@ defmodule MCPChat.CLI.Commands.LLM do
   end
 
   defp fetch_and_display_local_models() do
-    if not local_model_support_available?() do
-      show_local_model_unavailable_message()
-    else
+    if local_model_support_available?() do
       fetch_and_display_available_models()
+    else
+      show_local_model_unavailable_message()
     end
   end
 

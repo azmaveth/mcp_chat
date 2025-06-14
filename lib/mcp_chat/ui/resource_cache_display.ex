@@ -39,7 +39,7 @@ defmodule MCPChat.UI.ResourceCacheDisplay do
     GenServer.cast(__MODULE__, :toggle_mode)
   end
 
-  def is_visible? do
+  def visible? do
     GenServer.call(__MODULE__, :is_visible?)
   end
 

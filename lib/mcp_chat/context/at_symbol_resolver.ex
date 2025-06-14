@@ -534,12 +534,11 @@ defmodule MCPChat.Context.AtSymbolResolver do
 
       %{"contents" => contents} when is_list(contents) ->
         contents
-        |> Enum.map(fn
+        |> Enum.map_join("\n", fn
           %{"text" => text} -> text
           %{"blob" => _} -> "[Binary content]"
           other -> inspect(other)
         end)
-        |> Enum.join("\n")
 
       %{"text" => text} ->
         text
@@ -555,22 +554,20 @@ defmodule MCPChat.Context.AtSymbolResolver do
       # ExMCP format - list of messages
       messages when is_list(messages) ->
         messages
-        |> Enum.map(fn
+        |> Enum.map_join("\n", fn
           %{role: role, content: content} -> format_message_content(role, content)
           %{"role" => role, "content" => content} -> format_message_content(role, content)
           other -> inspect(other)
         end)
-        |> Enum.join("\n")
 
       # Legacy format support
       %{"messages" => messages} when is_list(messages) ->
         messages
-        |> Enum.map(fn
+        |> Enum.map_join("\n", fn
           %{"role" => role, "content" => %{"text" => text}} -> "#{role}: #{text}"
           %{"role" => role, "content" => content} when is_binary(content) -> "#{role}: #{content}"
           other -> inspect(other)
         end)
-        |> Enum.join("\n")
 
       %{"content" => content} ->
         content
@@ -593,12 +590,11 @@ defmodule MCPChat.Context.AtSymbolResolver do
 
       %{"content" => content} when is_list(content) ->
         content
-        |> Enum.map(fn
+        |> Enum.map_join("\n", fn
           %{"text" => text} -> text
           %{"blob" => _} -> "[Binary result]"
           other -> inspect(other)
         end)
-        |> Enum.join("\n")
 
       %{"text" => text} ->
         text
@@ -615,7 +611,7 @@ defmodule MCPChat.Context.AtSymbolResolver do
 
   defp format_content_list(contents) when is_list(contents) do
     contents
-    |> Enum.map(fn
+    |> Enum.map_join("\n", fn
       %{type: "text", text: text} -> text
       %{"type" => "text", "text" => text} -> text
       %{type: "blob"} -> "[Binary content]"
@@ -624,7 +620,6 @@ defmodule MCPChat.Context.AtSymbolResolver do
       %{"type" => "image"} -> "[Image content]"
       other -> inspect(other)
     end)
-    |> Enum.join("\n")
   end
 
   defp format_message_content(role, content) do

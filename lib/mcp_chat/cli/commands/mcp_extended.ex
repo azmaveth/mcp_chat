@@ -317,14 +317,14 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
   end
 
   defp show_server_capabilities(server_name) do
-    if is_builtin_server?(server_name) do
+    if builtin_server?(server_name) do
       show_builtin_server_message(server_name)
     else
       show_external_server_capabilities(server_name)
     end
   end
 
-  defp is_builtin_server?(server_name) do
+  defp builtin_server?(server_name) do
     server_name =~ ~r/built.?in/i or server_name =~ ~r/internal/i
   end
 

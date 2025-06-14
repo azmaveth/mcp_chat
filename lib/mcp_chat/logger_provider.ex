@@ -131,10 +131,10 @@ defmodule MCPChat.LoggerProvider do
     def start_link(log_fun) when is_function(log_fun) do
       arity = Function.info(log_fun)[:arity]
 
-      if arity not in [2, 3] do
-        {:error, :invalid_log_function_arity}
-      else
+      if arity in [2, 3] do
         Agent.start_link(fn -> {log_fun, arity} end)
+      else
+        {:error, :invalid_log_function_arity}
       end
     end
 
