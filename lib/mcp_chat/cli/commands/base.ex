@@ -102,13 +102,28 @@ defmodule MCPChat.CLI.Commands.Base do
   Gets the default model for a backend.
   """
   def get_default_model(backend) do
+    get_configured_model(backend) || get_fallback_model(backend)
+  end
+
+  defp get_configured_model(backend) do
     case backend do
-      "anthropic" -> MCPChat.Config.get([:llm, :anthropic, :model]) || "claude-3-5-sonnet-20241022"
-      "openai" -> MCPChat.Config.get([:llm, :openai, :model]) || "gpt-4"
-      "ollama" -> MCPChat.Config.get([:llm, :ollama, :model]) || "llama2"
+      "anthropic" -> MCPChat.Config.get([:llm, :anthropic, :model])
+      "openai" -> MCPChat.Config.get([:llm, :openai, :model])
+      "ollama" -> MCPChat.Config.get([:llm, :ollama, :model])
+      "bedrock" -> MCPChat.Config.get([:llm, :bedrock, :model])
+      "gemini" -> MCPChat.Config.get([:llm, :gemini, :model])
+      _ -> nil
+    end
+  end
+
+  defp get_fallback_model(backend) do
+    case backend do
+      "anthropic" -> "claude-3-5-sonnet-20241022"
+      "openai" -> "gpt-4"
+      "ollama" -> "llama2"
       "local" -> "microsoft/phi-2"
-      "bedrock" -> MCPChat.Config.get([:llm, :bedrock, :model]) || "claude-3-5-sonnet-v2"
-      "gemini" -> MCPChat.Config.get([:llm, :gemini, :model]) || "gemini-pro"
+      "bedrock" -> "claude-3-5-sonnet-v2"
+      "gemini" -> "gemini-pro"
       _ -> nil
     end
   end

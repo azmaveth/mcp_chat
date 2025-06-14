@@ -123,56 +123,81 @@ defmodule MCPChat.CLI.Chat do
 
   defp get_llm_response(processed_message) do
     session = Session.get_current_session()
-    # Get messages with context management
-    base_messages = Session.get_messages_for_llm()
-
-    # Replace the last user message with the processed version (with @ content resolved)
-    messages = replace_last_user_message(base_messages, processed_message)
-
-    # Get the appropriate LLM adapter
+    messages = prepare_messages(session, processed_message)
     adapter = get_llm_adapter(session.llm_backend)
+    options = build_llm_options(session)
 
-    # Build options from session context
-    options = [{:provider, session.llm_backend}]
-    options = if session.context[:model], do: [{:model, session.context[:model]} | options], else: options
-
-    options =
-      if session.context[:system_prompt],
-        do: [{:system_prompt, session.context[:system_prompt]} | options],
-        else: options
-
-    # Check if adapter is configured
     if adapter.configured?(session.llm_backend) do
-      # Check if streaming is enabled
-      response =
-        if Config.get([:ui, :streaming]) != false do
-          stream_response(adapter, messages, options)
-        else
-          adapter.chat(messages, options)
-        end
-
-      # Track token usage if we got a successful response
-      case response do
-        {:ok, content} ->
-          Session.track_token_usage(messages, content)
-          {:ok, content}
-
-        error ->
-          error
-      end
+      execute_llm_request(adapter, messages, options)
     else
-      backend_name = session.llm_backend
+      build_configuration_error(session.llm_backend)
+    end
+  end
 
-      env_var =
-        case backend_name do
-          "openai" -> "OPENAI_API_KEY"
-          "bedrock" -> "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
-          "gemini" -> "GOOGLE_API_KEY"
-          _ -> "ANTHROPIC_API_KEY"
-        end
+  defp prepare_messages(session, processed_message) do
+    base_messages = Session.get_messages_for_llm()
+    replace_last_user_message(base_messages, processed_message)
+  end
 
-      {:error,
-       "LLM backend '#{backend_name}' not configured. Please set your API key in ~/.config/mcp_chat/config.toml or set the #{env_var} environment variable"}
+  defp build_llm_options(session) do
+    options = [{:provider, session.llm_backend}]
+    options = maybe_add_model_option(options, session)
+    maybe_add_system_prompt_option(options, session)
+  end
+
+  defp maybe_add_model_option(options, session) do
+    if session.context[:model] do
+      [{:model, session.context[:model]} | options]
+    else
+      options
+    end
+  end
+
+  defp maybe_add_system_prompt_option(options, session) do
+    if session.context[:system_prompt] do
+      [{:system_prompt, session.context[:system_prompt]} | options]
+    else
+      options
+    end
+  end
+
+  defp execute_llm_request(adapter, messages, options) do
+    response = choose_response_method(adapter, messages, options)
+    handle_llm_response(response, messages)
+  end
+
+  defp choose_response_method(adapter, messages, options) do
+    if Config.get([:ui, :streaming]) != false do
+      stream_response(adapter, messages, options)
+    else
+      adapter.chat(messages, options)
+    end
+  end
+
+  defp handle_llm_response(response, messages) do
+    case response do
+      {:ok, content} ->
+        Session.track_token_usage(messages, content)
+        {:ok, content}
+
+      error ->
+        error
+    end
+  end
+
+  defp build_configuration_error(backend_name) do
+    env_var = get_env_var_for_backend(backend_name)
+
+    {:error,
+     "LLM backend '#{backend_name}' not configured. Please set your API key in ~/.config/mcp_chat/config.toml or set the #{env_var} environment variable"}
+  end
+
+  defp get_env_var_for_backend(backend_name) do
+    case backend_name do
+      "openai" -> "OPENAI_API_KEY"
+      "bedrock" -> "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
+      "gemini" -> "GOOGLE_API_KEY"
+      _ -> "ANTHROPIC_API_KEY"
     end
   end
 

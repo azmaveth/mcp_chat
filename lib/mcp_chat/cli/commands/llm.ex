@@ -61,44 +61,71 @@ defmodule MCPChat.CLI.Commands.LLM do
     available_backends = ["anthropic", "openai", "ollama", "local", "bedrock", "gemini"]
 
     case args do
-      [] ->
-        # Show current backend and available options
-        current = get_current_backend()
-        show_info("Current backend: #{current}")
-        show_info("Available backends: #{Enum.join(available_backends, ", ")}")
-        :ok
-
-      [backend | _] ->
-        if backend in available_backends do
-          # Get the adapter module
-          adapter = get_adapter_module(backend)
-
-          # Check if it's configured
-          if adapter && function_exported?(adapter, :configured?, 1) && adapter.configured?(backend) do
-            MCPChat.Session.update_session(%{llm_backend: backend})
-            show_success("Switched to #{backend} backend")
-
-            # Show available models for this backend
-            case adapter && function_exported?(adapter, :list_models, 1) &&
-                   adapter.list_models([{:provider, String.to_atom(backend)}]) do
-              {:ok, models} when is_list(models) and length(models) > 0 ->
-                show_info("Available models: #{format_model_list(models)}")
-
-              _ ->
-                :ok
-            end
-
-            :ok
-          else
-            show_error("#{backend} backend is not configured. Please check your configuration.")
-            :ok
-          end
-        else
-          show_error("Unknown backend: #{backend}")
-          show_info("Available backends: #{Enum.join(available_backends, ", ")}")
-          :ok
-        end
+      [] -> show_current_backend_info(available_backends)
+      [backend | _] -> attempt_backend_switch(backend, available_backends)
     end
+  end
+
+  defp show_current_backend_info(available_backends) do
+    current = get_current_backend()
+    show_info("Current backend: #{current}")
+    show_info("Available backends: #{Enum.join(available_backends, ", ")}")
+    :ok
+  end
+
+  defp attempt_backend_switch(backend, available_backends) do
+    if backend in available_backends do
+      execute_backend_switch(backend)
+    else
+      show_error("Unknown backend: #{backend}")
+      show_info("Available backends: #{Enum.join(available_backends, ", ")}")
+      :ok
+    end
+  end
+
+  defp execute_backend_switch(backend) do
+    adapter = get_adapter_module(backend)
+
+    if adapter_configured?(adapter, backend) do
+      complete_backend_switch(backend, adapter)
+    else
+      show_configuration_error(backend)
+    end
+  end
+
+  defp adapter_configured?(adapter, backend) do
+    adapter && function_exported?(adapter, :configured?, 1) && adapter.configured?(backend)
+  end
+
+  defp complete_backend_switch(backend, adapter) do
+    MCPChat.Session.update_session(%{llm_backend: backend})
+    show_success("Switched to #{backend} backend")
+    show_available_models(adapter, backend)
+  end
+
+  defp show_available_models(adapter, backend) do
+    case get_models_for_backend(adapter, backend) do
+      {:ok, models} when is_list(models) and length(models) > 0 ->
+        show_info("Available models: #{format_model_list(models)}")
+
+      _ ->
+        :ok
+    end
+
+    :ok
+  end
+
+  defp get_models_for_backend(adapter, backend) do
+    if adapter && function_exported?(adapter, :list_models, 1) do
+      adapter.list_models([{:provider, String.to_atom(backend)}])
+    else
+      {:error, :not_supported}
+    end
+  end
+
+  defp show_configuration_error(backend) do
+    show_error("#{backend} backend is not configured. Please check your configuration.")
+    :ok
   end
 
   defp switch_model(args) do
@@ -228,6 +255,13 @@ defmodule MCPChat.CLI.Commands.LLM do
     IO.puts("Type: #{info.name}")
     IO.puts("Backend: #{info.backend}")
 
+    display_hardware_details(info)
+    display_optimization_details(info)
+
+    :ok
+  end
+
+  defp display_hardware_details(info) do
     case info.type do
       :cuda ->
         IO.puts("Devices: #{info.device_count}")
@@ -252,7 +286,9 @@ defmodule MCPChat.CLI.Commands.LLM do
       _ ->
         :ok
     end
+  end
 
+  defp display_optimization_details(info) do
     # Show optimization tips
     IO.puts("\nOptimization Status:")
 
@@ -278,26 +314,28 @@ defmodule MCPChat.CLI.Commands.LLM do
         IO.puts("  3. Rebuild the application")
 
       _ ->
-        # Show more specific guidance based on hardware
-        case info.type do
-          :metal ->
-            IO.puts("  ⚠ Apple Metal detected but EMLX not loaded")
-            IO.puts("  Consider adding {:emlx, \"~> 0.5\"} to your mix.exs dependencies")
-            IO.puts("  Alternatively, add {:exla, \"~> 0.6\"} for XLA acceleration")
-
-          :cuda ->
-            IO.puts("  ⚠ CUDA capable GPU detected but EXLA not loaded")
-            IO.puts("  Consider adding {:exla, \"~> 0.6\"} to your mix.exs dependencies")
-            IO.puts("  Ensure CUDA toolkit is installed and XLA_TARGET=cuda120 is set")
-
-          _ ->
-            IO.puts("  ⚠ No hardware acceleration libraries loaded")
-            IO.puts("  Binary backend will be used (slower performance)")
-            IO.puts("  Consider installing EXLA for CPU optimizations")
-        end
+        display_generic_optimization_tips(info)
     end
+  end
 
-    :ok
+  defp display_generic_optimization_tips(info) do
+    # Show more specific guidance based on hardware
+    case info.type do
+      :metal ->
+        IO.puts("  ⚠ Apple Metal detected but EMLX not loaded")
+        IO.puts("  Consider adding {:emlx, \"~> 0.5\"} to your mix.exs dependencies")
+        IO.puts("  Alternatively, add {:exla, \"~> 0.6\"} for XLA acceleration")
+
+      :cuda ->
+        IO.puts("  ⚠ CUDA capable GPU detected but EXLA not loaded")
+        IO.puts("  Consider adding {:exla, \"~> 0.6\"} to your mix.exs dependencies")
+        IO.puts("  Ensure CUDA toolkit is installed and XLA_TARGET=cuda120 is set")
+
+      _ ->
+        IO.puts("  ⚠ No hardware acceleration libraries loaded")
+        IO.puts("  Binary backend will be used (slower performance)")
+        IO.puts("  Consider installing EXLA for CPU optimizations")
+    end
   end
 
   # Helper functions

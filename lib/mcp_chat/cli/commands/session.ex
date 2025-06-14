@@ -73,51 +73,9 @@ defmodule MCPChat.CLI.Commands.Session do
          session_identifier <- parse_args(args),
          {:ok, session} <- Persistence.load_session(session_identifier) do
       Session.set_current_session(session)
-
-      message_count = length(session.messages)
-      show_success("Loaded session: #{session.id}")
-      show_info("Messages: #{message_count}")
-
-      if session.llm_backend do
-        show_info("Backend: #{session.llm_backend}")
-      end
-
-      model = session.context[:model] || Map.get(session, :model)
-
-      if model do
-        show_info("Model: #{model}")
-      end
-
-      # Show last message preview
-      case List.last(session.messages) do
-        nil ->
-          :ok
-
-        %{"role" => role, "content" => content} ->
-          preview = String.slice(content, 0, 100)
-          suffix = if String.length(content) > 100, do: "...", else: ""
-          show_info("Last #{role}: #{preview}#{suffix}")
-
-        %{role: role, content: content} ->
-          preview = String.slice(content, 0, 100)
-          suffix = if String.length(content) > 100, do: "...", else: ""
-          show_info("Last #{role}: #{preview}#{suffix}")
-
-        %{"content" => content} = msg ->
-          role = msg["role"] || msg[:role] || "unknown"
-          preview = String.slice(content, 0, 100)
-          suffix = if String.length(content) > 100, do: "...", else: ""
-          show_info("Last #{role}: #{preview}#{suffix}")
-
-        %{content: content} = msg ->
-          role = msg[:role] || msg["role"] || "unknown"
-          preview = String.slice(content, 0, 100)
-          suffix = if String.length(content) > 100, do: "...", else: ""
-          show_info("Last #{role}: #{preview}#{suffix}")
-
-        _other ->
-          :ok
-      end
+      display_loaded_session_info(session)
+      display_session_metadata(session)
+      display_last_message_preview(session)
     else
       {:error, :not_found} ->
         show_error("Session not found")
@@ -125,6 +83,60 @@ defmodule MCPChat.CLI.Commands.Session do
       {:error, reason} ->
         show_error("Failed to load session: #{reason}")
     end
+  end
+
+  defp display_loaded_session_info(session) do
+    message_count = length(session.messages)
+    show_success("Loaded session: #{session.id}")
+    show_info("Messages: #{message_count}")
+  end
+
+  defp display_session_metadata(session) do
+    if session.llm_backend do
+      show_info("Backend: #{session.llm_backend}")
+    end
+
+    model = session.context[:model] || Map.get(session, :model)
+
+    if model do
+      show_info("Model: #{model}")
+    end
+  end
+
+  defp display_last_message_preview(session) do
+    case List.last(session.messages) do
+      nil ->
+        :ok
+
+      message ->
+        display_message_preview(message)
+    end
+  end
+
+  defp display_message_preview(%{"role" => role, "content" => content}) do
+    show_message_preview(role, content)
+  end
+
+  defp display_message_preview(%{role: role, content: content}) do
+    show_message_preview(role, content)
+  end
+
+  defp display_message_preview(%{"content" => content} = msg) do
+    role = msg["role"] || msg[:role] || "unknown"
+    show_message_preview(role, content)
+  end
+
+  defp display_message_preview(%{content: content} = msg) do
+    role = msg[:role] || msg["role"] || "unknown"
+    show_message_preview(role, content)
+  end
+
+  defp display_message_preview(_other), do: :ok
+
+  defp show_message_preview(role, content) do
+    preview = String.slice(content, 0, 100)
+    suffix = if String.length(content) > 100, do: "...", else: ""
+    show_info("Last #{role}: #{preview}#{suffix}")
   end
 
   defp list_sessions() do

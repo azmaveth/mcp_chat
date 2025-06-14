@@ -108,69 +108,94 @@ defmodule MCPChat do
   end
 
   defp start_app(opts) do
-    # Configure logger level - use error for escript to reduce noise
-    log_level = if opts[:quiet] || !Code.ensure_loaded?(Mix), do: :error, else: :info
+    configure_logging(opts)
+    start_application()
+    handle_session_options(opts)
+    start_chat_interface()
+  end
+
+  defp configure_logging(opts) do
+    log_level = determine_log_level(opts)
     Logger.configure(level: log_level)
+  end
 
-    # Start the application
+  defp determine_log_level(opts) do
+    if opts[:quiet] || !Code.ensure_loaded?(Mix), do: :error, else: :info
+  end
+
+  defp start_application() do
     {:ok, _} = Application.ensure_all_started(:mcp_chat)
+  end
 
-    # Handle session options
+  defp handle_session_options(opts) do
     cond do
-      opts[:continue] ->
-        # Continue the most recent session
-        case MCPChat.SessionManager.continue_most_recent() do
-          {:ok, session_info} ->
-            Logger.info("Continuing session: #{session_info.name}")
-
-          {:error, :no_sessions} ->
-            Logger.info("No previous sessions found, starting new session")
-            MCPChat.SessionManager.start_new_session()
-
-          {:error, reason} ->
-            IO.puts(:stderr, "Failed to continue session: #{inspect(reason)}")
-            System.halt(1)
-        end
-
-      opts[:resume] ->
-        # Resume specific session
-        case MCPChat.SessionManager.resume_session(opts[:resume]) do
-          {:ok, session_info} ->
-            Logger.info("Resumed session: #{session_info.name}")
-
-          {:error, :not_found} ->
-            IO.puts(:stderr, "Session not found: #{opts[:resume]}")
-            System.halt(1)
-
-          {:error, reason} ->
-            IO.puts(:stderr, "Failed to resume session: #{inspect(reason)}")
-            System.halt(1)
-        end
-
-      true ->
-        # Start new session
-        session_opts =
-          if opts[:backend] do
-            [backend: opts[:backend]]
-          else
-            []
-          end
-
-        MCPChat.SessionManager.start_new_session(session_opts)
+      opts[:continue] -> continue_recent_session()
+      opts[:resume] -> resume_specific_session(opts[:resume])
+      true -> start_new_session_with_opts(opts)
     end
+  end
 
-    # Profile UI setup phase
-    MCPChat.StartupProfiler.start_phase(:ui_setup)
+  defp continue_recent_session() do
+    case MCPChat.SessionManager.continue_most_recent() do
+      {:ok, session_info} ->
+        Logger.info("Continuing session: #{session_info.name}")
 
-    # Start the chat interface
+      {:error, :no_sessions} ->
+        Logger.info("No previous sessions found, starting new session")
+        MCPChat.SessionManager.start_new_session()
+
+      {:error, reason} ->
+        handle_session_error("Failed to continue session", reason)
+    end
+  end
+
+  defp resume_specific_session(session_id) do
+    case MCPChat.SessionManager.resume_session(session_id) do
+      {:ok, session_info} ->
+        Logger.info("Resumed session: #{session_info.name}")
+
+      {:error, :not_found} ->
+        IO.puts(:stderr, "Session not found: #{session_id}")
+        System.halt(1)
+
+      {:error, reason} ->
+        handle_session_error("Failed to resume session", reason)
+    end
+  end
+
+  defp start_new_session_with_opts(opts) do
+    session_opts = build_session_opts(opts)
+    MCPChat.SessionManager.start_new_session(session_opts)
+  end
+
+  defp build_session_opts(opts) do
+    if opts[:backend] do
+      [backend: opts[:backend]]
+    else
+      []
+    end
+  end
+
+  defp handle_session_error(message, reason) do
+    IO.puts(:stderr, "#{message}: #{inspect(reason)}")
+    System.halt(1)
+  end
+
+  defp start_chat_interface() do
+    profile_ui_setup()
     result = MCPChat.CLI.Chat.start()
+    complete_ui_profiling()
+    result
+  end
 
-    # End UI setup phase and show report
+  defp profile_ui_setup() do
+    MCPChat.StartupProfiler.start_phase(:ui_setup)
+  end
+
+  defp complete_ui_profiling() do
     MCPChat.StartupProfiler.end_phase(:ui_setup)
     MCPChat.StartupProfiler.end_phase(:total)
     MCPChat.StartupProfiler.report()
-
-    result
   end
 
   defp list_sessions_and_exit() do

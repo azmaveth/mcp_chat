@@ -75,39 +75,44 @@ defmodule MCPChat.Application do
   end
 
   defp get_startup_mode() do
-    # Check environment variable first
+    case get_startup_mode_from_env() do
+      nil -> get_startup_mode_from_config()
+      mode -> mode
+    end
+  end
+
+  defp get_startup_mode_from_env() do
     case System.get_env("MCP_STARTUP_MODE") do
-      "eager" ->
-        :eager
+      "eager" -> :eager
+      "background" -> :background
+      "lazy" -> :lazy
+      _ -> nil
+    end
+  end
 
-      "background" ->
-        :background
+  defp get_startup_mode_from_config() do
+    config_path = Path.expand("~/.config/mcp_chat/config.toml")
 
-      "lazy" ->
-        :lazy
+    if File.exists?(config_path) do
+      read_startup_mode_from_file(config_path)
+    else
+      :lazy
+    end
+  end
 
-      _ ->
-        # Config process isn't started yet, so read from file directly
-        config_path = Path.expand("~/.config/mcp_chat/config.toml")
+  defp read_startup_mode_from_file(config_path) do
+    case Toml.decode_file(config_path) do
+      {:ok, config} -> parse_startup_mode_from_config(config)
+      _ -> :lazy
+    end
+  end
 
-        if File.exists?(config_path) do
-          case Toml.decode_file(config_path) do
-            {:ok, config} ->
-              case get_in(config, ["startup", "mcp_connection_mode"]) do
-                "eager" -> :eager
-                "background" -> :background
-                "lazy" -> :lazy
-                # Default to lazy loading
-                _ -> :lazy
-              end
-
-            _ ->
-              :lazy
-          end
-        else
-          # Default to lazy loading
-          :lazy
-        end
+  defp parse_startup_mode_from_config(config) do
+    case get_in(config, ["startup", "mcp_connection_mode"]) do
+      "eager" -> :eager
+      "background" -> :background
+      "lazy" -> :lazy
+      _ -> :lazy
     end
   end
 

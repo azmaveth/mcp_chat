@@ -222,74 +222,92 @@ defmodule MCPChat.CLI.Commands.Notification do
   defp display_event(event) do
     time = format_time(event.timestamp)
     icon = type_icon(event.type)
-
-    message =
-      case event.type do
-        :resources_updated ->
-          uri = get_in(event.params, ["uri"]) || "unknown"
-          "Resource updated: #{uri}"
-
-        :resource_added ->
-          uri = get_in(event.params, ["uri"]) || "unknown"
-          "Resource added: #{uri}"
-
-        :resource_removed ->
-          uri = get_in(event.params, ["uri"]) || "unknown"
-          "Resource removed: #{uri}"
-
-        :tool_added ->
-          name = get_in(event.params, ["name"]) || "unknown"
-          "Tool added: #{name}"
-
-        :tool_removed ->
-          name = get_in(event.params, ["name"]) || "unknown"
-          "Tool removed: #{name}"
-
-        :server_error ->
-          error = get_in(event.params, ["error"]) || "Unknown error"
-          "Server error: #{error}"
-
-        :progress ->
-          operation = get_in(event.params, ["operation"]) || "Operation"
-          progress = get_in(event.params, ["progress"]) || 0
-          total = get_in(event.params, ["total"]) || 100
-          "#{operation}: #{progress}/#{total}"
-
-        :custom_notification ->
-          get_in(event.params, ["message"]) || "Custom notification"
-
-        _ ->
-          event.type |> to_string() |> String.replace("_", " ") |> String.capitalize()
-      end
+    message = format_event_message(event)
 
     show_info("[#{time}] #{icon} #{event.server}: #{message}")
   end
 
-  defp type_icon(type) do
-    case type do
-      :server_connected -> "🟢"
-      :server_disconnected -> "🔴"
-      :server_error -> "❌"
-      :server_reconnecting -> "🔄"
-      :resources_list_changed -> "📋"
-      :resources_updated -> "📝"
-      :resource_added -> "➕"
-      :resource_removed -> "➖"
-      :tools_list_changed -> "🔧"
-      :tool_added -> "🆕"
-      :tool_removed -> "🗑️"
-      :tool_updated -> "🔄"
-      :prompts_list_changed -> "💬"
-      :prompt_added -> "💡"
-      :prompt_removed -> "🗑️"
-      :prompt_updated -> "✏️"
-      :progress -> "⏳"
-      :progress_start -> "▶️"
-      :progress_complete -> "✅"
-      :progress_error -> "❌"
-      :custom_notification -> "📢"
-      _ -> "•"
+  defp format_event_message(event) do
+    case event.type do
+      type when type in [:resources_updated, :resource_added, :resource_removed] ->
+        format_resource_message(event.type, event.params)
+
+      type when type in [:tool_added, :tool_removed] ->
+        format_tool_message(event.type, event.params)
+
+      :server_error ->
+        format_server_error_message(event.params)
+
+      :progress ->
+        format_progress_message(event.params)
+
+      :custom_notification ->
+        format_custom_notification_message(event.params)
+
+      _ ->
+        format_default_message(event.type)
     end
+  end
+
+  defp format_resource_message(type, params) do
+    uri = get_in(params, ["uri"]) || "unknown"
+    action = type |> to_string() |> String.replace("_", " ") |> String.replace("resource ", "")
+    "Resource #{action}: #{uri}"
+  end
+
+  defp format_tool_message(type, params) do
+    name = get_in(params, ["name"]) || "unknown"
+    action = type |> to_string() |> String.replace("_", " ") |> String.replace("tool ", "")
+    "Tool #{action}: #{name}"
+  end
+
+  defp format_server_error_message(params) do
+    error = get_in(params, ["error"]) || "Unknown error"
+    "Server error: #{error}"
+  end
+
+  defp format_progress_message(params) do
+    operation = get_in(params, ["operation"]) || "Operation"
+    progress = get_in(params, ["progress"]) || 0
+    total = get_in(params, ["total"]) || 100
+    "#{operation}: #{progress}/#{total}"
+  end
+
+  defp format_custom_notification_message(params) do
+    get_in(params, ["message"]) || "Custom notification"
+  end
+
+  defp format_default_message(type) do
+    type |> to_string() |> String.replace("_", " ") |> String.capitalize()
+  end
+
+  # Notification type icon mapping
+  @type_icons %{
+    server_connected: "🟢",
+    server_disconnected: "🔴",
+    server_error: "❌",
+    server_reconnecting: "🔄",
+    resources_list_changed: "📋",
+    resources_updated: "📝",
+    resource_added: "➕",
+    resource_removed: "➖",
+    tools_list_changed: "🔧",
+    tool_added: "🆕",
+    tool_removed: "🗑️",
+    tool_updated: "🔄",
+    prompts_list_changed: "💬",
+    prompt_added: "💡",
+    prompt_removed: "🗑️",
+    prompt_updated: "✏️",
+    progress: "⏳",
+    progress_start: "▶️",
+    progress_complete: "✅",
+    progress_error: "❌",
+    custom_notification: "📢"
+  }
+
+  defp type_icon(type) do
+    Map.get(@type_icons, type, "•")
   end
 
   defp format_time(datetime) do
