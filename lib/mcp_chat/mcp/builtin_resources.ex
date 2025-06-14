@@ -67,18 +67,26 @@ defmodule MCPChat.MCP.BuiltinResources do
   end
 
   def read_resource(uri) do
-    case uri do
-      "mcp-chat://docs/readme" -> get_readme_content()
-      "mcp-chat://docs/commands" -> {:ok, generate_command_reference()}
-      "mcp-chat://docs/mcp-servers" -> get_mcp_servers_guide()
-      "mcp-chat://info/version" -> get_version_info()
-      "mcp-chat://info/config" -> get_config_info()
-      "mcp-chat://examples/multi-agent" -> {:ok, generate_multi_agent_examples()}
-      "mcp-chat://docs/troubleshooting" -> {:ok, generate_troubleshooting_guide()}
-      "mcp-chat://docs/api-keys" -> {:ok, generate_api_key_guide()}
-      "mcp-chat://info/libraries" -> {:ok, generate_library_info()}
-      _ -> {:error, "Resource not found"}
+    resource_handlers = get_resource_handler_map()
+
+    case Map.get(resource_handlers, uri) do
+      nil -> {:error, "Resource not found"}
+      handler -> handler.()
     end
+  end
+
+  defp get_resource_handler_map() do
+    %{
+      "mcp-chat://docs/readme" => &get_readme_content/0,
+      "mcp-chat://docs/commands" => fn -> {:ok, generate_command_reference()} end,
+      "mcp-chat://docs/mcp-servers" => &get_mcp_servers_guide/0,
+      "mcp-chat://info/version" => &get_version_info/0,
+      "mcp-chat://info/config" => &get_config_info/0,
+      "mcp-chat://examples/multi-agent" => fn -> {:ok, generate_multi_agent_examples()} end,
+      "mcp-chat://docs/troubleshooting" => fn -> {:ok, generate_troubleshooting_guide()} end,
+      "mcp-chat://docs/api-keys" => fn -> {:ok, generate_api_key_guide()} end,
+      "mcp-chat://info/libraries" => fn -> {:ok, generate_library_info()} end
+    }
   end
 
   defp get_readme_content() do
@@ -226,19 +234,27 @@ defmodule MCPChat.MCP.BuiltinResources do
   end
 
   def get_prompt(name) do
-    case name do
-      "getting_started" -> get_getting_started_prompt()
-      "demo" -> get_demo_prompt()
-      "troubleshoot" -> get_troubleshoot_prompt()
-      "research_mode" -> get_research_mode_prompt()
-      "code_review" -> get_code_review_prompt()
-      "setup_mcp_server" -> get_setup_mcp_server_prompt()
-      "explain_code" -> get_explain_code_prompt()
-      "debug_session" -> get_debug_session_prompt()
-      "create_agent" -> get_create_agent_prompt()
-      "api_integration" -> get_api_integration_prompt()
-      _ -> {:error, "Prompt not found"}
+    prompt_functions = get_prompt_function_map()
+
+    case Map.get(prompt_functions, name) do
+      nil -> {:error, "Prompt not found"}
+      function -> function.()
     end
+  end
+
+  defp get_prompt_function_map() do
+    %{
+      "getting_started" => &get_getting_started_prompt/0,
+      "demo" => &get_demo_prompt/0,
+      "troubleshoot" => &get_troubleshoot_prompt/0,
+      "research_mode" => &get_research_mode_prompt/0,
+      "code_review" => &get_code_review_prompt/0,
+      "setup_mcp_server" => &get_setup_mcp_server_prompt/0,
+      "explain_code" => &get_explain_code_prompt/0,
+      "debug_session" => &get_debug_session_prompt/0,
+      "create_agent" => &get_create_agent_prompt/0,
+      "api_integration" => &get_api_integration_prompt/0
+    }
   end
 
   defp get_getting_started_prompt() do

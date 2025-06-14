@@ -137,29 +137,38 @@ defmodule MCPChat.SessionManager do
 
     # Check for existing sessions with same base name and add sequence if needed
     sessions_dir = Persistence.get_sessions_dir()
+    existing_files = get_existing_session_files(sessions_dir)
 
-    existing_files =
-      case File.ls(sessions_dir) do
-        {:ok, files} -> files
-        _ -> []
-      end
+    generate_unique_session_name(base_name, existing_files)
+  end
 
+  defp get_existing_session_files(sessions_dir) do
+    case File.ls(sessions_dir) do
+      {:ok, files} -> files
+      _ -> []
+    end
+  end
+
+  defp generate_unique_session_name(base_name, existing_files) do
     if Enum.any?(existing_files, &String.starts_with?(&1, base_name)) do
-      # Find the highest sequence number
-      max_seq =
-        existing_files
-        |> Enum.filter(&String.starts_with?(&1, base_name))
-        |> Enum.map(fn file ->
-          case Regex.run(~r/#{Regex.escape(base_name)}_(\d+)/, file) do
-            [_, seq] -> String.to_integer(seq)
-            _ -> 0
-          end
-        end)
-        |> Enum.max(fn -> 0 end)
-
+      max_seq = find_max_sequence_number(base_name, existing_files)
       "#{base_name}_#{max_seq + 1}"
     else
       base_name
+    end
+  end
+
+  defp find_max_sequence_number(base_name, existing_files) do
+    existing_files
+    |> Enum.filter(&String.starts_with?(&1, base_name))
+    |> Enum.map(&extract_sequence_number(base_name, &1))
+    |> Enum.max(fn -> 0 end)
+  end
+
+  defp extract_sequence_number(base_name, file) do
+    case Regex.run(~r/#{Regex.escape(base_name)}_(\d+)/, file) do
+      [_, seq] -> String.to_integer(seq)
+      _ -> 0
     end
   end
 
@@ -194,41 +203,62 @@ defmodule MCPChat.SessionManager do
 
   defp show_session_info(session) do
     message_count = length(session.messages)
-
-    created_at =
-      case session do
-        %{metadata: %{started_at: started}} -> started
-        _ -> session.created_at
-      end
-
+    created_at = extract_session_created_at(session)
     time_ago = format_time_ago(created_at)
 
-    IO.puts("")
-    IO.puts("📂 Resumed session from #{time_ago}")
-    IO.puts("   Messages: #{message_count}")
-    IO.puts("   Backend: #{session.llm_backend}")
-
-    # Show last few messages for context
-    if message_count > 0 do
-      IO.puts("\n   Recent conversation:")
-
-      session.messages
-      # Last 3 messages
-      |> Enum.take(-3)
-      |> Enum.each(fn msg ->
-        preview =
-          msg.content
-          |> String.trim()
-          |> String.slice(0, 60)
-          |> then(fn s -> if String.length(msg.content) > 60, do: s <> "...", else: s end)
-
-        role_emoji = if msg.role == "user", do: "👤", else: "🤖"
-        IO.puts("   #{role_emoji} #{preview}")
-      end)
-    end
+    display_session_header(time_ago, message_count, session.llm_backend)
+    display_recent_messages_if_available(session.messages)
 
     IO.puts("")
   end
+
+  defp extract_session_created_at(session) do
+    case session do
+      %{metadata: %{started_at: started}} -> started
+      _ -> session.created_at
+    end
+  end
+
+  defp display_session_header(time_ago, message_count, backend) do
+    IO.puts("")
+    IO.puts("📂 Resumed session from #{time_ago}")
+    IO.puts("   Messages: #{message_count}")
+    IO.puts("   Backend: #{backend}")
+  end
+
+  defp display_recent_messages_if_available(messages) do
+    if length(messages) > 0 do
+      IO.puts("\n   Recent conversation:")
+
+      messages
+      |> Enum.take(-3)
+      |> Enum.each(&display_message_preview/1)
+    end
+  end
+
+  defp display_message_preview(msg) do
+    preview = create_message_preview(msg.content)
+    role_emoji = get_role_emoji(msg.role)
+    IO.puts("   #{role_emoji} #{preview}")
+  end
+
+  defp create_message_preview(content) do
+    content
+    |> String.trim()
+    |> String.slice(0, 60)
+    |> add_ellipsis_if_truncated(content)
+  end
+
+  defp add_ellipsis_if_truncated(preview, original_content) do
+    if String.length(original_content) > 60 do
+      preview <> "..."
+    else
+      preview
+    end
+  end
+
+  defp get_role_emoji("user"), do: "👤"
+  defp get_role_emoji(_), do: "🤖"
 
   defp format_time_ago(datetime) do
     now = DateTime.utc_now()

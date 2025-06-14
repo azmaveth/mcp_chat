@@ -77,24 +77,32 @@ defmodule MCPChat.MCP.ServerPersistence do
     ensure_directory(file_path)
 
     if File.exists?(file_path) do
-      case File.read(file_path) do
-        {:ok, content} ->
-          case Jason.decode(content) do
-            {:ok, servers} when is_list(servers) ->
-              # Return with atom keys for consistency
-              Enum.map(servers, &atomize_keys/1)
-
-            _ ->
-              Logger.warning("Failed to parse saved servers file, returning empty list")
-              []
-          end
-
-        {:error, reason} ->
-          Logger.error("Failed to read saved servers file: #{inspect(reason)}")
-          []
-      end
+      load_servers_from_file(file_path)
     else
       []
+    end
+  end
+
+  defp load_servers_from_file(file_path) do
+    case File.read(file_path) do
+      {:ok, content} ->
+        parse_servers_content(content)
+
+      {:error, reason} ->
+        Logger.error("Failed to read saved servers file: #{inspect(reason)}")
+        []
+    end
+  end
+
+  defp parse_servers_content(content) do
+    case Jason.decode(content) do
+      {:ok, servers} when is_list(servers) ->
+        # Return with atom keys for consistency
+        Enum.map(servers, &atomize_keys/1)
+
+      _ ->
+        Logger.warning("Failed to parse saved servers file, returning empty list")
+        []
     end
   end
 

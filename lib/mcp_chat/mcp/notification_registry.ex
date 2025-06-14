@@ -109,26 +109,35 @@ defmodule MCPChat.MCP.NotificationRegistry do
     type = method_to_type(method)
 
     if type do
-      handlers = Map.get(state.handlers, type, [])
-
-      new_handler_states =
-        Enum.reduce(handlers, state.handler_states, fn handler, acc ->
-          handler_state = Map.get(acc, handler)
-
-          case handler.handle_notification(server_name, type, params, handler_state) do
-            {:ok, new_state} ->
-              Map.put(acc, handler, new_state)
-
-            {:error, reason, new_state} ->
-              Logger.error("Handler #{inspect(handler)} failed: #{inspect(reason)}")
-              Map.put(acc, handler, new_state)
-          end
-        end)
-
-      {:noreply, %{state | handler_states: new_handler_states}}
+      handle_known_notification(type, server_name, params, state)
     else
       Logger.debug("Unknown notification method: #{method}")
       {:noreply, state}
+    end
+  end
+
+  defp handle_known_notification(type, server_name, params, state) do
+    handlers = Map.get(state.handlers, type, [])
+    new_handler_states = process_handlers(handlers, server_name, type, params, state.handler_states)
+    {:noreply, %{state | handler_states: new_handler_states}}
+  end
+
+  defp process_handlers(handlers, server_name, type, params, handler_states) do
+    Enum.reduce(handlers, handler_states, fn handler, acc ->
+      process_single_handler(handler, server_name, type, params, acc)
+    end)
+  end
+
+  defp process_single_handler(handler, server_name, type, params, handler_states) do
+    handler_state = Map.get(handler_states, handler)
+
+    case handler.handle_notification(server_name, type, params, handler_state) do
+      {:ok, new_state} ->
+        Map.put(handler_states, handler, new_state)
+
+      {:error, reason, new_state} ->
+        Logger.error("Handler #{inspect(handler)} failed: #{inspect(reason)}")
+        Map.put(handler_states, handler, new_state)
     end
   end
 

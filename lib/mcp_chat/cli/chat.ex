@@ -304,28 +304,34 @@ defmodule MCPChat.CLI.Chat do
     # Process the resumed stream
     case stream_simple(stream) do
       {:ok, continuation} ->
-        # Get the partial response that was already shown
-        case Session.get_last_recovery_id() do
-          nil ->
-            # Just add the continuation as a new message
-            Session.add_message("assistant", continuation)
-
-          recovery_id ->
-            # Get the partial content and combine
-            case MCPChat.LLM.ExLLMAdapter.get_partial_response(recovery_id) do
-              {:ok, chunks} ->
-                partial = chunks |> Enum.map_join(& &1.content, "")
-                full_response = partial <> continuation
-                Session.add_message("assistant", full_response)
-
-              _ ->
-                # Fallback to just the continuation
-                Session.add_message("assistant", continuation)
-            end
-        end
+        handle_continuation_success(continuation)
 
       {:error, reason} ->
         Renderer.show_error("Failed to process resumed stream: #{inspect(reason)}")
+    end
+  end
+
+  defp handle_continuation_success(continuation) do
+    case Session.get_last_recovery_id() do
+      nil ->
+        # Just add the continuation as a new message
+        Session.add_message("assistant", continuation)
+
+      recovery_id ->
+        handle_recovery_continuation(recovery_id, continuation)
+    end
+  end
+
+  defp handle_recovery_continuation(recovery_id, continuation) do
+    case MCPChat.LLM.ExLLMAdapter.get_partial_response(recovery_id) do
+      {:ok, chunks} ->
+        partial = chunks |> Enum.map_join(& &1.content, "")
+        full_response = partial <> continuation
+        Session.add_message("assistant", full_response)
+
+      _ ->
+        # Fallback to just the continuation
+        Session.add_message("assistant", continuation)
     end
   end
 

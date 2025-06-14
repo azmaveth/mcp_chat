@@ -196,31 +196,35 @@ defmodule MCPChat.MCP.LazyServerManager do
     # Use ParallelConnectionManager to connect servers
     case ParallelConnectionManager.connect_servers_parallel(server_configs, opts) do
       {:ok, results} ->
-        # Update connection states based on results
-        final_state =
-          Enum.reduce(results, new_state, fn {name, result}, acc_state ->
-            case result do
-              {:ok, _} ->
-                Logger.debug("Server #{name} connected successfully (parallel)")
-                update_connection_state(acc_state, name, :connected)
-
-              {:error, reason} ->
-                Logger.error("Failed to connect to server #{name} (parallel): #{inspect(reason)}")
-                update_connection_state(acc_state, name, :disconnected)
-            end
-          end)
-
+        final_state = process_connection_results(results, new_state)
         {:reply, {:ok, results}, final_state}
 
       {:error, reason} ->
-        # Mark all as disconnected on failure
-        failed_state =
-          Enum.reduce(server_configs, new_state, fn {name, _config}, acc_state ->
-            update_connection_state(acc_state, name, :disconnected)
-          end)
-
+        failed_state = mark_all_disconnected(server_configs, new_state)
         {:reply, {:error, reason}, failed_state}
     end
+  end
+
+  defp process_connection_results(results, state) do
+    Enum.reduce(results, state, fn {name, result}, acc_state ->
+      update_state_from_result(name, result, acc_state)
+    end)
+  end
+
+  defp update_state_from_result(name, {:ok, _}, state) do
+    Logger.debug("Server #{name} connected successfully (parallel)")
+    update_connection_state(state, name, :connected)
+  end
+
+  defp update_state_from_result(name, {:error, reason}, state) do
+    Logger.error("Failed to connect to server #{name} (parallel): #{inspect(reason)}")
+    update_connection_state(state, name, :disconnected)
+  end
+
+  defp mark_all_disconnected(server_configs, state) do
+    Enum.reduce(server_configs, state, fn {name, _config}, acc_state ->
+      update_connection_state(acc_state, name, :disconnected)
+    end)
   end
 
   @impl true

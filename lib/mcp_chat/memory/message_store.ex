@@ -333,52 +333,68 @@ defmodule MCPChat.Memory.MessageStore do
   defp decode_message(line) do
     case Jason.decode(line) do
       {:ok, message} ->
-        # Convert string keys to atoms for consistency
-        message
-        |> Enum.map(fn
-          {k, v} when is_binary(k) ->
-            # Safely convert known keys to atoms
-            key =
-              case k do
-                "role" -> :role
-                "content" -> :content
-                "timestamp" -> :timestamp
-                _ -> k
-              end
-
-            {key, v}
-
-          {k, v} ->
-            {k, v}
-        end)
-        |> Map.new()
+        normalize_message_keys(message)
 
       _ ->
         nil
     end
   end
 
+  defp normalize_message_keys(message) do
+    message
+    |> Enum.map(&normalize_key_value_pair/1)
+    |> Map.new()
+  end
+
+  defp normalize_key_value_pair({k, v}) when is_binary(k) do
+    {convert_message_key(k), v}
+  end
+
+  defp normalize_key_value_pair({k, v}) do
+    {k, v}
+  end
+
+  defp convert_message_key("role"), do: :role
+  defp convert_message_key("content"), do: :content
+  defp convert_message_key("timestamp"), do: :timestamp
+  defp convert_message_key(key), do: key
+
   defp maybe_trim_disk_file(state) do
-    if state.message_count > state.max_disk_size do
-      # Keep only the most recent messages
-      keep_count = state.max_disk_size - state.memory_limit
-
-      case File.read(state.disk_path) do
-        {:ok, content} ->
-          lines = String.split(content, "\n", trim: true)
-
-          if length(lines) > keep_count do
-            trimmed =
-              lines
-              |> Enum.take(-keep_count)
-              |> Enum.join("\n")
-
-            File.write!(state.disk_path, trimmed <> "\n")
-          end
-
-        _ ->
-          :ok
-      end
+    if should_trim_disk_file?(state) do
+      trim_disk_file(state)
     end
+  end
+
+  defp should_trim_disk_file?(state) do
+    state.message_count > state.max_disk_size
+  end
+
+  defp trim_disk_file(state) do
+    keep_count = state.max_disk_size - state.memory_limit
+
+    case File.read(state.disk_path) do
+      {:ok, content} ->
+        trim_content_if_needed(content, keep_count, state.disk_path)
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp trim_content_if_needed(content, keep_count, disk_path) do
+    lines = String.split(content, "\n", trim: true)
+
+    if length(lines) > keep_count do
+      write_trimmed_content(lines, keep_count, disk_path)
+    end
+  end
+
+  defp write_trimmed_content(lines, keep_count, disk_path) do
+    trimmed =
+      lines
+      |> Enum.take(-keep_count)
+      |> Enum.join("\n")
+
+    File.write!(disk_path, trimmed <> "\n")
   end
 end

@@ -69,66 +69,82 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
       # Create test tool calls using available servers
       test_calls = create_test_tool_calls(connected_servers)
 
-      if Enum.empty?(test_calls) do
-        show_error("No suitable tools found for concurrent execution test")
-      else
-        show_info("Testing with #{length(test_calls)} concurrent tool calls...")
-
-        # Execute with progress callback
-        progress_callback = fn update ->
-          case update.phase do
-            :starting ->
-              show_info("Starting execution of #{update.total} tools in #{update.groups} groups...")
-
-            :completed ->
-              duration_sec = update.duration_ms / 1_000
-              show_info("Completed: #{update.completed} successful, #{update.failed} failed (#{duration_sec}s)")
-          end
-        end
-
-        case ConcurrentToolExecutor.execute_concurrent(test_calls,
-               max_concurrency: 3,
-               timeout: 10_000,
-               progress_callback: progress_callback
-             ) do
-          {:ok, results} ->
-            show_test_results(results)
-
-          {:error, reason} ->
-            show_error("Concurrent execution test failed: #{inspect(reason)}")
-        end
-      end
+      execute_test_calls_if_available(test_calls)
     end
 
     :ok
   end
 
-  defp create_test_tool_calls(servers) do
-    # Try to find safe tools for testing
-    Enum.flat_map(servers, fn server ->
-      case ServerManager.get_tools(server.name) do
-        {:ok, tools} ->
-          safe_tools =
-            tools
-            |> Enum.filter(fn tool ->
-              tool_name = tool["name"] || ""
-              ConcurrentToolExecutor.tool_safe_for_concurrency?(tool_name)
-            end)
-            # Limit to 2 tools per server
-            |> Enum.take(2)
+  defp execute_test_calls_if_available(test_calls) do
+    if Enum.empty?(test_calls) do
+      show_error("No suitable tools found for concurrent execution test")
+    else
+      run_concurrent_test(test_calls)
+    end
+  end
 
-          Enum.map(safe_tools, fn tool ->
-            # Create minimal arguments for testing
-            args = create_test_arguments(tool)
-            {server.name, tool["name"], args}
-          end)
+  defp run_concurrent_test(test_calls) do
+    show_info("Testing with #{length(test_calls)} concurrent tool calls...")
 
-        _ ->
-          []
+    progress_callback = create_progress_callback()
+
+    case ConcurrentToolExecutor.execute_concurrent(test_calls,
+           max_concurrency: 3,
+           timeout: 10_000,
+           progress_callback: progress_callback
+         ) do
+      {:ok, results} ->
+        show_test_results(results)
+
+      {:error, reason} ->
+        show_error("Concurrent execution test failed: #{inspect(reason)}")
+    end
+  end
+
+  defp create_progress_callback() do
+    fn update ->
+      case update.phase do
+        :starting ->
+          show_info("Starting execution of #{update.total} tools in #{update.groups} groups...")
+
+        :completed ->
+          duration_sec = update.duration_ms / 1_000
+          show_info("Completed: #{update.completed} successful, #{update.failed} failed (#{duration_sec}s)")
       end
-    end)
-    # Limit total test calls
+    end
+  end
+
+  defp create_test_tool_calls(servers) do
+    servers
+    |> Enum.flat_map(&get_server_test_tools/1)
     |> Enum.take(6)
+  end
+
+  defp get_server_test_tools(server) do
+    case ServerManager.get_tools(server.name) do
+      {:ok, tools} ->
+        tools
+        |> filter_safe_tools()
+        |> Enum.take(2)
+        |> create_tool_calls(server.name)
+
+      _ ->
+        []
+    end
+  end
+
+  defp filter_safe_tools(tools) do
+    Enum.filter(tools, fn tool ->
+      tool_name = tool["name"] || ""
+      ConcurrentToolExecutor.tool_safe_for_concurrency?(tool_name)
+    end)
+  end
+
+  defp create_tool_calls(safe_tools, server_name) do
+    Enum.map(safe_tools, fn tool ->
+      args = create_test_arguments(tool)
+      {server_name, tool["name"], args}
+    end)
   end
 
   defp create_test_arguments(tool) do
@@ -167,28 +183,37 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
     show_info("Successful: #{length(successful)}")
     show_info("Failed: #{length(failed)}")
 
-    if length(successful) > 0 do
-      avg_duration =
-        successful
-        |> Enum.map(& &1.duration_ms)
-        |> Enum.sum()
-        |> div(length(successful))
+    show_average_duration_if_applicable(successful)
+    show_detailed_results_if_applicable(results)
+  end
 
+  defp show_average_duration_if_applicable(successful) do
+    if length(successful) > 0 do
+      avg_duration = calculate_average_duration(successful)
       show_info("Average duration: #{avg_duration}ms")
     end
+  end
 
-    # Show detailed results
+  defp calculate_average_duration(successful) do
+    successful
+    |> Enum.map(& &1.duration_ms)
+    |> Enum.sum()
+    |> div(length(successful))
+  end
+
+  defp show_detailed_results_if_applicable(results) do
     if length(results) <= 10 do
       show_info("\nDetailed Results:")
+      Enum.each(results, &display_result_summary/1)
+    end
+  end
 
-      Enum.each(results, fn result ->
-        status_icon = if result.status == :success, do: "✅", else: "❌"
-        IO.puts("  #{status_icon} #{result.server_name}:#{result.tool_name} (#{result.duration_ms}ms)")
+  defp display_result_summary(result) do
+    status_icon = if result.status == :success, do: "✅", else: "❌"
+    IO.puts("  #{status_icon} #{result.server_name}:#{result.tool_name} (#{result.duration_ms}ms)")
 
-        if result.status != :success and result.error do
-          IO.puts("    Error: #{inspect(result.error)}")
-        end
-      end)
+    if result.status != :success and result.error do
+      IO.puts("    Error: #{inspect(result.error)}")
     end
   end
 
@@ -196,30 +221,36 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
     if Enum.empty?(tool_specs) do
       show_error("No tool specifications provided")
     else
-      # Parse tool specifications
-      case parse_tool_specifications(tool_specs) do
-        {:ok, tool_calls} ->
-          show_info("Executing #{length(tool_calls)} tools concurrently...")
-
-          # Execute with progress tracking
-          progress_callback = &handle_execution_progress/1
-
-          case ConcurrentToolExecutor.execute_concurrent(tool_calls,
-                 progress_callback: progress_callback
-               ) do
-            {:ok, results} ->
-              show_execution_results(results)
-
-            {:error, reason} ->
-              show_error("Execution failed: #{inspect(reason)}")
-          end
-
-        {:error, reason} ->
-          show_error("Invalid tool specification: #{reason}")
-      end
+      perform_concurrent_execution(tool_specs)
     end
 
     :ok
+  end
+
+  defp perform_concurrent_execution(tool_specs) do
+    case parse_tool_specifications(tool_specs) do
+      {:ok, tool_calls} ->
+        execute_parsed_tools(tool_calls)
+
+      {:error, reason} ->
+        show_error("Invalid tool specification: #{reason}")
+    end
+  end
+
+  defp execute_parsed_tools(tool_calls) do
+    show_info("Executing #{length(tool_calls)} tools concurrently...")
+
+    progress_callback = &handle_execution_progress/1
+
+    case ConcurrentToolExecutor.execute_concurrent(tool_calls,
+           progress_callback: progress_callback
+         ) do
+      {:ok, results} ->
+        show_execution_results(results)
+
+      {:error, reason} ->
+        show_error("Execution failed: #{inspect(reason)}")
+    end
   end
 
   defp parse_tool_specifications(specs) do
@@ -253,15 +284,21 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
     if String.trim(args_str) == "" do
       %{}
     else
-      args_str
-      |> String.split(",")
-      |> Enum.map(fn pair ->
-        case String.split(pair, "=", parts: 2) do
-          [key, value] -> {String.trim(key), String.trim(value)}
-          [key] -> {String.trim(key), ""}
-        end
-      end)
-      |> Map.new()
+      parse_non_empty_arguments(args_str)
+    end
+  end
+
+  defp parse_non_empty_arguments(args_str) do
+    args_str
+    |> String.split(",")
+    |> Enum.map(&parse_key_value_pair/1)
+    |> Map.new()
+  end
+
+  defp parse_key_value_pair(pair) do
+    case String.split(pair, "=", parts: 2) do
+      [key, value] -> {String.trim(key), String.trim(value)}
+      [key] -> {String.trim(key), ""}
     end
   end
 

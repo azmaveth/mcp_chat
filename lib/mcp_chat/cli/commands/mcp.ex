@@ -96,42 +96,56 @@ defmodule MCPChat.CLI.Commands.MCP do
 
   defp list_servers() do
     servers = ServerManager.list_servers()
+    display_server_list(servers)
+    :ok
+  end
 
+  defp display_server_list(servers) do
     if Enum.empty?(servers) do
       show_info("No MCP servers connected")
       show_info("Use /discover to find available servers")
     else
       show_info("Connected MCP servers:")
-
-      Enum.each(servers, fn %{name: name, status: status} ->
-        status_icon = if status == :connected, do: "✓", else: "✗"
-        IO.puts("  #{status_icon} #{name}")
-      end)
+      display_connected_servers(servers)
     end
+  end
 
-    :ok
+  defp display_connected_servers(servers) do
+    Enum.each(servers, fn %{name: name, status: status} ->
+      status_icon = if status == :connected, do: "✓", else: "✗"
+      IO.puts("  #{status_icon} #{name}")
+    end)
   end
 
   defp list_saved_servers() do
     servers = ServerPersistence.load_all_servers()
+    display_saved_servers(servers)
+    :ok
+  end
 
+  defp display_saved_servers(servers) do
     if Enum.empty?(servers) do
       show_info("No saved server connections")
     else
       show_info("Saved MCP servers:")
-
-      Enum.each(servers, fn server ->
-        command_str = Enum.join(server.command, " ")
-        IO.puts("  • #{server.name}")
-        IO.puts("    Command: #{command_str}")
-
-        if Map.has_key?(server, :env) && server.env && map_size(server.env) > 0 do
-          IO.puts("    Environment: #{inspect(server.env)}")
-        end
-      end)
+      display_saved_server_details(servers)
     end
+  end
 
-    :ok
+  defp display_saved_server_details(servers) do
+    Enum.each(servers, fn server ->
+      display_server_info(server)
+    end)
+  end
+
+  defp display_server_info(server) do
+    command_str = Enum.join(server.command, " ")
+    IO.puts("  • #{server.name}")
+    IO.puts("    Command: #{command_str}")
+
+    if Map.has_key?(server, :env) && server.env && map_size(server.env) > 0 do
+      IO.puts("    Environment: #{inspect(server.env)}")
+    end
   end
 
   defp discover_servers() do
@@ -208,43 +222,60 @@ defmodule MCPChat.CLI.Commands.MCP do
     if Enum.empty?(servers) do
       show_info("No MCP servers connected")
     else
-      all_tools =
-        servers
-        |> Enum.filter(fn %{status: status} -> status == :connected end)
-        |> Enum.flat_map(fn %{name: server_name} ->
-          # Get tools for this server
-          case get_server_tools(server_name) do
-            {:ok, %{"tools" => tool_list}} when is_list(tool_list) ->
-              # Extract the tools list from the map
-              Enum.map(tool_list, &{server_name, &1})
-
-            {:ok, tools} when is_list(tools) ->
-              # Already a list (for backward compatibility)
-              Enum.map(tools, &{server_name, &1})
-
-            _ ->
-              []
-          end
-        end)
-
-      if Enum.empty?(all_tools) do
-        show_info("No tools available from connected servers")
-      else
-        show_info("Available MCP tools:")
-
-        all_tools
-        |> Enum.group_by(fn {server, _} -> server end)
-        |> Enum.each(fn {server, tools} ->
-          IO.puts("\n#{server}:")
-
-          Enum.each(tools, fn {_, tool} ->
-            IO.puts("  • #{tool["name"]} - #{tool["description"]}")
-          end)
-        end)
-      end
+      all_tools = collect_tools_from_servers(servers)
+      display_tools_result(all_tools)
     end
 
     :ok
+  end
+
+  defp collect_tools_from_servers(servers) do
+    servers
+    |> Enum.filter(&connected_server?/1)
+    |> Enum.flat_map(&get_tools_for_server/1)
+  end
+
+  defp connected_server?(%{status: status}), do: status == :connected
+
+  defp get_tools_for_server(%{name: server_name}) do
+    case get_server_tools(server_name) do
+      {:ok, %{"tools" => tool_list}} when is_list(tool_list) ->
+        create_server_tool_pairs(server_name, tool_list)
+
+      {:ok, tools} when is_list(tools) ->
+        create_server_tool_pairs(server_name, tools)
+
+      _ ->
+        []
+    end
+  end
+
+  defp create_server_tool_pairs(server_name, tools) do
+    Enum.map(tools, &{server_name, &1})
+  end
+
+  defp display_tools_result(all_tools) do
+    if Enum.empty?(all_tools) do
+      show_info("No tools available from connected servers")
+    else
+      show_info("Available MCP tools:")
+      display_tools_by_server(all_tools)
+    end
+  end
+
+  defp display_tools_by_server(all_tools) do
+    all_tools
+    |> Enum.group_by(fn {server, _} -> server end)
+    |> Enum.each(fn {server, tools} ->
+      IO.puts("\n#{server}:")
+      display_server_tools(tools)
+    end)
+  end
+
+  defp display_server_tools(tools) do
+    Enum.each(tools, fn {_, tool} ->
+      IO.puts("  • #{tool["name"]} - #{tool["description"]}")
+    end)
   end
 
   defp call_tool(args) do
@@ -268,42 +299,63 @@ defmodule MCPChat.CLI.Commands.MCP do
     if Enum.empty?(servers) do
       show_info("No MCP servers connected")
     else
-      all_resources =
-        servers
-        |> Enum.filter(fn %{status: status} -> status == :connected end)
-        |> Enum.flat_map(fn %{name: server_name} ->
-          # Get resources for this server
-          case get_server_resources(server_name) do
-            {:ok, resources} ->
-              Enum.map(resources, &{server_name, &1})
-
-            _ ->
-              []
-          end
-        end)
-
-      if Enum.empty?(all_resources) do
-        show_info("No resources available from connected servers")
-      else
-        show_info("Available MCP resources:")
-
-        all_resources
-        |> Enum.group_by(fn {server, _} -> server end)
-        |> Enum.each(fn {server, resources} ->
-          IO.puts("\n#{server}:")
-
-          Enum.each(resources, fn {_, resource} ->
-            IO.puts("  • #{resource["uri"]} - #{resource["name"]}")
-
-            if resource["description"] do
-              IO.puts("    #{resource["description"]}")
-            end
-          end)
-        end)
-      end
+      all_resources = collect_resources_from_servers(servers)
+      display_resources_result(all_resources)
     end
 
     :ok
+  end
+
+  defp collect_resources_from_servers(servers) do
+    servers
+    |> Enum.filter(&connected_server?/1)
+    |> Enum.flat_map(&get_resources_for_server/1)
+  end
+
+  defp get_resources_for_server(%{name: server_name}) do
+    case get_server_resources(server_name) do
+      {:ok, resources} ->
+        create_server_resource_pairs(server_name, resources)
+
+      _ ->
+        []
+    end
+  end
+
+  defp create_server_resource_pairs(server_name, resources) do
+    Enum.map(resources, &{server_name, &1})
+  end
+
+  defp display_resources_result(all_resources) do
+    if Enum.empty?(all_resources) do
+      show_info("No resources available from connected servers")
+    else
+      show_info("Available MCP resources:")
+      display_resources_by_server(all_resources)
+    end
+  end
+
+  defp display_resources_by_server(all_resources) do
+    all_resources
+    |> Enum.group_by(fn {server, _} -> server end)
+    |> Enum.each(fn {server, resources} ->
+      IO.puts("\n#{server}:")
+      display_server_resources(resources)
+    end)
+  end
+
+  defp display_server_resources(resources) do
+    Enum.each(resources, fn {_, resource} ->
+      display_resource_item(resource)
+    end)
+  end
+
+  defp display_resource_item(resource) do
+    IO.puts("  • #{resource["uri"]} - #{resource["name"]}")
+
+    if resource["description"] do
+      IO.puts("    #{resource["description"]}")
+    end
   end
 
   defp read_resource(args) do
@@ -335,38 +387,55 @@ defmodule MCPChat.CLI.Commands.MCP do
     if Enum.empty?(servers) do
       show_info("No MCP servers connected")
     else
-      all_prompts =
-        servers
-        |> Enum.filter(fn %{status: status} -> status == :connected end)
-        |> Enum.flat_map(fn %{name: server_name} ->
-          # Get prompts for this server
-          case get_server_prompts(server_name) do
-            {:ok, prompts} ->
-              Enum.map(prompts, &{server_name, &1})
-
-            _ ->
-              []
-          end
-        end)
-
-      if Enum.empty?(all_prompts) do
-        show_info("No prompts available from connected servers")
-      else
-        show_info("Available MCP prompts:")
-
-        all_prompts
-        |> Enum.group_by(fn {server, _} -> server end)
-        |> Enum.each(fn {server, prompts} ->
-          IO.puts("\n#{server}:")
-
-          Enum.each(prompts, fn {_, prompt} ->
-            IO.puts("  • #{prompt["name"]} - #{prompt["description"]}")
-          end)
-        end)
-      end
+      all_prompts = collect_prompts_from_servers(servers)
+      display_prompts_result(all_prompts)
     end
 
     :ok
+  end
+
+  defp collect_prompts_from_servers(servers) do
+    servers
+    |> Enum.filter(&connected_server?/1)
+    |> Enum.flat_map(&get_prompts_for_server/1)
+  end
+
+  defp get_prompts_for_server(%{name: server_name}) do
+    case get_server_prompts(server_name) do
+      {:ok, prompts} ->
+        create_server_prompt_pairs(server_name, prompts)
+
+      _ ->
+        []
+    end
+  end
+
+  defp create_server_prompt_pairs(server_name, prompts) do
+    Enum.map(prompts, &{server_name, &1})
+  end
+
+  defp display_prompts_result(all_prompts) do
+    if Enum.empty?(all_prompts) do
+      show_info("No prompts available from connected servers")
+    else
+      show_info("Available MCP prompts:")
+      display_prompts_by_server(all_prompts)
+    end
+  end
+
+  defp display_prompts_by_server(all_prompts) do
+    all_prompts
+    |> Enum.group_by(fn {server, _} -> server end)
+    |> Enum.each(fn {server, prompts} ->
+      IO.puts("\n#{server}:")
+      display_server_prompts(prompts)
+    end)
+  end
+
+  defp display_server_prompts(prompts) do
+    Enum.each(prompts, fn {_, prompt} ->
+      IO.puts("  • #{prompt["name"]} - #{prompt["description"]}")
+    end)
   end
 
   defp get_prompt(args) do
@@ -585,15 +654,21 @@ defmodule MCPChat.CLI.Commands.MCP do
   defp display_prompt_result(%{"template" => template, "arguments" => args}) do
     IO.puts("Template:")
     IO.puts(template)
+    display_prompt_arguments(args)
+  end
 
+  defp display_prompt_arguments(args) do
     if args && Enum.any?(args) do
       IO.puts("\nArguments:")
-
-      Enum.each(args, fn arg ->
-        required = if arg["required"], do: " (required)", else: ""
-        IO.puts("  • #{arg["name"]}#{required}: #{arg["description"]}")
-      end)
+      display_argument_list(args)
     end
+  end
+
+  defp display_argument_list(args) do
+    Enum.each(args, fn arg ->
+      required = if arg["required"], do: " (required)", else: ""
+      IO.puts("  • #{arg["name"]}#{required}: #{arg["description"]}")
+    end)
   end
 
   defp display_prompt_result(result) do

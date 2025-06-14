@@ -35,44 +35,69 @@ defmodule MCPChat.CLI.Commands.Notification do
   def handle_command("notification", ["status"]) do
     case ComprehensiveNotificationHandler.get_statistics() do
       {:ok, stats} ->
-        show_info("=== Notification Status ===")
-
-        # Overall status
-        enabled = get_in(stats.settings, [:enabled])
-        status_icon = if enabled, do: "🟢", else: "🔴"
-        show_info("#{status_icon} Notifications: #{if enabled, do: "Enabled", else: "Disabled"}")
-
-        # Category status
-        show_info("\nCategory Settings:")
-        categories = [:connection, :resource, :tool, :prompt, :progress, :custom]
-
-        Enum.each(categories, fn category ->
-          cat_settings = get_in(stats.settings, [category]) || %{}
-          cat_enabled = Map.get(cat_settings, :enabled, true)
-          icon = if cat_enabled, do: "✓", else: "✗"
-
-          # Count events for this category
-          event_count =
-            stats.event_counts
-            |> Enum.filter(fn {type, _count} ->
-              category_for_type(type) == category
-            end)
-            |> Enum.reduce(0, fn {_type, count}, acc -> acc + count end)
-
-          show_info("  #{icon} #{String.capitalize(to_string(category))}: #{event_count} events")
-        end)
-
-        # Statistics
-        show_info("\nStatistics:")
-        show_info("  Total events: #{stats.total_events}")
-        show_info("  Buffered notifications: #{stats.buffered_notifications}")
-
-        if stats.last_notification do
-          show_info("  Last notification: #{format_time(stats.last_notification)}")
-        end
+        display_notification_status(stats)
 
       {:error, reason} ->
         show_error("Failed to get notification status: #{inspect(reason)}")
+    end
+  end
+
+  defp display_notification_status(stats) do
+    show_info("=== Notification Status ===")
+    display_overall_status(stats)
+    display_category_status(stats)
+    display_statistics(stats)
+  end
+
+  defp display_overall_status(stats) do
+    enabled = get_in(stats.settings, [:enabled])
+    status_icon = if enabled, do: "🟢", else: "🔴"
+    status_text = if enabled, do: "Enabled", else: "Disabled"
+    show_info("#{status_icon} Notifications: #{status_text}")
+  end
+
+  defp display_category_status(stats) do
+    show_info("\nCategory Settings:")
+    categories = [:connection, :resource, :tool, :prompt, :progress, :custom]
+
+    Enum.each(categories, fn category ->
+      display_single_category_status(category, stats)
+    end)
+  end
+
+  defp display_single_category_status(category, stats) do
+    cat_settings = get_in(stats.settings, [category]) || %{}
+    cat_enabled = Map.get(cat_settings, :enabled, true)
+    icon = if cat_enabled, do: "✓", else: "✗"
+
+    event_count = count_category_events(category, stats.event_counts)
+
+    show_info("  #{icon} #{String.capitalize(to_string(category))}: #{event_count} events")
+  end
+
+  defp count_category_events(category, event_counts) do
+    event_counts
+    |> Enum.filter(&matches_category?(category, &1))
+    |> sum_event_counts()
+  end
+
+  defp matches_category?(category, {type, _count}) do
+    category_for_type(type) == category
+  end
+
+  defp sum_event_counts(filtered_events) do
+    Enum.reduce(filtered_events, 0, fn {_type, count}, acc ->
+      acc + count
+    end)
+  end
+
+  defp display_statistics(stats) do
+    show_info("\nStatistics:")
+    show_info("  Total events: #{stats.total_events}")
+    show_info("  Buffered notifications: #{stats.buffered_notifications}")
+
+    if stats.last_notification do
+      show_info("  Last notification: #{format_time(stats.last_notification)}")
     end
   end
 
@@ -149,25 +174,33 @@ defmodule MCPChat.CLI.Commands.Notification do
   def handle_command("notification", ["history", limit_str]) do
     case Integer.parse(limit_str) do
       {limit, ""} when limit > 0 ->
-        case ComprehensiveNotificationHandler.get_event_history(limit) do
-          {:ok, events} ->
-            if events == [] do
-              show_info("No notification events in history")
-            else
-              show_info("=== Notification History (last #{limit}) ===")
-
-              events
-              |> Enum.reverse()
-              |> Enum.each(&display_event/1)
-            end
-
-          {:error, reason} ->
-            show_error("Failed to get history: #{inspect(reason)}")
-        end
+        show_event_history(limit)
 
       _ ->
         show_error("Invalid limit: #{limit_str}")
     end
+  end
+
+  defp show_event_history(limit) do
+    case ComprehensiveNotificationHandler.get_event_history(limit) do
+      {:ok, events} ->
+        display_history_events(events, limit)
+
+      {:error, reason} ->
+        show_error("Failed to get history: #{inspect(reason)}")
+    end
+  end
+
+  defp display_history_events([], _limit) do
+    show_info("No notification events in history")
+  end
+
+  defp display_history_events(events, limit) do
+    show_info("=== Notification History (last #{limit}) ===")
+
+    events
+    |> Enum.reverse()
+    |> Enum.each(&display_event/1)
   end
 
   @impl true

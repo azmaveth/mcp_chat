@@ -131,28 +131,40 @@ defmodule MCPChat.MCP.ServerManager.Core do
   @spec get_server(server_state(), String.t()) :: {:ok, map()} | {:error, term()}
   def get_server(state, name) do
     if name == "builtin" do
-      {:ok,
-       %{
-         status: "running",
-         server_name: "MCP Chat Built-in Resources",
-         description: "Built-in documentation, prompts, and resources",
-         transport: "internal",
-         capabilities: %{
-           resources: true,
-           prompts: true
-         }
-       }}
+      get_builtin_server_info()
     else
-      case Map.get(state.servers, name) do
-        nil ->
-          {:error, :not_found}
+      get_external_server_status(state, name)
+    end
+  end
 
-        pid ->
-          case Server.get_status(pid) do
-            {:error, reason} -> {:error, reason}
-            status -> {:ok, status}
-          end
-      end
+  defp get_builtin_server_info() do
+    {:ok,
+     %{
+       status: "running",
+       server_name: "MCP Chat Built-in Resources",
+       description: "Built-in documentation, prompts, and resources",
+       transport: "internal",
+       capabilities: %{
+         resources: true,
+         prompts: true
+       }
+     }}
+  end
+
+  defp get_external_server_status(state, name) do
+    case Map.get(state.servers, name) do
+      nil ->
+        {:error, :not_found}
+
+      pid ->
+        get_server_status_from_pid(pid)
+    end
+  end
+
+  defp get_server_status_from_pid(pid) do
+    case Server.get_status(pid) do
+      {:error, reason} -> {:error, reason}
+      status -> {:ok, status}
     end
   end
 
@@ -298,25 +310,33 @@ defmodule MCPChat.MCP.ServerManager.Core do
     auto_connect_servers = Enum.filter(saved_servers, &(&1["auto_connect"] == true))
 
     Enum.reduce(auto_connect_servers, state, fn server_config, acc_state ->
-      # Check if server is already started
-      if Map.has_key?(acc_state.servers, server_config["name"]) do
-        acc_state
-      else
-        logger_provider.info("Auto-connecting to saved server: #{server_config["name"]}")
-
-        case start_server_supervised(server_config, acc_state.supervisor, logger_provider) do
-          {:ok, {name, pid}} ->
-            %{acc_state | servers: Map.put(acc_state.servers, name, pid)}
-
-          {:error, reason} ->
-            logger_provider.warning("Failed to auto-connect server #{server_config["name"]}: #{inspect(reason)}")
-            acc_state
-        end
-      end
+      process_auto_connect_server(server_config, acc_state, logger_provider)
     end)
   end
 
   # Private Functions
+
+  defp process_auto_connect_server(server_config, acc_state, logger_provider) do
+    # Check if server is already started
+    if Map.has_key?(acc_state.servers, server_config["name"]) do
+      acc_state
+    else
+      attempt_auto_connect(server_config, acc_state, logger_provider)
+    end
+  end
+
+  defp attempt_auto_connect(server_config, acc_state, logger_provider) do
+    logger_provider.info("Auto-connecting to saved server: #{server_config["name"]}")
+
+    case start_server_supervised(server_config, acc_state.supervisor, logger_provider) do
+      {:ok, {name, pid}} ->
+        %{acc_state | servers: Map.put(acc_state.servers, name, pid)}
+
+      {:error, reason} ->
+        logger_provider.warning("Failed to auto-connect server #{server_config["name"]}: #{inspect(reason)}")
+        acc_state
+    end
+  end
 
   @spec start_server_supervised(map(), pid(), module()) :: {:ok, {String.t(), pid()}} | {:error, term()}
   defp start_server_supervised(config, supervisor, logger_provider) do
@@ -330,7 +350,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
   end
 
   defp build_server_config(config) do
-    name = config[:name] || config["name"]
+    name = extract_server_name(config)
 
     cond do
       name && has_command?(config) ->
@@ -344,19 +364,27 @@ defmodule MCPChat.MCP.ServerManager.Core do
     end
   end
 
+  defp extract_server_name(config) do
+    config[:name] || config["name"]
+  end
+
   defp has_command?(config), do: config[:command] || config["command"]
   defp has_url?(config), do: config[:url] || config["url"]
 
   defp build_stdio_config(config, name) do
-    command = config[:command] || config["command"]
-    env = config[:env] || config["env"] || %{}
+    command = extract_command(config)
+    env = extract_env(config)
     {:ok, %{name: name, command: command, transport: :stdio, env: env}}
   end
 
   defp build_sse_config(config, name) do
-    url = config[:url] || config["url"]
+    url = extract_url(config)
     {:ok, %{name: name, url: url, transport: :sse}}
   end
+
+  defp extract_command(config), do: config[:command] || config["command"]
+  defp extract_url(config), do: config[:url] || config["url"]
+  defp extract_env(config), do: config[:env] || config["env"] || %{}
 
   defp start_server_with_config(server_config, supervisor, logger_provider) do
     child_spec = build_child_spec(server_config)

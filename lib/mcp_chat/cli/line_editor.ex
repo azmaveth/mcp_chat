@@ -164,44 +164,49 @@ defmodule MCPChat.CLI.LineEditor do
   end
 
   defp handle_key_input(state, key) do
+    # Try direct key handlers first
+    case handle_single_key(state, key) do
+      {:handled, result} -> result
+      :not_handled -> handle_key_category(state, key)
+    end
+  end
+
+  defp handle_single_key(state, key) do
     case key do
-      @enter ->
-        handle_enter(state)
+      @enter -> {:handled, handle_enter(state)}
+      @ctrl_c -> {:handled, handle_ctrl_c()}
+      @ctrl_d -> {:handled, handle_ctrl_d(state)}
+      @backspace -> {:handled, continue_with(backspace(state))}
+      @escape -> {:handled, read_escape_sequence(state)}
+      @ctrl_l -> {:handled, handle_ctrl_l(state)}
+      @tab -> {:handled, continue_with(handle_tab(state))}
+      _ -> :not_handled
+    end
+  end
 
-      @ctrl_c ->
-        handle_ctrl_c()
-
-      @ctrl_d ->
-        handle_ctrl_d(state)
-
-      @backspace ->
-        continue_with(backspace(state))
-
-      @escape ->
-        read_escape_sequence(state)
-
-      @ctrl_l ->
-        handle_ctrl_l(state)
-
-      @tab ->
-        continue_with(handle_tab(state))
-
-      key when key in [@ctrl_a, @ctrl_e, @ctrl_b, @ctrl_f] ->
+  defp handle_key_category(state, key) do
+    cond do
+      is_movement_key?(key) ->
         continue_with(handle_movement_key(state, key))
 
-      key when key in [@ctrl_k, @ctrl_u, @ctrl_w] ->
+      is_kill_key?(key) ->
         continue_with(handle_kill_key(state, key))
 
-      key when key in [@ctrl_p, @ctrl_n] ->
+      is_history_key?(key) ->
         continue_with(handle_history_key(state, key))
 
-      char when char >= 32 and char <= 126 ->
-        continue_with(insert_char(state, char))
+      is_printable_char?(key) ->
+        continue_with(insert_char(state, key))
 
-      _ ->
+      true ->
         read_loop(state)
     end
   end
+
+  defp is_movement_key?(key), do: key in [@ctrl_a, @ctrl_e, @ctrl_b, @ctrl_f]
+  defp is_kill_key?(key), do: key in [@ctrl_k, @ctrl_u, @ctrl_w]
+  defp is_history_key?(key), do: key in [@ctrl_p, @ctrl_n]
+  defp is_printable_char?(char), do: char >= 32 and char <= 126
 
   defp continue_with(new_state) do
     read_loop(new_state)

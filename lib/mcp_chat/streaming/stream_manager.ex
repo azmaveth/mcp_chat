@@ -226,36 +226,54 @@ defmodule MCPChat.Streaming.StreamManager do
   end
 
   defp process_buffer(state) do
-    if :queue.len(state.buffer) > 0 and not state.paused do
-      case :queue.out(state.buffer) do
-        {{:value, chunk}, new_buffer} ->
-          state = %{state | buffer: new_buffer}
-          state = update_stats(state, :chunks_processed)
-
-          # Add to batch
-          new_batch = [chunk | state.batch]
-
-          cond do
-            # Batch is full
-            length(new_batch) >= state.batch_size ->
-              flush_batch(%{state | batch: new_batch})
-
-            # First chunk in batch, start timer
-            Enum.empty?(state.batch) ->
-              timer = Process.send_after(self(), :batch_timeout, state.batch_timeout)
-              %{state | batch: new_batch, batch_timer: timer}
-
-            # Add to existing batch
-            true ->
-              %{state | batch: new_batch}
-          end
-
-        {:empty, _} ->
-          state
-      end
+    if should_process_buffer?(state) do
+      process_next_chunk(state)
     else
       state
     end
+  end
+
+  defp should_process_buffer?(state) do
+    :queue.len(state.buffer) > 0 and not state.paused
+  end
+
+  defp process_next_chunk(state) do
+    case :queue.out(state.buffer) do
+      {{:value, chunk}, new_buffer} ->
+        handle_chunk(chunk, new_buffer, state)
+
+      {:empty, _} ->
+        state
+    end
+  end
+
+  defp handle_chunk(chunk, new_buffer, state) do
+    state = %{state | buffer: new_buffer}
+    state = update_stats(state, :chunks_processed)
+
+    new_batch = [chunk | state.batch]
+    handle_batch_update(new_batch, state)
+  end
+
+  defp handle_batch_update(new_batch, state) do
+    cond do
+      # Batch is full
+      length(new_batch) >= state.batch_size ->
+        flush_batch(%{state | batch: new_batch})
+
+      # First chunk in batch, start timer
+      Enum.empty?(state.batch) ->
+        start_batch_timer(new_batch, state)
+
+      # Add to existing batch
+      true ->
+        %{state | batch: new_batch}
+    end
+  end
+
+  defp start_batch_timer(new_batch, state) do
+    timer = Process.send_after(self(), :batch_timeout, state.batch_timeout)
+    %{state | batch: new_batch, batch_timer: timer}
   end
 
   defp flush_batch(%{batch: []} = state), do: state

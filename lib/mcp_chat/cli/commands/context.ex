@@ -229,24 +229,34 @@ defmodule MCPChat.CLI.Commands.Context do
         :ok
 
       [strategy | _] ->
-        if strategy in strategies do
-          Session.update_session(%{context: %{truncation_strategy: strategy}})
-          show_success("Truncation strategy set to: #{strategy}")
+        set_truncation_strategy_value(strategy, strategies)
+    end
+  end
 
-          case strategy do
-            "sliding_window" ->
-              show_info("Will keep most recent messages when truncating")
+  defp set_truncation_strategy_value(strategy, strategies) do
+    if strategy in strategies do
+      Session.update_session(%{context: %{truncation_strategy: strategy}})
+      show_success("Truncation strategy set to: #{strategy}")
+      show_strategy_description(strategy)
+      :ok
+    else
+      show_error("Unknown strategy: #{strategy}")
+      show_info("Available strategies: #{Enum.join(strategies, ", ")}")
+      :ok
+    end
+  end
 
-            "smart" ->
-              show_info("Will preserve system prompt and important context when truncating")
-          end
+  defp show_strategy_description(strategy) do
+    case strategy do
+      "sliding_window" ->
+        show_info("Will keep most recent messages when truncating")
 
-          :ok
-        else
-          show_error("Unknown strategy: #{strategy}")
-          show_info("Available strategies: #{Enum.join(strategies, ", ")}")
-          :ok
-        end
+      "smart" ->
+        show_info("Will preserve system prompt and important context when truncating")
+
+      _ ->
+        # No description for other strategies
+        :ok
     end
   end
 
@@ -257,43 +267,54 @@ defmodule MCPChat.CLI.Commands.Context do
 
       [file_path | _] ->
         file_path = Path.expand(file_path)
-
-        if File.exists?(file_path) do
-          case File.read(file_path) do
-            {:ok, content} ->
-              # Get current session
-              session = Session.get_current_session()
-
-              # Get or initialize context files map
-              context_files = session.context[:files] || %{}
-
-              # Add file to context with metadata
-              file_name = Path.basename(file_path)
-
-              file_info = %{
-                path: file_path,
-                name: file_name,
-                content: content,
-                size: byte_size(content),
-                added_at: DateTime.utc_now()
-              }
-
-              # Update context files
-              updated_files = Map.put(context_files, file_name, file_info)
-              updated_context = Map.put(session.context, :files, updated_files)
-
-              # Update session
-              Session.update_session(%{context: updated_context})
-
-              show_success("Added #{file_name} to context (#{format_bytes(file_info.size)})")
-
-            {:error, reason} ->
-              show_error("Failed to read file: #{inspect(reason)}")
-          end
-        else
-          show_error("File not found: #{file_path}")
-        end
+        add_file_if_exists(file_path)
     end
+  end
+
+  defp add_file_if_exists(file_path) do
+    if File.exists?(file_path) do
+      add_existing_file_to_context(file_path)
+    else
+      show_error("File not found: #{file_path}")
+    end
+  end
+
+  defp add_existing_file_to_context(file_path) do
+    case File.read(file_path) do
+      {:ok, content} ->
+        store_file_in_context(file_path, content)
+
+      {:error, reason} ->
+        show_error("Failed to read file: #{inspect(reason)}")
+    end
+  end
+
+  defp store_file_in_context(file_path, content) do
+    # Get current session
+    session = Session.get_current_session()
+
+    # Get or initialize context files map
+    context_files = session.context[:files] || %{}
+
+    # Add file to context with metadata
+    file_name = Path.basename(file_path)
+
+    file_info = %{
+      path: file_path,
+      name: file_name,
+      content: content,
+      size: byte_size(content),
+      added_at: DateTime.utc_now()
+    }
+
+    # Update context files
+    updated_files = Map.put(context_files, file_name, file_info)
+    updated_context = Map.put(session.context, :files, updated_files)
+
+    # Update session
+    Session.update_session(%{context: updated_context})
+
+    show_success("Added #{file_name} to context (#{format_bytes(file_info.size)})")
   end
 
   defp remove_file_from_context(args) do
@@ -364,47 +385,57 @@ defmodule MCPChat.CLI.Commands.Context do
         show_error("Usage: /context add-async <file_path>")
 
       [file_path | _] ->
-        file_path = Path.expand(file_path)
-
-        show_info("Loading #{file_path} asynchronously...")
-
-        # Set up callbacks
-        success_callback = fn result ->
-          file_size = result.result.size
-          duration = result.result.load_duration_ms
-          show_success("Added #{result.result.name} to context (#{format_bytes(file_size)}) - loaded in #{duration}ms")
-        end
-
-        error_callback = fn error ->
-          show_error("Failed to load file: #{inspect(error)}")
-        end
-
-        progress_callback = fn update ->
-          case update.phase do
-            :starting ->
-              show_info("Starting async file load...")
-
-            :completed ->
-              if update.failed > 0 do
-                show_warning("File load completed with #{update.failed} errors")
-              end
-          end
-        end
-
-        case AsyncFileLoader.add_to_context_async(file_path,
-               success_callback: success_callback,
-               error_callback: error_callback,
-               progress_callback: progress_callback
-             ) do
-          {:ok, operation_id} ->
-            show_info("Async load started (operation: #{String.slice(operation_id, -8, 8)})")
-
-          {:error, reason} ->
-            show_error("Failed to start async load: #{inspect(reason)}")
-        end
+        perform_async_file_load(file_path)
     end
 
     :ok
+  end
+
+  defp perform_async_file_load(file_path) do
+    file_path = Path.expand(file_path)
+    show_info("Loading #{file_path} asynchronously...")
+
+    callbacks = build_async_load_callbacks()
+
+    case AsyncFileLoader.add_to_context_async(file_path, callbacks) do
+      {:ok, operation_id} ->
+        operation_id_short = String.slice(operation_id, -8, 8)
+        show_info("Async load started (operation: #{operation_id_short})")
+
+      {:error, reason} ->
+        show_error("Failed to start async load: #{inspect(reason)}")
+    end
+  end
+
+  defp build_async_load_callbacks() do
+    [
+      success_callback: &handle_async_load_success/1,
+      error_callback: &handle_async_load_error/1,
+      progress_callback: &handle_async_load_progress/1
+    ]
+  end
+
+  defp handle_async_load_success(result) do
+    file_size = result.result.size
+    duration = result.result.load_duration_ms
+    name = result.result.name
+    show_success("Added #{name} to context (#{format_bytes(file_size)}) - loaded in #{duration}ms")
+  end
+
+  defp handle_async_load_error(error) do
+    show_error("Failed to load file: #{inspect(error)}")
+  end
+
+  defp handle_async_load_progress(update) do
+    case update.phase do
+      :starting ->
+        show_info("Starting async file load...")
+
+      :completed ->
+        if update.failed > 0 do
+          show_warning("File load completed with #{update.failed} errors")
+        end
+    end
   end
 
   defp add_batch_to_context_async(args) do
@@ -413,59 +444,78 @@ defmodule MCPChat.CLI.Commands.Context do
         show_error("Usage: /context add-batch <file1> <file2> [file3] ...")
 
       file_paths ->
-        expanded_paths = Enum.map(file_paths, &Path.expand/1)
-
-        show_info("Loading #{length(expanded_paths)} files asynchronously...")
-
-        # Set up callbacks
-        batch_callback = fn %{successful: successful, failed: failed} ->
-          if length(successful) > 0 do
-            total_size =
-              Enum.reduce(successful, 0, fn result, acc ->
-                acc + result.result.size
-              end)
-
-            show_success("Added #{length(successful)} files to context (#{format_bytes(total_size)} total)")
-          end
-
-          if length(failed) > 0 do
-            show_warning("Failed to load #{length(failed)} files:")
-
-            Enum.each(failed, fn result ->
-              show_error("  - #{result.file_path}: #{inspect(result.error)}")
-            end)
-          end
-        end
-
-        error_callback = fn error ->
-          show_error("Batch load failed: #{inspect(error)}")
-        end
-
-        progress_callback = fn update ->
-          case update.phase do
-            :starting ->
-              show_info("Starting batch load of #{update.total_files} files...")
-
-            :completed ->
-              show_info("Batch load completed: #{update.successful} successful, #{update.failed} failed")
-          end
-        end
-
-        case AsyncFileLoader.add_batch_to_context_async(expanded_paths,
-               batch_callback: batch_callback,
-               error_callback: error_callback,
-               progress_callback: progress_callback,
-               max_concurrency: 3
-             ) do
-          {:ok, operation_id} ->
-            show_info("Batch async load started (operation: #{String.slice(operation_id, -8, 8)})")
-
-          {:error, reason} ->
-            show_error("Failed to start batch load: #{inspect(reason)}")
-        end
+        perform_batch_async_load(file_paths)
     end
 
     :ok
+  end
+
+  defp perform_batch_async_load(file_paths) do
+    expanded_paths = Enum.map(file_paths, &Path.expand/1)
+    show_info("Loading #{length(expanded_paths)} files asynchronously...")
+
+    callbacks = build_batch_callbacks()
+
+    case AsyncFileLoader.add_batch_to_context_async(expanded_paths, callbacks) do
+      {:ok, operation_id} ->
+        operation_id_short = String.slice(operation_id, -8, 8)
+        show_info("Batch async load started (operation: #{operation_id_short})")
+
+      {:error, reason} ->
+        show_error("Failed to start batch load: #{inspect(reason)}")
+    end
+  end
+
+  defp build_batch_callbacks() do
+    [
+      batch_callback: &handle_batch_completion/1,
+      error_callback: &handle_batch_error/1,
+      progress_callback: &handle_batch_progress/1,
+      max_concurrency: 3
+    ]
+  end
+
+  defp handle_batch_completion(%{successful: successful, failed: failed}) do
+    handle_successful_batch(successful)
+    handle_failed_batch(failed)
+  end
+
+  defp handle_successful_batch(successful) do
+    if length(successful) > 0 do
+      total_size = calculate_total_batch_size(successful)
+      show_success("Added #{length(successful)} files to context (#{format_bytes(total_size)} total)")
+    end
+  end
+
+  defp calculate_total_batch_size(successful) do
+    Enum.reduce(successful, 0, fn result, acc ->
+      acc + result.result.size
+    end)
+  end
+
+  defp handle_failed_batch(failed) do
+    if length(failed) > 0 do
+      show_warning("Failed to load #{length(failed)} files:")
+      Enum.each(failed, &show_failed_file_error/1)
+    end
+  end
+
+  defp show_failed_file_error(result) do
+    show_error("  - #{result.file_path}: #{inspect(result.error)}")
+  end
+
+  defp handle_batch_error(error) do
+    show_error("Batch load failed: #{inspect(error)}")
+  end
+
+  defp handle_batch_progress(update) do
+    case update.phase do
+      :starting ->
+        show_info("Starting batch load of #{update.total_files} files...")
+
+      :completed ->
+        show_info("Batch load completed: #{update.successful} successful, #{update.failed} failed")
+    end
   end
 
   # Helper functions

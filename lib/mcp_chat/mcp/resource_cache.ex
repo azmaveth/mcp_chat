@@ -338,26 +338,33 @@ defmodule MCPChat.MCP.ResourceCache do
     if Map.has_key?(state.subscriptions, key) do
       state
     else
-      # Try to subscribe to resource changes
-      case ServerManager.get_server(server_name) do
-        {:ok, client} ->
-          case Client.subscribe_resource(client, uri) do
-            {:ok, subscription_ref} ->
-              Logger.debug("Subscribed to resource changes: #{server_name} - #{uri}")
-              %{state | subscriptions: Map.put(state.subscriptions, key, subscription_ref)}
+      attempt_subscription(state, server_name, uri, key)
+    end
+  end
 
-            {:error, :not_supported} ->
-              # Server doesn't support subscriptions
-              state
+  defp attempt_subscription(state, server_name, uri, key) do
+    case ServerManager.get_server(server_name) do
+      {:ok, client} ->
+        handle_subscription_attempt(state, client, server_name, uri, key)
 
-            {:error, reason} ->
-              Logger.warning("Failed to subscribe to resource: #{inspect(reason)}")
-              state
-          end
+      _ ->
+        state
+    end
+  end
 
-        _ ->
-          state
-      end
+  defp handle_subscription_attempt(state, client, server_name, uri, key) do
+    case Client.subscribe_resource(client, uri) do
+      {:ok, subscription_ref} ->
+        Logger.debug("Subscribed to resource changes: #{server_name} - #{uri}")
+        %{state | subscriptions: Map.put(state.subscriptions, key, subscription_ref)}
+
+      {:error, :not_supported} ->
+        # Server doesn't support subscriptions
+        state
+
+      {:error, reason} ->
+        Logger.warning("Failed to subscribe to resource: #{inspect(reason)}")
+        state
     end
   end
 
@@ -463,30 +470,38 @@ defmodule MCPChat.MCP.ResourceCache do
     [{_, stats}] = :ets.lookup(@stats_table, :global)
 
     if stats.total_size > state.max_size do
-      # Remove least recently accessed items
-      entries =
-        :ets.tab2list(@table_name)
-        |> Enum.sort_by(fn {_, resource} -> resource.last_accessed end)
-
-      size_to_remove = stats.total_size - state.max_size
-      removed_size = 0
-
-      _ =
-        Enum.reduce_while(entries, removed_size, fn {{server, uri}, resource}, acc ->
-          if acc >= size_to_remove do
-            {:halt, acc}
-          else
-            :ets.delete(@table_name, {server, uri})
-
-            # Remove file
-            cache_file = get_cache_file_path(state.cache_dir, server, uri)
-            File.rm(cache_file)
-
-            {:cont, acc + resource.size}
-          end
-        end)
-
+      remove_excess_entries(state, stats)
       update_cache_size()
     end
+  end
+
+  defp remove_excess_entries(state, stats) do
+    entries = get_entries_sorted_by_access()
+    size_to_remove = stats.total_size - state.max_size
+
+    Enum.reduce_while(entries, 0, fn entry, acc ->
+      remove_entry_if_needed(entry, acc, size_to_remove, state)
+    end)
+  end
+
+  defp get_entries_sorted_by_access() do
+    :ets.tab2list(@table_name)
+    |> Enum.sort_by(fn {_, resource} -> resource.last_accessed end)
+  end
+
+  defp remove_entry_if_needed({{server, uri}, resource}, acc, size_to_remove, state) do
+    if acc >= size_to_remove do
+      {:halt, acc}
+    else
+      remove_cache_entry(server, uri, state)
+      {:cont, acc + resource.size}
+    end
+  end
+
+  defp remove_cache_entry(server, uri, state) do
+    :ets.delete(@table_name, {server, uri})
+
+    cache_file = get_cache_file_path(state.cache_dir, server, uri)
+    File.rm(cache_file)
   end
 end

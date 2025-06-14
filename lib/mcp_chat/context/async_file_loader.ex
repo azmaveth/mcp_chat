@@ -98,24 +98,35 @@ defmodule MCPChat.Context.AsyncFileLoader do
   adds it to the session context when complete.
   """
   def add_to_context_async(file_path, opts \\ []) do
-    callback = fn
-      {:ok, [result]} ->
-        case result.status do
-          :success ->
-            add_loaded_file_to_context(result)
-            if cb = opts[:success_callback], do: cb.(result)
+    callback = build_context_callback(file_path, opts)
+    load_file_async(file_path, Keyword.put(opts, :callback, callback))
+  end
 
-          :failed ->
-            Logger.warning("Failed to load file for context: #{file_path}")
-            if cb = opts[:error_callback], do: cb.(result.error)
-        end
+  defp build_context_callback(file_path, opts) do
+    fn
+      {:ok, [result]} ->
+        handle_single_file_result(result, file_path, opts)
 
       {:error, reason} ->
-        Logger.error("Async context loading failed: #{inspect(reason)}")
-        if cb = opts[:error_callback], do: cb.(reason)
+        handle_context_error(reason, opts)
     end
+  end
 
-    load_file_async(file_path, Keyword.put(opts, :callback, callback))
+  defp handle_single_file_result(result, file_path, opts) do
+    case result.status do
+      :success ->
+        add_loaded_file_to_context(result)
+        if cb = opts[:success_callback], do: cb.(result)
+
+      :failed ->
+        Logger.warning("Failed to load file for context: #{file_path}")
+        if cb = opts[:error_callback], do: cb.(result.error)
+    end
+  end
+
+  defp handle_context_error(reason, opts) do
+    Logger.error("Async context loading failed: #{inspect(reason)}")
+    if cb = opts[:error_callback], do: cb.(reason)
   end
 
   @doc """

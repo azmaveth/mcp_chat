@@ -158,19 +158,7 @@ defmodule MCPChat.Alias.ExAliasAdapter do
 
     case File.read(file_path) do
       {:ok, content} ->
-        case Jason.decode(content) do
-          {:ok, aliases_map} ->
-            # Convert from map to list of {name, commands} tuples
-            aliases =
-              Enum.map(aliases_map, fn {name, commands} ->
-                {name, commands}
-              end)
-
-            {:ok, aliases}
-
-          {:error, reason} ->
-            {:error, {:json_decode_error, reason}}
-        end
+        parse_aliases_json(content)
 
       {:error, :enoent} ->
         # File doesn't exist, return empty aliases
@@ -179,6 +167,25 @@ defmodule MCPChat.Alias.ExAliasAdapter do
       {:error, reason} ->
         {:error, {:file_read_error, reason}}
     end
+  end
+
+  defp parse_aliases_json(content) do
+    case Jason.decode(content) do
+      {:ok, aliases_map} ->
+        convert_aliases_map_to_list(aliases_map)
+
+      {:error, reason} ->
+        {:error, {:json_decode_error, reason}}
+    end
+  end
+
+  defp convert_aliases_map_to_list(aliases_map) do
+    aliases =
+      Enum.map(aliases_map, fn {name, commands} ->
+        {name, commands}
+      end)
+
+    {:ok, aliases}
   end
 
   defp get_mcp_chat_alias_file() do

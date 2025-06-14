@@ -209,25 +209,30 @@ defmodule MCPChat.Persistence do
     if File.exists?(exact_path) do
       exact_path
     else
-      # Search by ID or name
-      case File.ls(sessions_dir) do
-        {:ok, files} ->
-          matching_file =
-            files
-            |> Enum.filter(&String.ends_with?(&1, @extension))
-            |> Enum.find(fn file ->
-              String.contains?(file, identifier)
-            end)
+      search_for_session_file(sessions_dir, identifier)
+    end
+  end
 
-          if matching_file do
-            Path.join(sessions_dir, matching_file)
-          else
-            Path.join(sessions_dir, "not_found")
-          end
+  defp search_for_session_file(sessions_dir, identifier) do
+    case File.ls(sessions_dir) do
+      {:ok, files} ->
+        find_matching_session(files, sessions_dir, identifier)
 
-        _ ->
-          Path.join(sessions_dir, "not_found")
-      end
+      _ ->
+        Path.join(sessions_dir, "not_found")
+    end
+  end
+
+  defp find_matching_session(files, sessions_dir, identifier) do
+    matching_file =
+      files
+      |> Enum.filter(&String.ends_with?(&1, @extension))
+      |> Enum.find(&String.contains?(&1, identifier))
+
+    if matching_file do
+      Path.join(sessions_dir, matching_file)
+    else
+      Path.join(sessions_dir, "not_found")
     end
   end
 

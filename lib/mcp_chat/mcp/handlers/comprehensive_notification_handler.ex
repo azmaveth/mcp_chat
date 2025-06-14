@@ -154,28 +154,35 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandler do
       false
     else
       # Check category-specific settings
-      result =
-        Enum.reduce_while(settings, {:cont, nil}, fn
-          {_category, %{enabled: false}}, acc ->
-            acc
-
-          {_category, category_settings}, acc when is_map(category_settings) ->
-            if Map.has_key?(category_settings, type) do
-              {:halt, category_settings[type]}
-            else
-              acc
-            end
-
-          _, acc ->
-            acc
-        end)
-
-      case result do
-        {:halt, result} -> result
-        # Default to enabled if not found
-        {:cont, _} -> true
-      end
+      find_notification_setting(settings, type)
     end
+  end
+
+  defp find_notification_setting(settings, type) do
+    result = search_categories_for_type(settings, type)
+
+    case result do
+      {:halt, result} -> result
+      # Default to enabled if not found
+      {:cont, _} -> true
+    end
+  end
+
+  defp search_categories_for_type(settings, type) do
+    Enum.reduce_while(settings, {:cont, nil}, fn
+      {_category, %{enabled: false}}, acc ->
+        acc
+
+      {_category, category_settings}, acc when is_map(category_settings) ->
+        if Map.has_key?(category_settings, type) do
+          {:halt, category_settings[type]}
+        else
+          acc
+        end
+
+      _, acc ->
+        acc
+    end)
   end
 
   defp format_notification(server_name, type, params) do

@@ -122,25 +122,44 @@ defmodule MCPChat.ConnectionPool do
         {:reply, {:ok, conn}, new_state}
 
       :none_available ->
-        if map_size(state.connections) < state.size do
-          # Try to create a new connection
-          case create_connection() do
-            {:ok, conn} ->
-              new_state = add_connection(state, conn)
-              new_state = mark_in_use(new_state, conn)
-              {:reply, {:ok, conn}, new_state}
-
-            {:error, _reason} ->
-              # Queue the request
-              new_waiting = :queue.in(from, state.waiting)
-              {:noreply, %{state | waiting: new_waiting}}
-          end
-        else
-          # All connections in use, queue the request
-          new_waiting = :queue.in(from, state.waiting)
-          {:noreply, %{state | waiting: new_waiting}}
-        end
+        handle_no_available_connections(from, state)
     end
+  end
+
+  defp handle_no_available_connections(from, state) do
+    if can_create_new_connection?(state) do
+      attempt_new_connection(from, state)
+    else
+      queue_checkout_request(from, state)
+    end
+  end
+
+  defp can_create_new_connection?(state) do
+    map_size(state.connections) < state.size
+  end
+
+  defp attempt_new_connection(from, state) do
+    case create_connection() do
+      {:ok, conn} ->
+        handle_new_connection_success(conn, state)
+
+      {:error, _reason} ->
+        queue_checkout_request(from, state)
+    end
+  end
+
+  defp handle_new_connection_success(conn, state) do
+    new_state =
+      state
+      |> add_connection(conn)
+      |> mark_in_use(conn)
+
+    {:reply, {:ok, conn}, new_state}
+  end
+
+  defp queue_checkout_request(from, state) do
+    new_waiting = :queue.in(from, state.waiting)
+    {:noreply, %{state | waiting: new_waiting}}
   end
 
   def handle_call(:get_stats, _from, state) do

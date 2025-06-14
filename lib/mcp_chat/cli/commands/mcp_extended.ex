@@ -16,25 +16,36 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
   def handle_sample(args) do
     case args do
       [] ->
-        Renderer.show_error("Usage: /mcp sample <server> <prompt> [--temperature 0.7] [--max-tokens 1_000]")
+        show_sample_usage()
 
       [server_name | rest] ->
-        prompt = parse_prompt_and_options(rest)
+        handle_server_sample(server_name, rest)
+    end
+  end
 
-        case get_server_client(server_name) do
-          {:ok, client} ->
-            # Check if server supports sampling
-            case check_sampling_capability(client) do
-              :ok ->
-                execute_sampling(client, server_name, prompt)
+  defp show_sample_usage() do
+    Renderer.show_error("Usage: /mcp sample <server> <prompt> [--temperature 0.7] [--max-tokens 1_000]")
+  end
 
-              {:error, reason} ->
-                Renderer.show_error(reason)
-            end
+  defp handle_server_sample(server_name, rest) do
+    prompt = parse_prompt_and_options(rest)
 
-          {:error, reason} ->
-            Renderer.show_error("Failed to connect to server: #{reason}")
-        end
+    case get_server_client(server_name) do
+      {:ok, client} ->
+        handle_client_sampling(client, server_name, prompt)
+
+      {:error, reason} ->
+        Renderer.show_error("Failed to connect to server: #{reason}")
+    end
+  end
+
+  defp handle_client_sampling(client, server_name, prompt) do
+    case check_sampling_capability(client) do
+      :ok ->
+        execute_sampling(client, server_name, prompt)
+
+      {:error, reason} ->
+        Renderer.show_error(reason)
     end
   end
 
@@ -306,27 +317,46 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
   end
 
   defp show_server_capabilities(server_name) do
-    # Skip capabilities for built-in servers that don't have standard clients
-    if server_name =~ ~r/built.?in/i or server_name =~ ~r/internal/i do
-      Renderer.show_info("Server: #{server_name} (capabilities not available for built-in servers)")
-      :ok
+    if is_builtin_server?(server_name) do
+      show_builtin_server_message(server_name)
     else
-      case get_server_client(server_name) do
-        {:ok, client} ->
-          case MCPChat.MCP.NotificationClient.server_capabilities(client) do
-            {:ok, capabilities} ->
-              Renderer.show_divider()
-              Renderer.show_info("Server: #{server_name}")
-              show_capability_details(capabilities)
-
-            {:error, reason} ->
-              Renderer.show_error("Failed to get capabilities: #{inspect(reason)}")
-          end
-
-        {:error, reason} ->
-          Renderer.show_error("Server #{server_name}: #{inspect(reason)}")
-      end
+      show_external_server_capabilities(server_name)
     end
+  end
+
+  defp is_builtin_server?(server_name) do
+    server_name =~ ~r/built.?in/i or server_name =~ ~r/internal/i
+  end
+
+  defp show_builtin_server_message(server_name) do
+    Renderer.show_info("Server: #{server_name} (capabilities not available for built-in servers)")
+    :ok
+  end
+
+  defp show_external_server_capabilities(server_name) do
+    case get_server_client(server_name) do
+      {:ok, client} ->
+        fetch_and_display_capabilities(client, server_name)
+
+      {:error, reason} ->
+        Renderer.show_error("Server #{server_name}: #{inspect(reason)}")
+    end
+  end
+
+  defp fetch_and_display_capabilities(client, server_name) do
+    case MCPChat.MCP.NotificationClient.server_capabilities(client) do
+      {:ok, capabilities} ->
+        display_server_capabilities(server_name, capabilities)
+
+      {:error, reason} ->
+        Renderer.show_error("Failed to get capabilities: #{inspect(reason)}")
+    end
+  end
+
+  defp display_server_capabilities(server_name, capabilities) do
+    Renderer.show_divider()
+    Renderer.show_info("Server: #{server_name}")
+    show_capability_details(capabilities)
   end
 
   defp show_capability_details(capabilities) do
