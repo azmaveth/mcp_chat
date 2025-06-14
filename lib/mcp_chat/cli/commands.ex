@@ -109,12 +109,27 @@ defmodule MCPChat.CLI.Commands do
           handle_special_command(cmd, args)
 
         handler_module ->
+          # Debug logging
+          if System.get_env("MCP_DEBUG") == "1" do
+            IO.puts(
+              "[DEBUG] Calling handler: #{inspect(handler_module)}.handle_command(#{inspect(cmd)}, #{inspect(args)})"
+            )
+          end
+
           case handler_module.handle_command(cmd, args) do
             :ok ->
               :continue
 
             {:error, message} ->
               MCPChat.CLI.Renderer.show_error(message)
+              :continue
+
+            other ->
+              # Debug unexpected returns
+              if System.get_env("MCP_DEBUG") == "1" do
+                IO.puts("[DEBUG] Unexpected return from handler: #{inspect(other)}")
+              end
+
               :continue
           end
       end

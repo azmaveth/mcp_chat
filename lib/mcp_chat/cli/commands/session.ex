@@ -20,8 +20,7 @@ defmodule MCPChat.CLI.Commands.Session do
       "save" => "Save current session (usage: /save [name])",
       "load" => "Load a saved session (usage: /load <name|id>)",
       "sessions" => "List saved sessions",
-      "history" => "Show conversation history",
-      "autosave" => "Manage automatic session saving"
+      "history" => "Show conversation history"
     }
   end
 
@@ -44,10 +43,6 @@ defmodule MCPChat.CLI.Commands.Session do
 
   def handle_command("history", _args) do
     show_history()
-  end
-
-  def handle_command("autosave", args) do
-    handle_autosave_command(args)
   end
 
   def handle_command(cmd, _args) do
@@ -87,8 +82,10 @@ defmodule MCPChat.CLI.Commands.Session do
         show_info("Backend: #{session.llm_backend}")
       end
 
-      if session.model do
-        show_info("Model: #{session.model}")
+      model = session.context[:model] || Map.get(session, :model)
+
+      if model do
+        show_info("Model: #{model}")
       end
 
       # Show last message preview
@@ -100,6 +97,26 @@ defmodule MCPChat.CLI.Commands.Session do
           preview = String.slice(content, 0, 100)
           suffix = if String.length(content) > 100, do: "...", else: ""
           show_info("Last #{role}: #{preview}#{suffix}")
+
+        %{role: role, content: content} ->
+          preview = String.slice(content, 0, 100)
+          suffix = if String.length(content) > 100, do: "...", else: ""
+          show_info("Last #{role}: #{preview}#{suffix}")
+
+        %{"content" => content} = msg ->
+          role = msg["role"] || msg[:role] || "unknown"
+          preview = String.slice(content, 0, 100)
+          suffix = if String.length(content) > 100, do: "...", else: ""
+          show_info("Last #{role}: #{preview}#{suffix}")
+
+        %{content: content} = msg ->
+          role = msg[:role] || msg["role"] || "unknown"
+          preview = String.slice(content, 0, 100)
+          suffix = if String.length(content) > 100, do: "...", else: ""
+          show_info("Last #{role}: #{preview}#{suffix}")
+
+        _other ->
+          :ok
       end
     else
       {:error, :not_found} ->
@@ -206,104 +223,6 @@ defmodule MCPChat.CLI.Commands.Session do
     case Regex.run(~r/^(.+?)_[a-f0-9]{32}\.json$/, filename) do
       [_, name] when name not in ["session", "chat_session"] -> name
       _ -> nil
-    end
-  end
-
-  # Autosave commands
-  defp handle_autosave_command(args) do
-    alias MCPChat.Session.Autosave
-
-    case args do
-      [] ->
-        show_autosave_status()
-
-      ["on"] ->
-        Autosave.set_enabled(true)
-        show_success("Autosave enabled")
-
-      ["off"] ->
-        Autosave.set_enabled(false)
-        show_success("Autosave disabled")
-
-      ["now"] ->
-        case Autosave.force_save() do
-          {:ok, :no_changes} ->
-            show_info("No changes to save")
-
-          {:ok, save_info} ->
-            show_success("Session autosaved to: #{save_info.path}")
-
-          {:error, reason} ->
-            show_error("Autosave failed: #{inspect(reason)}")
-        end
-
-      ["interval", interval_str] ->
-        case Integer.parse(interval_str) do
-          {minutes, ""} when minutes > 0 ->
-            Autosave.configure(%{interval: minutes * 60 * 1_000})
-            show_success("Autosave interval set to #{minutes} minutes")
-
-          _ ->
-            show_error("Invalid interval. Please specify minutes as a positive integer.")
-        end
-
-      ["status"] ->
-        show_autosave_status()
-
-      _ ->
-        show_autosave_help()
-    end
-  end
-
-  defp show_autosave_status() do
-    alias MCPChat.Session.Autosave
-
-    stats = Autosave.get_stats()
-
-    show_info("Autosave Status:")
-    IO.puts("  • Enabled: #{if stats.enabled, do: "Yes", else: "No"}")
-    IO.puts("  • Currently saving: #{if stats.saving, do: "Yes", else: "No"}")
-    IO.puts("  • Save count: #{stats.save_count}")
-    IO.puts("  • Failure count: #{stats.failure_count}")
-
-    if stats.last_save_time do
-      time_ago = format_time_ago(stats.last_save_time)
-      IO.puts("  • Last save: #{time_ago}")
-    else
-      IO.puts("  • Last save: Never")
-    end
-
-    if stats.enabled and stats.next_save_in do
-      next_save_minutes = div(stats.next_save_in, 60_000)
-      next_save_seconds = rem(div(stats.next_save_in, 1_000), 60)
-      IO.puts("  • Next save in: #{next_save_minutes}m #{next_save_seconds}s")
-    end
-
-    interval_minutes = div(stats.config.interval, 60_000)
-    IO.puts("  • Interval: #{interval_minutes} minutes")
-  end
-
-  defp show_autosave_help() do
-    show_info("""
-    Autosave Commands:
-
-    /autosave             - Show autosave status
-    /autosave on          - Enable autosave
-    /autosave off         - Disable autosave
-    /autosave now         - Save immediately
-    /autosave interval N  - Set interval to N minutes
-    /autosave status      - Show detailed status
-    """)
-  end
-
-  defp format_time_ago(datetime) do
-    diff = DateTime.diff(DateTime.utc_now(), datetime)
-
-    cond do
-      diff < 60 -> "#{diff} seconds ago"
-      diff < 3_600 -> "#{div(diff, 60)} minutes ago"
-      diff < 86_400 -> "#{div(diff, 3_600)} hours ago"
-      true -> "#{div(diff, 86_400)} days ago"
     end
   end
 end

@@ -164,18 +164,23 @@ defmodule MCPChat.CLI.Commands.LLM do
         fetch_and_display_local_models()
 
       _ ->
-        model_id = parse_args(args)
+        if not local_model_support_available?() do
+          show_error("Local model support is not available.")
+          show_info("To enable local models, add the required dependencies and rebuild.")
+        else
+          model_id = parse_args(args)
 
-        show_info("Loading model: #{model_id}")
-        show_info("This may take a while for first-time downloads...")
+          show_info("Loading model: #{model_id}")
+          show_info("This may take a while for first-time downloads...")
 
-        case MCPChat.LLM.ExLLMAdapter.load_model(model_id) do
-          {:ok, info} ->
-            show_success("Model loaded: #{info.name}")
-            show_info("Parameters: #{format_number(info.parameters)}")
+          case MCPChat.LLM.ExLLMAdapter.load_model(model_id) do
+            {:ok, info} ->
+              show_success("Model loaded: #{info.name}")
+              show_info("Parameters: #{format_number(info.parameters)}")
 
-          {:error, reason} ->
-            show_error("Failed to load model: #{inspect(reason)}")
+            {:error, reason} ->
+              show_error("Failed to load model: #{inspect(reason)}")
+          end
         end
     end
   end
@@ -184,24 +189,33 @@ defmodule MCPChat.CLI.Commands.LLM do
     case args do
       [] ->
         show_error("Usage: /unloadmodel <model-id>")
-        models = MCPChat.LLM.ExLLMAdapter.list_loaded_models()
 
-        if Enum.empty?(models) do
-          show_info("No models currently loaded")
+        if not local_model_support_available?() do
+          show_info("\nLocal model support is not available.")
         else
-          show_info("Currently loaded models:")
-          Enum.each(models, &IO.puts("  • #{&1}"))
+          models = MCPChat.LLM.ExLLMAdapter.list_loaded_models()
+
+          if Enum.empty?(models) do
+            show_info("No models currently loaded")
+          else
+            show_info("Currently loaded models:")
+            Enum.each(models, &IO.puts("  • #{&1}"))
+          end
         end
 
       _ ->
-        model_id = parse_args(args)
+        if not local_model_support_available?() do
+          show_error("Local model support is not available.")
+        else
+          model_id = parse_args(args)
 
-        case MCPChat.LLM.ExLLMAdapter.unload_model(model_id) do
-          :ok ->
-            show_success("Model unloaded: #{model_id}")
+          case MCPChat.LLM.ExLLMAdapter.unload_model(model_id) do
+            :ok ->
+              show_success("Model unloaded: #{model_id}")
 
-          {:error, reason} ->
-            show_error("Failed to unload model: #{inspect(reason)}")
+            {:error, reason} ->
+              show_error("Failed to unload model: #{inspect(reason)}")
+          end
         end
     end
   end
@@ -229,7 +243,11 @@ defmodule MCPChat.CLI.Commands.LLM do
         end
 
       :cpu ->
-        IO.puts("Cores: #{info.cores}")
+        if Map.has_key?(info, :cores) do
+          IO.puts("Cores: #{info.cores}")
+        else
+          IO.puts("Hardware: CPU (no acceleration)")
+        end
 
       _ ->
         :ok
@@ -250,6 +268,14 @@ defmodule MCPChat.CLI.Commands.LLM do
         if info.type == :cuda do
           IO.puts("  ✓ CUDA acceleration available")
         end
+
+      "Not available" ->
+        IO.puts("  ⚠ No hardware acceleration available")
+        IO.puts("  ⚠ Local model support not configured")
+        IO.puts("\nTo enable local model support:")
+        IO.puts("  1. Add ex_llm local dependencies to your mix.exs")
+        IO.puts("  2. Configure hardware acceleration (EMLX, EXLA)")
+        IO.puts("  3. Rebuild the application")
 
       _ ->
         # Show more specific guidance based on hardware
@@ -291,13 +317,13 @@ defmodule MCPChat.CLI.Commands.LLM do
 
       models when length(models) <= 3 ->
         models
-        |> Enum.map_join(&extract_model_name/1, ", ")
+        |> Enum.map_join(", ", &extract_model_name/1)
 
       models ->
         first_three =
           models
           |> Enum.take(3)
-          |> Enum.map_join(&extract_model_name/1, ", ")
+          |> Enum.map_join(", ", &extract_model_name/1)
 
         "#{first_three}, and #{length(models) - 3} more"
     end
@@ -330,20 +356,35 @@ defmodule MCPChat.CLI.Commands.LLM do
   end
 
   defp fetch_and_display_local_models() do
-    case MCPChat.LLM.ExLLMAdapter.list_models(provider: :bumblebee) do
-      {:ok, models} ->
-        show_info("\nAvailable models to load:")
+    # Check if local model support is available
+    if not local_model_support_available?() do
+      show_info("\nLocal model support is not available.")
+      show_info("To enable local models:")
+      show_info("  1. Add Bumblebee and EXLA/EMLX dependencies to your mix.exs")
+      show_info("  2. Configure hardware acceleration")
+      show_info("  3. Rebuild the application")
+    else
+      case MCPChat.LLM.ExLLMAdapter.list_models(provider: :bumblebee) do
+        {:ok, models} ->
+          show_info("\nAvailable models to load:")
 
-        models
-        |> Enum.sort_by(& &1.id)
-        |> Enum.each(fn model ->
-          status = if model.status == "loaded", do: " (loaded)", else: ""
-          IO.puts("  • #{model.id} - #{model.name}#{status}")
-        end)
+          models
+          |> Enum.sort_by(& &1.id)
+          |> Enum.each(fn model ->
+            status = if model.status == "loaded", do: " (loaded)", else: ""
+            IO.puts("  • #{model.id} - #{model.name}#{status}")
+          end)
 
-      {:error, reason} ->
-        Logger.error("Failed to fetch local models: #{inspect(reason)}")
+        {:error, reason} ->
+          Logger.error("Failed to fetch local models: #{inspect(reason)}")
+          show_error("Unable to list available models. Local model support may not be configured.")
+      end
     end
+  end
+
+  defp local_model_support_available?() do
+    Code.ensure_loaded?(ExLLM.Local.ModelLoader) and
+      Process.whereis(ExLLM.Local.ModelLoader) != nil
   end
 
   defp format_number(n) when n >= 1_000_000_000 do

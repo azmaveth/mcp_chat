@@ -153,15 +153,37 @@ defmodule MCPChat.CLI.Commands.Utility do
     IO.puts("Messages: #{length(session.messages)}")
     IO.puts("Created: #{session.created_at}")
 
-    if session.total_tokens > 0 do
-      IO.puts("Total tokens: #{session.total_tokens}")
-    end
-
-    if session.total_cost > 0 do
-      IO.puts("Total cost: $#{:erlang.float_to_binary(session.total_cost, decimals: 4)}")
-    end
-
+    show_token_usage(session)
     :ok
+  end
+
+  defp show_token_usage(session) do
+    if session.token_usage do
+      input_tokens = Map.get(session.token_usage, :input_tokens, 0)
+      output_tokens = Map.get(session.token_usage, :output_tokens, 0)
+      total_tokens = input_tokens + output_tokens
+
+      if total_tokens > 0 do
+        show_token_details(input_tokens, output_tokens, total_tokens)
+        show_cost_estimate(session.llm_backend, input_tokens, output_tokens)
+      end
+    end
+  end
+
+  defp show_token_details(input_tokens, output_tokens, total_tokens) do
+    IO.puts("Input tokens: #{input_tokens}")
+    IO.puts("Output tokens: #{output_tokens}")
+    IO.puts("Total tokens: #{total_tokens}")
+  end
+
+  defp show_cost_estimate(nil, _input_tokens, _output_tokens), do: :ok
+
+  defp show_cost_estimate(backend, input_tokens, output_tokens) do
+    cost = estimate_cost(backend, input_tokens, output_tokens)
+
+    if cost > 0 do
+      IO.puts("Estimated cost: $#{:erlang.float_to_binary(cost, decimals: 4)}")
+    end
   end
 
   defp export_conversation(args) do
@@ -244,62 +266,93 @@ defmodule MCPChat.CLI.Commands.Utility do
     alias MCPChat.LLM.ExLLMAdapter
     alias MCPChat.CLI.Renderer
 
-    # Check if we have a recovery ID
     case Session.get_last_recovery_id() do
       nil ->
         Renderer.show_error("No interrupted response to resume")
 
       recovery_id ->
-        # Show recoverable streams
-        recoverable = ExLLMAdapter.list_recoverable_streams()
+        handle_recovery(recovery_id, ExLLMAdapter, Renderer)
+    end
+  end
 
-        # Find our recovery ID in the list
-        case Enum.find(recoverable, &(&1.id == recovery_id)) do
-          nil ->
-            Renderer.show_error("Previous response is no longer recoverable")
-            Session.clear_last_recovery_id()
+  defp handle_recovery(recovery_id, adapter, renderer) do
+    recoverable = adapter.list_recoverable_streams()
 
-          stream_info ->
-            Renderer.show_info("Resuming interrupted response...")
-            Renderer.show_text("• Provider: #{stream_info.provider}")
-            Renderer.show_text("• Model: #{stream_info.model}")
-            Renderer.show_text("• Chunks received: #{stream_info.chunks_received}")
-            Renderer.show_text("• Tokens processed: #{stream_info.token_count}")
+    case Enum.find(recoverable, &(&1.id == recovery_id)) do
+      nil ->
+        handle_recovery_not_found(recovery_id, renderer)
 
-            # Get partial response
-            case ExLLMAdapter.get_partial_response(recovery_id) do
-              {:ok, chunks} ->
-                # Show what we have so far
-                partial_content = chunks |> Enum.map_join(& &1.content, "")
+      stream_info ->
+        handle_recovery_found(recovery_id, stream_info, adapter, renderer)
+    end
+  end
 
-                if String.length(partial_content) > 0 do
-                  Renderer.show_text("\n--- Partial response ---")
-                  Renderer.show_text(partial_content)
-                  Renderer.show_text("--- Continuing... ---\n")
-                end
+  defp handle_recovery_not_found(recovery_id, renderer) do
+    renderer.show_error("Previous response is no longer recoverable")
+    Session.clear_last_recovery_id()
+  end
 
-                # Resume the stream
-                case ExLLMAdapter.resume_stream(recovery_id) do
-                  {:ok, stream} ->
-                    # Process the resumed stream
-                    # Note: This needs to be integrated with the chat loop
-                    # For now, just show success
-                    Renderer.show_success("Response resumed successfully")
+  defp handle_recovery_found(recovery_id, stream_info, adapter, renderer) do
+    show_recovery_info(stream_info, renderer)
 
-                    # Clear the recovery ID since we're resuming
-                    Session.clear_last_recovery_id()
+    case adapter.get_partial_response(recovery_id) do
+      {:ok, chunks} ->
+        show_partial_content(chunks, renderer)
+        attempt_resume_stream(recovery_id, adapter, renderer)
 
-                    # Return the stream for the chat loop to handle
-                    {:resume_stream, stream}
+      {:error, reason} ->
+        renderer.show_error("Failed to get partial response: #{inspect(reason)}")
+    end
+  end
 
-                  {:error, reason} ->
-                    Renderer.show_error("Failed to resume: #{inspect(reason)}")
-                end
+  defp show_recovery_info(stream_info, renderer) do
+    renderer.show_info("Resuming interrupted response...")
+    renderer.show_text("• Provider: #{stream_info.provider}")
+    renderer.show_text("• Model: #{stream_info.model}")
+    renderer.show_text("• Chunks received: #{stream_info.chunks_received}")
+    renderer.show_text("• Tokens processed: #{stream_info.token_count}")
+  end
 
-              {:error, reason} ->
-                Renderer.show_error("Failed to get partial response: #{inspect(reason)}")
-            end
-        end
+  defp show_partial_content(chunks, renderer) do
+    partial_content = Enum.map_join(chunks, "", & &1.content)
+
+    if String.length(partial_content) > 0 do
+      renderer.show_text("\n--- Partial response ---")
+      renderer.show_text(partial_content)
+      renderer.show_text("--- Continuing... ---\n")
+    end
+  end
+
+  defp attempt_resume_stream(recovery_id, adapter, renderer) do
+    case adapter.resume_stream(recovery_id) do
+      {:ok, stream} ->
+        renderer.show_success("Response resumed successfully")
+        Session.clear_last_recovery_id()
+        {:resume_stream, stream}
+
+      {:error, reason} ->
+        renderer.show_error("Failed to resume: #{inspect(reason)}")
+    end
+  end
+
+  # Estimate cost based on token usage
+  # These are approximate costs per 1M tokens (as of 2024)
+  defp estimate_cost(backend, input_tokens, output_tokens) do
+    case backend do
+      "anthropic" ->
+        # Claude 3 Opus pricing
+        input_cost = input_tokens * 15.0 / 1_000_000
+        output_cost = output_tokens * 75.0 / 1_000_000
+        input_cost + output_cost
+
+      "openai" ->
+        # GPT-4 pricing
+        input_cost = input_tokens * 30.0 / 1_000_000
+        output_cost = output_tokens * 60.0 / 1_000_000
+        input_cost + output_cost
+
+      _ ->
+        0.0
     end
   end
 end

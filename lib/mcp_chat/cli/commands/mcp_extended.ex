@@ -89,7 +89,37 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
             Renderer.show_info("No connected servers")
 
           servers ->
-            Enum.each(servers, &show_server_capabilities/1)
+            Enum.each(servers, fn server ->
+              server_name =
+                cond do
+                  is_binary(server) ->
+                    server
+
+                  is_map(server) and Map.has_key?(server, :name) ->
+                    server.name
+
+                  is_map(server) and Map.has_key?(server, "name") ->
+                    server["name"]
+
+                  is_map(server) and Map.has_key?(server, :server_name) ->
+                    server.server_name
+
+                  is_map(server) and Map.has_key?(server, "server_name") ->
+                    server["server_name"]
+
+                  is_map(server) ->
+                    # Just show capabilities for supported servers only
+                    Renderer.show_info("Capabilities not available for server: #{inspect(server)}")
+                    nil
+
+                  true ->
+                    server
+                end
+
+              if server_name && is_binary(server_name) do
+                show_server_capabilities(server_name)
+              end
+            end)
         end
 
       [server_name] ->
@@ -268,20 +298,26 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
   end
 
   defp show_server_capabilities(server_name) do
-    case get_server_client(server_name) do
-      {:ok, client} ->
-        case MCPChat.MCP.NotificationClient.server_capabilities(client) do
-          {:ok, capabilities} ->
-            Renderer.show_divider()
-            Renderer.show_info("Server: #{server_name}")
-            show_capability_details(capabilities)
+    # Skip capabilities for built-in servers that don't have standard clients
+    if server_name =~ ~r/built.?in/i or server_name =~ ~r/internal/i do
+      Renderer.show_info("Server: #{server_name} (capabilities not available for built-in servers)")
+      :ok
+    else
+      case get_server_client(server_name) do
+        {:ok, client} ->
+          case MCPChat.MCP.NotificationClient.server_capabilities(client) do
+            {:ok, capabilities} ->
+              Renderer.show_divider()
+              Renderer.show_info("Server: #{server_name}")
+              show_capability_details(capabilities)
 
-          {:error, reason} ->
-            Renderer.show_error("Failed to get capabilities: #{inspect(reason)}")
-        end
+            {:error, reason} ->
+              Renderer.show_error("Failed to get capabilities: #{inspect(reason)}")
+          end
 
-      {:error, reason} ->
-        Renderer.show_error("Server #{server_name}: #{inspect(reason)}")
+        {:error, reason} ->
+          Renderer.show_error("Server #{server_name}: #{inspect(reason)}")
+      end
     end
   end
 

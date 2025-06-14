@@ -17,52 +17,73 @@ defmodule MCPChat.CLI.Commands.TUI do
 
   @impl true
   def handle_command("tui", args) do
-    case String.split(args || "", " ", trim: true) do
-      ["show", "progress"] ->
-        TUIManager.show_progress()
-        Renderer.show_success("Progress display enabled")
-        :ok
+    args_str = normalize_args(args)
+    command_parts = String.split(args_str, " ", trim: true)
+    execute_tui_command(command_parts)
+  end
 
-      ["show", "cache"] ->
-        TUIManager.show_cache(:summary)
-        Renderer.show_success("Cache display enabled (summary mode)")
-        :ok
-
-      ["show", "cache", "full"] ->
-        TUIManager.show_cache(:detailed)
-        Renderer.show_success("Cache display enabled (detailed mode)")
-        :ok
-
-      ["show", "both"] ->
-        TUIManager.show_both()
-        Renderer.show_success("Both displays enabled")
-        :ok
-
-      ["hide"] ->
-        TUIManager.hide_all()
-        Renderer.show_success("All displays hidden")
-        :ok
-
-      ["toggle"] ->
-        TUIManager.toggle_display()
-        Renderer.show_success("Display toggled")
-        :ok
-
-      ["status"] ->
-        status = TUIManager.status()
-
-        Renderer.show_info("TUI Status:")
-        Renderer.show_info("  Active Display: #{status.active_display}")
-        Renderer.show_info("  Layout Mode: #{status.layout_mode}")
-        Renderer.show_info("  Progress Visible: #{status.progress_visible}")
-        Renderer.show_info("  Cache Visible: #{status.cache_visible}")
-
-        :ok
-
-      _ ->
-        show_usage()
-        :ok
+  defp normalize_args(args) do
+    case args do
+      list when is_list(list) -> Enum.join(list, " ")
+      str when is_binary(str) -> str
+      _ -> ""
     end
+  end
+
+  defp execute_tui_command(["show", "progress"]) do
+    TUIManager.show_progress()
+    Renderer.show_success("Progress display enabled")
+    :ok
+  end
+
+  defp execute_tui_command(["show", "cache"]) do
+    TUIManager.show_cache(:summary)
+    Renderer.show_success("Cache display enabled (summary mode)")
+    :ok
+  end
+
+  defp execute_tui_command(["show", "cache", "full"]) do
+    TUIManager.show_cache(:detailed)
+    Renderer.show_success("Cache display enabled (detailed mode)")
+    :ok
+  end
+
+  defp execute_tui_command(["show", "both"]) do
+    TUIManager.show_both()
+    Renderer.show_success("Both displays enabled")
+    :ok
+  end
+
+  defp execute_tui_command(["hide"]) do
+    TUIManager.hide_all()
+    Renderer.show_success("All displays hidden")
+    :ok
+  end
+
+  defp execute_tui_command(["toggle"]) do
+    TUIManager.toggle_display()
+    Renderer.show_success("Display toggled")
+    :ok
+  end
+
+  defp execute_tui_command(["status"]) do
+    show_tui_status()
+    :ok
+  end
+
+  defp execute_tui_command(_) do
+    show_usage()
+    :ok
+  end
+
+  defp show_tui_status() do
+    status = TUIManager.status()
+
+    Renderer.show_info("TUI Status:")
+    Renderer.show_info("  Active Display: #{status.active_display}")
+    Renderer.show_info("  Layout Mode: #{status.layout_mode}")
+    Renderer.show_info("  Progress Visible: #{status.progress_visible}")
+    Renderer.show_info("  Cache Visible: #{status.cache_visible}")
   end
 
   defp show_usage() do

@@ -13,6 +13,12 @@ defmodule McpChat.MixProject do
         main_module: MCPChat,
         embed_elixir: true,
         applications: [:ex_llm, :ex_mcp, :ex_alias, :ex_readline, :owl, :toml]
+      ],
+      releases: [
+        mcp_chat: [
+          steps: [:assemble, &copy_launch_script/1],
+          applications: [runtime_tools: :permanent]
+        ]
       ]
     ]
   end
@@ -28,6 +34,21 @@ defmodule McpChat.MixProject do
   # Specify compilation paths
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
+
+  # Copy launch script to release
+  defp copy_launch_script(release) do
+    launch_script = """
+    #!/bin/sh
+    cd "$(dirname "$0")"
+    exec ./bin/mcp_chat eval "MCPChat.main()"
+    """
+
+    script_path = Path.join(release.path, "mcp_chat.sh")
+    File.write!(script_path, launch_script)
+    File.chmod!(script_path, 0o755)
+
+    release
+  end
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do

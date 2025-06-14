@@ -1,0 +1,18 @@
+#!/bin/bash
+# MCP Chat launcher with IEx support
+
+# Get the directory of the script
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$DIR"
+
+# Check if the application is compiled
+if [ ! -d "_build" ]; then
+    echo "Building MCP Chat..."
+    mix deps.get
+    mix compile
+fi
+
+# Start IEx with a command file that runs MCPChat.main()
+cat << 'EOF' | iex -S mix
+MCPChat.main()
+EOF

@@ -125,7 +125,7 @@ defmodule MCPChat.CLI.Commands.MCP do
         IO.puts("  • #{server.name}")
         IO.puts("    Command: #{command_str}")
 
-        if server.env && map_size(server.env) > 0 do
+        if Map.has_key?(server, :env) && server.env && map_size(server.env) > 0 do
           IO.puts("    Environment: #{inspect(server.env)}")
         end
       end)

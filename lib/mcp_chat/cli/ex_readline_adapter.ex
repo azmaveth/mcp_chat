@@ -18,7 +18,16 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
   end
 
   def read_line(prompt, opts \\ []) do
-    GenServer.call(__MODULE__, {:read_line, prompt, opts}, :infinity)
+    # If we're in IEx, just use IO.gets directly
+    if Code.ensure_loaded?(IEx) and IEx.started?() do
+      case IO.gets(prompt) do
+        :eof -> :eof
+        {:error, _} -> :eof
+        data when is_binary(data) -> String.trim_trailing(data, "\n")
+      end
+    else
+      GenServer.call(__MODULE__, {:read_line, prompt, opts}, :infinity)
+    end
   end
 
   def add_to_history(line) do
@@ -38,8 +47,11 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
   @impl true
   def init(opts) do
     # Determine which ExReadline implementation to use
-    # Default to :advanced for better arrow key and terminal handling
-    implementation = Keyword.get(opts, :implementation, :advanced)
+    # Use :simple for escript mode to avoid terminal input issues
+    implementation = Keyword.get(opts, :implementation, detect_best_implementation())
+
+    # Debug log
+    Logger.info("ExReadlineAdapter: Detected implementation: #{implementation}")
 
     # Start the appropriate ExReadline implementation
     case start_ex_readline(implementation, opts) do
@@ -106,6 +118,46 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
 
   # Private helper functions
 
+  defp detect_best_implementation() do
+    if iex_running?() do
+      :simple
+    else
+      detect_from_environment()
+    end
+  end
+
+  defp iex_running?() do
+    Code.ensure_loaded?(IEx) and IEx.started?()
+  end
+
+  defp detect_from_environment() do
+    case System.get_env("MCP_READLINE_MODE") do
+      "advanced" -> :advanced
+      "simple" -> :simple
+      _ -> detect_from_terminal()
+    end
+  end
+
+  defp detect_from_terminal() do
+    case :io.getopts(:standard_io) do
+      opts when is_list(opts) ->
+        check_terminal_options(opts)
+
+      _ ->
+        :simple
+    end
+  end
+
+  defp check_terminal_options(opts) do
+    terminal = Keyword.get(opts, :terminal, :undefined)
+
+    if terminal in [:ebadf, false] do
+      :simple
+    else
+      :advanced
+    end
+  end
+
   defp start_ex_readline(implementation, opts) do
     case implementation do
       :simple ->
@@ -140,12 +192,5 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
         Logger.warning("Failed to load history: #{inspect(reason)}")
         :ok
     end
-  end
-
-  defp _save_history(_ex_readline_pid) do
-    # ExReadline doesn't expose get_history API, so we can't save history
-    # This is a limitation of the current ex_readline implementation
-    # TODO: Add history tracking to ex_readline or track history in this adapter
-    :ok
   end
 end

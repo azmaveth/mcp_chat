@@ -36,6 +36,12 @@ defmodule MCPChat.CLI.Chat do
         :ok
 
       input ->
+        # Debug output
+        if System.get_env("MCP_DEBUG") == "1" do
+          IO.puts("[DEBUG Chat] Got input: #{inspect(input)}")
+          IO.puts("[DEBUG Chat] After trim: #{inspect(String.trim(input))}")
+        end
+
         input = String.trim(input)
 
         case process_input(input) do
@@ -55,6 +61,11 @@ defmodule MCPChat.CLI.Chat do
   defp process_input("/q"), do: :exit
 
   defp process_input("/" <> command) do
+    # Debug output
+    if System.get_env("MCP_DEBUG") == "1" do
+      IO.puts("[DEBUG] Processing command: #{inspect(command)}")
+    end
+
     case Commands.handle_command(command) do
       {:message, text} ->
         # Alias returned a message to send
@@ -68,7 +79,12 @@ defmodule MCPChat.CLI.Chat do
       :exit ->
         :exit
 
-      _ ->
+      result ->
+        # Debug output
+        if System.get_env("MCP_DEBUG") == "1" do
+          IO.puts("[DEBUG] Command result: #{inspect(result)}")
+        end
+
         :continue
     end
   end

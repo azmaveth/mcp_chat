@@ -23,9 +23,25 @@ mix test --only integration:true  # Run only integration tests
 mix credo                         # Run code analysis
 mix dialyzer                      # Run static type checking (slow first run)
 
-# Running with full readline support
+# Running MCP Chat
+
+# Method 1: Interactive mode with full terminal support (RECOMMENDED)
 iex -S mix                        # Start in IEx shell
 iex> MCPChat.main()              # Run with full readline support
+
+# Method 2: Direct launcher (uses elixir --no-halt)
+./mcp_chat                        # Direct execution with terminal support
+
+# Method 3: IEx launcher scripts
+./mcp_chat_iex                    # Attempts to auto-start (may have issues)
+./mcp_chat_manual                 # Starts IEx, type MCPChat.main() to begin
+
+# Method 4: Escript mode (limited terminal features)
+mix escript.build
+./mcp_chat                        # Basic functionality, no arrow keys
+
+# Method 5: Mix task (not recommended for interactive use)
+mix mcp_chat.run                  # May exit immediately due to TTY issues
 ```
 
 ## 🏗️ Architecture Overview
