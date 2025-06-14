@@ -172,22 +172,19 @@ defmodule DemoTimeServer do
   defp get_time_in_timezone(timezone) do
     # For testing, just add/subtract hours based on common zones
     utc = DateTime.utc_now()
-
-    offset_hours =
-      case timezone do
-        "America/New_York" -> -5
-        "America/Chicago" -> -6
-        "America/Denver" -> -7
-        "America/Los_Angeles" -> -8
-        "Europe/London" -> 0
-        "Europe/Paris" -> 1
-        "Asia/Tokyo" -> 9
-        "Australia/Sydney" -> 11
-        _ -> 0
-      end
-
+    offset_hours = timezone_offset_hours(timezone)
     DateTime.add(utc, offset_hours * 3_600, :second)
   end
+
+  defp timezone_offset_hours("America/New_York"), do: -5
+  defp timezone_offset_hours("America/Chicago"), do: -6
+  defp timezone_offset_hours("America/Denver"), do: -7
+  defp timezone_offset_hours("America/Los_Angeles"), do: -8
+  defp timezone_offset_hours("Europe/London"), do: 0
+  defp timezone_offset_hours("Europe/Paris"), do: 1
+  defp timezone_offset_hours("Asia/Tokyo"), do: 9
+  defp timezone_offset_hours("Australia/Sydney"), do: 11
+  defp timezone_offset_hours(_), do: 0
 end
 
 # Start the server

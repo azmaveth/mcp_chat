@@ -180,16 +180,20 @@ defmodule E2ETestRunner do
   defp check_ollama_model() do
     case HTTPoison.get("#{@ollama_url}/api/tags") do
       {:ok, %{status_code: 200, body: body}} ->
-        case Jason.decode(body) do
-          {:ok, %{"models" => models}} ->
-            if Enum.any?(models, &(&1["name"] == @required_model)) do
-              :exists
-            else
-              :missing
-            end
+        check_model_in_response(body)
 
-          _ ->
-            :missing
+      _ ->
+        :missing
+    end
+  end
+
+  defp check_model_in_response(body) do
+    case Jason.decode(body) do
+      {:ok, %{"models" => models}} ->
+        if Enum.any?(models, &(&1["name"] == @required_model)) do
+          :exists
+        else
+          :missing
         end
 
       _ ->
@@ -251,7 +255,11 @@ defmodule E2ETestRunner do
     # Ensure application is started
     Application.ensure_all_started(:mcp_chat)
 
-    # Test Ollama
+    test_ollama_connection()
+    test_mcp_server_startup()
+  end
+
+  defp test_ollama_connection() do
     config = %{
       "provider" => "ollama",
       "base_url" => @ollama_url,
@@ -261,25 +269,34 @@ defmodule E2ETestRunner do
     case MCPChat.LLM.ExLLMAdapter.init(config) do
       {:ok, client} ->
         IO.puts("✅ Ollama client initialized")
-
-        messages = [%{role: "user", content: "Say 'test passed' if you can read this"}]
-
-        case MCPChat.LLM.ExLLMAdapter.complete(client, messages, %{}) do
-          {:ok, response} ->
-            if String.contains?(String.downcase(response), "test passed") do
-              IO.puts("✅ Ollama response received")
-            else
-              IO.puts("⚠️  Unexpected response: #{response}")
-            end
-
-          {:error, reason} ->
-            IO.puts("❌ Failed to get response: #{inspect(reason)}")
-        end
+        test_ollama_response(client)
 
       {:error, reason} ->
         IO.puts("❌ Failed to initialize client: #{inspect(reason)}")
     end
+  end
 
+  defp test_ollama_response(client) do
+    messages = [%{role: "user", content: "Say 'test passed' if you can read this"}]
+
+    case MCPChat.LLM.ExLLMAdapter.complete(client, messages, %{}) do
+      {:ok, response} ->
+        verify_ollama_response(response)
+
+      {:error, reason} ->
+        IO.puts("❌ Failed to get response: #{inspect(reason)}")
+    end
+  end
+
+  defp verify_ollama_response(response) do
+    if String.contains?(String.downcase(response), "test passed") do
+      IO.puts("✅ Ollama response received")
+    else
+      IO.puts("⚠️  Unexpected response: #{response}")
+    end
+  end
+
+  defp test_mcp_server_startup() do
     IO.puts("\n2. Testing MCP server startup...")
 
     # Try to start a simple server

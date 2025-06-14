@@ -145,7 +145,7 @@ defmodule MCPChat.Error do
   ## Returns
   Boolean indicating if value is an error tuple
   """
-  @spec is_error?(term()) :: boolean()
+  @spec error?(term()) :: boolean()
   def error?({:error, _}), do: true
   def error?(_), do: false
 

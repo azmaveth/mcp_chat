@@ -196,78 +196,78 @@ defmodule MCPChat.MCPTestHelpers do
       end)
   """
   def create_mock_handler(config \\ %{}) do
-    tools = Map.get(config, :tools, [])
-    tool_results = Map.get(config, :tool_results, %{})
-    resources = Map.get(config, :resources, [])
-    prompts = Map.get(config, :prompts, [])
-
-    # Create a simple mock handler module
-    defmodule MCPTestHandler do
-      @moduledoc false
-      use ExMCP.Server.Handler
-
-      def init(config), do: {:ok, config}
-
-      @impl true
-      def handle_initialize(_params, state) do
-        {:ok,
-         %{
-           "serverInfo" => %{
-             "name" => "test-server",
-             "version" => "1.0.0"
-           },
-           "capabilities" => %{
-             "tools" => %{},
-             "resources" => %{},
-             "prompts" => %{}
-           }
-         }, state}
-      end
-
-      @impl true
-      def handle_list_tools(_params, state) do
-        {:ok, %{"tools" => state.tools}, state}
-      end
-
-      @impl true
-      def handle_call_tool(name, arguments, state) do
-        case Map.get(state.tool_results, name) do
-          nil ->
-            {:error,
-             %{
-               "code" => -32_601,
-               "message" => "Tool not found: #{name}"
-             }, state}
-
-          fun when is_function(fun) ->
-            result = fun.(arguments)
-            {:ok, %{"content" => [result]}, state}
-
-          result ->
-            {:ok, %{"content" => [result]}, state}
-        end
-      end
-
-      @impl true
-      def handle_list_resources(_params, state) do
-        {:ok, %{"resources" => Map.get(state, :resources, [])}, state}
-      end
-
-      @impl true
-      def handle_list_prompts(_params, state) do
-        {:ok, %{"prompts" => Map.get(state, :prompts, [])}, state}
-      end
-    end
+    handler_config = build_handler_config(config)
 
     # Return a function that creates the handler with config
     fn ->
-      {:ok, _pid} =
-        GenServer.start_link(MCPTestHandler, %{
-          tools: tools,
-          tool_results: tool_results,
-          resources: resources,
-          prompts: prompts
-        })
+      {:ok, _pid} = GenServer.start_link(MCPChat.MCPTestHelpers.MCPTestHandler, handler_config)
     end
+  end
+
+  defp build_handler_config(config) do
+    %{
+      tools: Map.get(config, :tools, []),
+      tool_results: Map.get(config, :tool_results, %{}),
+      resources: Map.get(config, :resources, []),
+      prompts: Map.get(config, :prompts, [])
+    }
+  end
+end
+
+# Define the test handler module at the module level
+defmodule MCPChat.MCPTestHelpers.MCPTestHandler do
+  @moduledoc false
+  use ExMCP.Server.Handler
+
+  def init(config), do: {:ok, config}
+
+  @impl true
+  def handle_initialize(_params, state) do
+    {:ok,
+     %{
+       "serverInfo" => %{
+         "name" => "test-server",
+         "version" => "1.0.0"
+       },
+       "capabilities" => %{
+         "tools" => %{},
+         "resources" => %{},
+         "prompts" => %{}
+       }
+     }, state}
+  end
+
+  @impl true
+  def handle_list_tools(_params, state) do
+    {:ok, %{"tools" => state.tools}, state}
+  end
+
+  @impl true
+  def handle_call_tool(name, arguments, state) do
+    case Map.get(state.tool_results, name) do
+      nil ->
+        {:error,
+         %{
+           "code" => -32_601,
+           "message" => "Tool not found: #{name}"
+         }, state}
+
+      fun when is_function(fun) ->
+        result = fun.(arguments)
+        {:ok, %{"content" => [result]}, state}
+
+      result ->
+        {:ok, %{"content" => [result]}, state}
+    end
+  end
+
+  @impl true
+  def handle_list_resources(_params, state) do
+    {:ok, %{"resources" => Map.get(state, :resources, [])}, state}
+  end
+
+  @impl true
+  def handle_list_prompts(_params, state) do
+    {:ok, %{"prompts" => Map.get(state, :prompts, [])}, state}
   end
 end

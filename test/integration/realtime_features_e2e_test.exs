@@ -76,8 +76,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       # Reconstruct full response
       full_response =
         chunks
-        |> Enum.map(&elem(&1, 1))
-        |> Enum.join("")
+        |> Enum.map_join("", &elem(&1, 1))
 
       # Should mention multiple languages
       assert full_response =~ ~r/\b(Python|JavaScript|Java|Ruby|Go|Rust|Elixir)\b/i
@@ -422,12 +421,11 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
 
       streamed_response =
         chunks
-        |> Enum.map(fn chunk ->
+        |> Enum.map_join("", fn chunk ->
           # Simulate streaming delay
           Process.sleep(30)
           chunk <> " "
         end)
-        |> Enum.join("")
 
       MCPChat.Session.add_message("assistant", streamed_response)
 
@@ -575,20 +573,28 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
   defp check_ollama() do
     case HTTPoison.get("#{@ollama_url}/api/tags") do
       {:ok, %{status_code: 200, body: body}} ->
-        case Jason.decode(body) do
-          {:ok, %{"models" => models}} when is_list(models) and length(models) > 0 ->
-            if Enum.any?(models, &(&1["name"] == @streaming_model)) do
-              :ok
-            else
-              {:error, "Ollama doesn't have #{@streaming_model} model. Run: ollama pull #{@streaming_model}"}
-            end
-
-          _ ->
-            {:error, "Ollama has no models"}
-        end
+        check_ollama_models(body)
 
       _ ->
         {:error, "Ollama is not running at #{@ollama_url}"}
+    end
+  end
+
+  defp check_ollama_models(body) do
+    case Jason.decode(body) do
+      {:ok, %{"models" => models}} when is_list(models) and length(models) > 0 ->
+        check_model_availability(models)
+
+      _ ->
+        {:error, "Ollama has no models"}
+    end
+  end
+
+  defp check_model_availability(models) do
+    if Enum.any?(models, &(&1["name"] == @streaming_model)) do
+      :ok
+    else
+      {:error, "Ollama doesn't have #{@streaming_model} model. Run: ollama pull #{@streaming_model}"}
     end
   end
 

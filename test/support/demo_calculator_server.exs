@@ -173,45 +173,36 @@ defmodule DemoCalculatorServer do
 
     case result do
       [_, a, op, b] ->
-        num_a =
-          try do
-            String.to_float(a)
-          rescue
-            _ -> String.to_integer(a)
-          end
-
-        num_b =
-          try do
-            String.to_float(b)
-          rescue
-            _ -> String.to_integer(b)
-          end
-
-        case op do
-          "+" ->
-            num_a + num_b
-
-          "-" ->
-            num_a - num_b
-
-          "*" ->
-            num_a * num_b
-
-          "/" ->
-            if num_b == 0 do
-              raise("Division by zero")
-            else
-              num_a / num_b
-            end
-
-          _ ->
-            raise "Unsupported operator: #{op}"
-        end
+        num_a = parse_number(a)
+        num_b = parse_number(b)
+        apply_operation(op, num_a, num_b)
 
       _ ->
         raise "Invalid expression format"
     end
   end
+
+  defp parse_number(str) do
+    try do
+      String.to_float(str)
+    rescue
+      _ -> String.to_integer(str)
+    end
+  end
+
+  defp apply_operation("+", a, b), do: a + b
+  defp apply_operation("-", a, b), do: a - b
+  defp apply_operation("*", a, b), do: a * b
+
+  defp apply_operation("/", a, b) do
+    if b == 0 do
+      raise("Division by zero")
+    else
+      a / b
+    end
+  end
+
+  defp apply_operation(op, _, _), do: raise("Unsupported operator: #{op}")
 
   defp factorial(0), do: 1
   defp factorial(n) when n > 0, do: n * factorial(n - 1)

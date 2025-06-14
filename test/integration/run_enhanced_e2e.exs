@@ -47,41 +47,52 @@ defmodule EnhancedE2ERunner do
 
     case System.cmd("curl", ["-s", "#{@ollama_url}/api/tags"], stderr_to_stdout: true) do
       {response, 0} ->
-        # Simple check if response contains models
-        if String.contains?(response, "\"models\"") and String.contains?(response, "\"name\"") do
-          # Count models by counting "name" occurrences
-          model_count = length(String.split(response, "\"name\"")) - 1
-          IO.puts("✓ (#{model_count} models available)")
-
-          # Extract model names with regex
-          model_names =
-            Regex.scan(~r/"name":"([^"]+)"/, response)
-            |> Enum.map(fn [_, name] -> name end)
-
-          if length(model_names) > 0 do
-            IO.puts("  Available models:")
-
-            Enum.each(model_names, fn name ->
-              IO.puts("    - #{name}")
-            end)
-
-            :ok
-          else
-            IO.puts("✗ (no models installed)")
-            IO.puts("  Run: ollama pull nomic-embed-text:latest")
-            :error
-          end
-        else
-          IO.puts("✗ (no models found)")
-          IO.puts("  Run: ollama pull nomic-embed-text:latest")
-          :error
-        end
+        check_ollama_response(response)
 
       _ ->
         IO.puts("✗ (not running)")
         IO.puts("  Start Ollama with: ollama serve")
         :error
     end
+  end
+
+  defp check_ollama_response(response) do
+    if String.contains?(response, "\"models\"") and String.contains?(response, "\"name\"") do
+      handle_models_response(response)
+    else
+      IO.puts("✗ (no models found)")
+      IO.puts("  Run: ollama pull nomic-embed-text:latest")
+      :error
+    end
+  end
+
+  defp handle_models_response(response) do
+    # Count models by counting "name" occurrences
+    model_count = length(String.split(response, "\"name\"")) - 1
+    IO.puts("✓ (#{model_count} models available)")
+
+    # Extract model names with regex
+    model_names =
+      Regex.scan(~r/"name":"([^"]+)"/, response)
+      |> Enum.map(fn [_, name] -> name end)
+
+    display_model_list(model_names)
+  end
+
+  defp display_model_list([]) do
+    IO.puts("✗ (no models installed)")
+    IO.puts("  Run: ollama pull nomic-embed-text:latest")
+    :error
+  end
+
+  defp display_model_list(model_names) do
+    IO.puts("  Available models:")
+
+    Enum.each(model_names, fn name ->
+      IO.puts("    - #{name}")
+    end)
+
+    :ok
   end
 
   defp check_elixir() do
@@ -133,24 +144,7 @@ defmodule EnhancedE2ERunner do
 
     case System.cmd("curl", ["-s", "#{@ollama_url}/api/tags"], stderr_to_stdout: true) do
       {response, 0} ->
-        # Extract model names with regex
-        model_names =
-          Regex.scan(~r/"name":"([^"]+)"/, response)
-          |> Enum.map(fn [_, name] -> name end)
-
-        # Check for preferred model for tool calling
-        preferred_model = "hf.co/unsloth/Qwen3-8B-GGUF:IQ4_XS"
-
-        if preferred_model not in model_names do
-          IO.puts("Pulling #{preferred_model} model (recommended for tool calling)...")
-
-          case System.cmd("ollama", ["pull", preferred_model], stderr_to_stdout: true) do
-            {_, 0} -> IO.puts("✓ Model pulled successfully")
-            {output, _} -> IO.puts("✗ Failed to pull model:\n#{output}")
-          end
-        else
-          IO.puts("✓ Preferred model already available")
-        end
+        ensure_preferred_model(response)
 
       _ ->
         IO.puts("✗ Ollama not running. Start with: ollama serve")
@@ -171,6 +165,31 @@ defmodule EnhancedE2ERunner do
     IO.puts("✓ Demo servers configured")
 
     IO.puts("\n✅ Setup complete!")
+  end
+
+  defp ensure_preferred_model(response) do
+    # Extract model names with regex
+    model_names =
+      Regex.scan(~r/"name":"([^"]+)"/, response)
+      |> Enum.map(fn [_, name] -> name end)
+
+    # Check for preferred model for tool calling
+    preferred_model = "hf.co/unsloth/Qwen3-8B-GGUF:IQ4_XS"
+
+    if preferred_model in model_names do
+      IO.puts("✓ Preferred model already available")
+    else
+      pull_preferred_model(preferred_model)
+    end
+  end
+
+  defp pull_preferred_model(model_name) do
+    IO.puts("Pulling #{model_name} model (recommended for tool calling)...")
+
+    case System.cmd("ollama", ["pull", model_name], stderr_to_stdout: true) do
+      {_, 0} -> IO.puts("✓ Model pulled successfully")
+      {output, _} -> IO.puts("✗ Failed to pull model:\n#{output}")
+    end
   end
 
   defp run_tests() do

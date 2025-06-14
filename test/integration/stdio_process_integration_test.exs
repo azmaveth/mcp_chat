@@ -12,10 +12,7 @@ defmodule MCPChat.StdioProcessIntegrationTest do
       demo_server_path = Path.join([File.cwd!(), "test", "support", "standalone_mcp_server.exs"])
 
       # Skip if file doesn't exist
-      unless File.exists?(demo_server_path) do
-        IO.puts("Skipping test - demo server not found at: #{demo_server_path}")
-        :ok
-      else
+      if File.exists?(demo_server_path) do
         # Start the server wrapper with our demo server
         config = %{
           "name" => "test-time-server",
@@ -70,6 +67,9 @@ defmodule MCPChat.StdioProcessIntegrationTest do
 
         # Clean up
         GenServer.stop(wrapper)
+      else
+        IO.puts("Skipping test - demo server not found at: #{demo_server_path}")
+        :ok
       end
     end
 

@@ -21,21 +21,24 @@ defmodule StandaloneMCPServer do
         :ok
 
       line ->
-        line = String.trim(line)
-
-        if line != "" do
-          {response, new_state} = handle_json_rpc(line, state)
-
-          if response do
-            IO.puts(response)
-          end
-
-          loop(new_state)
-        else
-          loop(state)
-        end
+        process_line(line, state)
     end
   end
+
+  defp process_line(line, state) do
+    line = String.trim(line)
+
+    if line != "" do
+      {response, new_state} = handle_json_rpc(line, state)
+      send_response_if_present(response)
+      loop(new_state)
+    else
+      loop(state)
+    end
+  end
+
+  defp send_response_if_present(nil), do: :ok
+  defp send_response_if_present(response), do: IO.puts(response)
 
   defp handle_json_rpc(line, state) do
     # Very basic JSON parsing without dependencies
