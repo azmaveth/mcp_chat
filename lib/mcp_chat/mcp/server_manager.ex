@@ -31,6 +31,10 @@ defmodule MCPChat.MCP.ServerManager do
     GenServer.call(__MODULE__, :list_servers)
   end
 
+  def list_servers_with_status() do
+    GenServer.call(__MODULE__, :list_servers_with_status)
+  end
+
   def get_server(name) do
     GenServer.call(__MODULE__, {:get_server, name})
   end
@@ -101,6 +105,9 @@ defmodule MCPChat.MCP.ServerManager do
     state_with_supervisor = Core.set_supervisor(state, supervisor)
     {new_state, result} = Core.start_configured_servers(state_with_supervisor)
 
+    # Start background connection attempts for servers in connecting state
+    send(self(), :connect_pending_servers)
+
     {:reply, result, new_state}
   end
 
@@ -119,6 +126,12 @@ defmodule MCPChat.MCP.ServerManager do
   @impl true
   def handle_call(:list_servers, _from, state) do
     servers = Core.list_servers(state)
+    {:reply, servers, state}
+  end
+
+  @impl true
+  def handle_call(:list_servers_with_status, _from, state) do
+    servers = Core.list_servers_with_status(state)
     {:reply, servers, state}
   end
 
@@ -222,5 +235,98 @@ defmodule MCPChat.MCP.ServerManager do
     Logger.warning("MCP server process died: #{inspect(reason)}")
     new_state = Core.handle_server_death(state, pid)
     {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_info(:connect_pending_servers, state) do
+    # Get servers that need connection attempts
+    connecting_servers = Core.get_connecting_servers(state)
+
+    if length(connecting_servers) > 0 do
+      Logger.info("Starting background connections for #{length(connecting_servers)} servers")
+
+      # Start connection tasks for each server
+      Enum.each(connecting_servers, &start_connection_task/1)
+    end
+
+    {:noreply, state}
+  end
+
+  defp start_connection_task(server) do
+    Task.start(fn -> attempt_server_connection(server) end)
+  end
+
+  @impl true
+  def handle_info({:server_connected, server_name, pid, capabilities}, state) do
+    # Monitor the server process
+    monitor_ref = Process.monitor(pid)
+
+    # Update server state to connected
+    new_state = Core.mark_server_connected(state, server_name, pid, monitor_ref, capabilities)
+
+    Logger.info("Server '#{server_name}' connected successfully")
+    {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_info({:server_failed, server_name, error}, state) do
+    # Update server state to failed
+    new_state = Core.mark_server_failed(state, server_name, error)
+
+    Logger.warning("Server '#{server_name}' failed to connect: #{inspect(error)}")
+    {:noreply, new_state}
+  end
+
+  # Private helper for background connection attempts
+  defp attempt_server_connection(server) do
+    server_manager_pid = Process.whereis(__MODULE__)
+
+    case Core.build_server_config(server.config, server.name) do
+      {:ok, server_config} ->
+        handle_server_start(server_manager_pid, server, server_config)
+
+      {:error, reason} ->
+        send(server_manager_pid, {:server_failed, server.name, reason})
+    end
+  end
+
+  defp handle_server_start(server_manager_pid, server, server_config) do
+    child_spec = %{
+      id: {MCPChat.MCP.ServerWrapper, server.name},
+      start: {MCPChat.MCP.ServerWrapper, :start_link, [server_config, []]},
+      restart: :temporary
+    }
+
+    case DynamicSupervisor.start_child(MCPChat.MCP.ServerSupervisor, child_spec) do
+      {:ok, pid} ->
+        handle_server_capabilities(server_manager_pid, server, pid)
+
+      {:error, reason} ->
+        send(server_manager_pid, {:server_failed, server.name, reason})
+    end
+  end
+
+  defp handle_server_capabilities(server_manager_pid, server, pid) do
+    case fetch_server_capabilities(pid) do
+      {:ok, capabilities} ->
+        send(server_manager_pid, {:server_connected, server.name, pid, capabilities})
+
+      {:error, reason} ->
+        DynamicSupervisor.terminate_child(MCPChat.MCP.ServerSupervisor, pid)
+        send(server_manager_pid, {:server_failed, server.name, reason})
+    end
+  end
+
+  defp fetch_server_capabilities(pid) do
+    # Give server time to initialize
+    Process.sleep(500)
+
+    with {:ok, tools} <- MCPChat.MCP.ServerWrapper.get_tools(pid),
+         {:ok, resources} <- MCPChat.MCP.ServerWrapper.get_resources(pid),
+         {:ok, prompts} <- MCPChat.MCP.ServerWrapper.get_prompts(pid) do
+      {:ok, %{tools: tools, resources: resources, prompts: prompts}}
+    else
+      error -> error
+    end
   end
 end

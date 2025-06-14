@@ -440,23 +440,41 @@ history_size = 1000
   - [x] Async context file loading ✅
   - [x] Background session autosave ✅
 
-## Phase 15a: Enhanced MCP Server Connection Management
-- [ ] Implement lazy MCP server connections
-  - [ ] Servers connect only when their tools/resources are first accessed
-  - [ ] Maintain server connection state without blocking startup
-  - [ ] Dynamically update available tools list as servers connect/disconnect
-  - [ ] Allow disconnection of servers without restarting client
-  - [ ] Benefits:
-    - [ ] Faster startup times by avoiding initial connection overhead
-    - [ ] Better handling of temporarily unavailable servers
-    - [ ] Dynamic server management during runtime
-    - [ ] Reduced resource usage for unused servers
-  - [ ] Implementation approach:
-    - [ ] Modify LazyServerManager to track connection state per server
-    - [ ] Update tool/resource/prompt listings to check connection state
-    - [ ] Add connection hooks to update UI when servers connect/disconnect
-    - [ ] Handle tool calls to trigger lazy connection if needed
-    - [ ] Update /mcp connect/disconnect commands for runtime management
+## Phase 15a: Background Server Connections with Status Tracking
+- [ ] Implement background server connections with improved status visibility
+  - [ ] **Core Changes:**
+    - [ ] Add Server struct with status tracking (connecting/connected/failed)
+    - [ ] Make all server connections non-blocking on startup
+    - [ ] Store capabilities cache and connection metadata per server
+    - [ ] Only show tools/resources from connected servers
+  - [ ] **Enhanced ServerManager State:**
+    ```elixir
+    defmodule ServerManager.Server do
+      defstruct [
+        :name, :config, :pid, :monitor_ref,
+        status: :connecting,  # :connecting | :connected | :failed
+        capabilities: %{tools: [], resources: [], prompts: []},
+        error: nil,
+        connected_at: nil
+      ]
+    end
+    ```
+  - [ ] **UI/CLI Improvements:**
+    - [ ] Update `/mcp servers` to show connection status with indicators
+    - [ ] Filter tool/resource listings to only show from connected servers
+    - [ ] Add retry mechanism for failed connections
+    - [ ] Show clear status messages during connection process
+  - [ ] **Benefits:**
+    - [ ] Faster startup - no blocking on server connections
+    - [ ] Clear visibility into server health and status
+    - [ ] Proper MCP protocol adherence (tools only shown when server ready)
+    - [ ] Graceful handling of server failures
+  - [ ] **Implementation Strategy:**
+    - [ ] Refactor ServerManager to use Server structs instead of simple PID map
+    - [ ] Add background connection tasks with proper monitoring
+    - [ ] Update all tool/resource/prompt commands to check server status
+    - [ ] Add status indicators to CLI output
+    - [ ] Implement connection retry logic
 
 ## Phase 15.5: Permanent Session Management (COMPLETED)
 - [x] Implement permanent session storage
@@ -636,6 +654,42 @@ history_size = 1000
     - "Using @prompt:code_review analyze this function" (when MCP available)
     - "Compare @resource:config.toml with @url:https://example.com/config" (when MCP available)
     - "Execute @tool:calculate with these parameters..." (when MCP available)
+
+## Phase 20: Core Tools Implementation (PRIORITY: HIGH)
+- [ ] Implement secure core tools for file and command operations
+  - [ ] **Phase 1: Read-Only Foundation** (TIMELINE: 1-2 weeks, PRIORITY: HIGH)
+    - [ ] Create `CoreToolsServer` GenServer as privileged local peer
+    - [ ] Implement `PathSanitizer` security module for directory traversal prevention
+    - [ ] Integrate with existing `ServerManager` using "@core" naming convention
+    - [ ] Implement secure `read_file` tool with workspace isolation
+    - [ ] Add comprehensive security testing for path validation
+  - [ ] **Phase 2: Secure Writes** (TIMELINE: 1 week, PRIORITY: MEDIUM)
+    - [ ] Create `PermissionHandler` for interactive user confirmations
+    - [ ] Implement `write_file` tool with size/quota limits and user approval
+    - [ ] Add CLI integration for permission prompts with clear risk indication
+    - [ ] Implement file size validation and workspace quota management
+  - [ ] **Phase 3: Command Execution** (TIMELINE: 2-3 weeks, PRIORITY: HIGH RISK)
+    - [ ] Create `ExecutionSandbox` with platform-specific strategies
+    - [ ] Integrate MuonTrap library for Linux cgroup-based sandboxing
+    - [ ] Implement fallback strategy using System.cmd with resource limits
+    - [ ] Add `execute_command` tool with mandatory user confirmation
+    - [ ] Implement process isolation, timeouts, and output size limits
+  - [ ] **Security Requirements** (CRITICAL):
+    - [ ] Multi-layer defense: path sanitization + workspace isolation + user confirmation + sandboxing
+    - [ ] All file operations confined to `~/.mcp_chat/workspace/` directory
+    - [ ] Command execution never uses shell (direct execution only)
+    - [ ] Resource limits: timeouts, memory limits, output size limits
+    - [ ] Interactive permission prompts for all dangerous operations
+    - [ ] Comprehensive security test suite for penetration testing
+  - [ ] **Dependencies to add**:
+    - [ ] `{:muontrap, "~> 1.5", optional: true}` for Linux sandboxing
+    - [ ] `{:erlexec, "~> 2.0", optional: true}` for advanced process control
+  - [ ] **Architecture Integration**:
+    - [ ] Register as "@core" server with ServerManager (not discoverable)
+    - [ ] Hybrid sync/async: file ops synchronous, command execution asynchronous
+    - [ ] Operation ID pattern for tracking async command execution
+    - [ ] Full integration with existing MCP infrastructure and CLI commands
+  - [ ] **See CORE_TOOLS.md for complete implementation specification**
 
 ## Development Notes
 

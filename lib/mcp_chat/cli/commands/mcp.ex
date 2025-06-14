@@ -95,26 +95,78 @@ defmodule MCPChat.CLI.Commands.MCP do
   # Server management commands
 
   defp list_servers() do
-    servers = ServerManager.list_servers()
-    display_server_list(servers)
+    servers = ServerManager.list_servers_with_status()
+    display_server_list_with_status(servers)
     :ok
   end
 
-  defp display_server_list(servers) do
+  defp display_server_list_with_status(servers) do
     if Enum.empty?(servers) do
-      show_info("No MCP servers connected")
+      show_info("No MCP servers configured")
       show_info("Use /discover to find available servers")
     else
-      show_info("Connected MCP servers:")
-      display_connected_servers(servers)
+      show_info("MCP Servers:")
+      show_info("")
+      display_servers_with_enhanced_status(servers)
     end
   end
 
-  defp display_connected_servers(servers) do
-    Enum.each(servers, fn %{name: name, status: status} ->
-      status_icon = if status == :connected, do: "✓", else: "✗"
-      IO.puts("  #{status_icon} #{name}")
+  defp display_servers_with_enhanced_status(servers) do
+    # Create formatted table
+    headers = ["Name", "Status", "Tools", "Resources", "Last Connected"]
+
+    rows =
+      Enum.map(servers, fn %{name: name, server: server} ->
+        status_display = get_status_display(server)
+        tools_count = length(server.capabilities.tools)
+        resources_count = length(server.capabilities.resources)
+        last_connected = format_last_connected(server.connected_at)
+
+        [name, status_display, "#{tools_count}", "#{resources_count}", last_connected]
+      end)
+
+    # Display as simple table
+    show_info(
+      String.pad_trailing("Name", 15) <>
+        String.pad_trailing("Status", 15) <>
+        String.pad_trailing("Tools", 8) <>
+        String.pad_trailing("Resources", 12) <>
+        "Last Connected"
+    )
+
+    show_info(String.duplicate("─", 70))
+
+    Enum.each(rows, fn [name, status, tools, resources, last_connected] ->
+      show_info(
+        String.pad_trailing(name, 15) <>
+          String.pad_trailing(status, 15) <>
+          String.pad_trailing(tools, 8) <>
+          String.pad_trailing(resources, 12) <>
+          last_connected
+      )
     end)
+  end
+
+  defp get_status_display(%{status: :connected}), do: "✓ CONNECTED"
+  defp get_status_display(%{status: :connecting}), do: "⟳ CONNECTING"
+  defp get_status_display(%{status: :failed, error: error}), do: "✗ FAILED (#{format_error(error)})"
+  defp get_status_display(%{status: :disconnected}), do: "⚠ DISCONNECTED"
+  defp get_status_display(_), do: "? UNKNOWN"
+
+  defp format_error(error) when is_atom(error), do: to_string(error)
+  defp format_error(error) when is_binary(error), do: error
+  defp format_error({:error, reason}), do: format_error(reason)
+  defp format_error(error), do: inspect(error)
+
+  defp format_last_connected(nil), do: "Never"
+
+  defp format_last_connected(datetime) do
+    case DateTime.diff(DateTime.utc_now(), datetime, :second) do
+      diff when diff < 60 -> "#{diff}s ago"
+      diff when diff < 3_600 -> "#{div(diff, 60)}m ago"
+      diff when diff < 86_400 -> "#{div(diff, 3_600)}h ago"
+      diff -> "#{div(diff, 86_400)}d ago"
+    end
   end
 
   defp list_saved_servers() do

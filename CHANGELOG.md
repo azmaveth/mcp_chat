@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2024-06-14
+
+### Added
+- **Background Server Connections**: Implemented non-blocking server startup with enhanced status tracking
+  - Servers now connect in background to avoid blocking application startup
+  - Real-time status monitoring: connecting, connected, failed, disconnected
+  - Enhanced `/mcp servers` command with status table showing connection health, tool counts, and last connected time
+  - Tools and resources only shown from connected servers (proper MCP protocol adherence)
+  - Clear error messages for disconnected server operations
+
+### Changed
+- **Server State Management**: Refactored ServerManager to use Server structs instead of simple PID tracking
+  - Added comprehensive server metadata (capabilities cache, connection timestamps, error tracking)
+  - Improved status visibility with visual indicators (✓ ⟳ ✗ ⚠)
+  - Enhanced CLI output with formatted status tables
+
+### Fixed
+- **Code Quality**: Resolved Credo refactoring opportunities
+  - Reduced function nesting depth by extracting helper functions
+  - Fixed trailing whitespace and formatting issues
+
 ## [0.2.1] - 2024-06-13
 
 ### Fixed
