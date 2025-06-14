@@ -25,8 +25,8 @@ defmodule MCPChat.Application do
         MCPChat.Session,
         # Session autosave
         {MCPChat.Session.Autosave, autosave_config()},
-        # Health monitoring
-        MCPChat.HealthMonitor,
+        # MCP Health monitoring
+        MCPChat.MCP.HealthMonitor,
         # Circuit breakers for external services
         {MCPChat.CircuitBreaker, name: MCPChat.CircuitBreaker.LLM, failure_threshold: 3, reset_timeout: 60_000},
         # Connection pool supervisor
@@ -128,15 +128,20 @@ defmodule MCPChat.Application do
       {:alias_adapter, MCPChat.Alias.ExAliasAdapter}
     ]
 
-    Enum.each(processes_to_monitor, fn {name, process_name} ->
-      case Process.whereis(process_name) do
-        nil ->
-          :ok
+    Enum.each(processes_to_monitor, &register_process_for_monitoring/1)
+  end
 
-        pid ->
+  defp register_process_for_monitoring({name, process_name}) do
+    case Process.whereis(process_name) do
+      nil ->
+        :ok
+
+      pid ->
+        # Note: Using general health monitor, not MCP-specific one
+        if Process.whereis(MCPChat.HealthMonitor) do
           MCPChat.HealthMonitor.register(name, pid)
-      end
-    end)
+        end
+    end
   end
 
   defp mcp_server_children() do

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2024-06-14
+
+### Added
+- **MCP Server Health Monitoring**: Comprehensive health tracking and monitoring for MCP servers
+  - HealthMonitor GenServer performs periodic health checks every 30 seconds
+  - Server health metrics tracking (uptime, success rate, average response time, consecutive failures)
+  - Enhanced `/mcp servers` display with health status indicators (✓ HEALTHY / ⚠ UNHEALTHY)
+  - Auto-disable unhealthy servers after 3 consecutive failures
+  - Integrated health tracking into tool execution calls for real-time monitoring
+  - Server health data includes uptime formatting and success rate percentages
+
 ## [0.2.2] - 2024-06-14
 
 ### Added

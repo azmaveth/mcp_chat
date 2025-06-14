@@ -75,6 +75,24 @@ defmodule MCPChat.MCP.ServerManager do
     GenServer.call(__MODULE__, {:get_prompts, server_name})
   end
 
+  # Health monitoring functions
+
+  def record_server_success(server_name, response_time_ms) do
+    GenServer.cast(__MODULE__, {:record_success, server_name, response_time_ms})
+  end
+
+  def record_server_failure(server_name) do
+    GenServer.cast(__MODULE__, {:record_failure, server_name})
+  end
+
+  def get_server_info(server_name) do
+    GenServer.call(__MODULE__, {:get_server_info, server_name})
+  end
+
+  def disable_unhealthy_server(server_name) do
+    GenServer.cast(__MODULE__, {:disable_unhealthy_server, server_name})
+  end
+
   # Server Callbacks
 
   @impl true
@@ -209,6 +227,31 @@ defmodule MCPChat.MCP.ServerManager do
         pid -> {:reply, MCPChat.MCP.ExMCPAdapter.get_prompts(pid), state}
       end
     end
+  end
+
+  @impl true
+  def handle_call({:get_server_info, server_name}, _from, state) do
+    result = Core.get_server_info(state, server_name)
+    {:reply, result, state}
+  end
+
+  @impl true
+  def handle_cast({:record_success, server_name, response_time_ms}, state) do
+    new_state = Core.record_server_success(state, server_name, response_time_ms)
+    {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_cast({:record_failure, server_name}, state) do
+    new_state = Core.record_server_failure(state, server_name)
+    {:noreply, new_state}
+  end
+
+  @impl true
+  def handle_cast({:disable_unhealthy_server, server_name}, state) do
+    Logger.warning("Auto-disabling unhealthy server: #{server_name}")
+    new_state = Core.mark_server_disconnected(state, server_name)
+    {:noreply, new_state}
   end
 
   @impl true

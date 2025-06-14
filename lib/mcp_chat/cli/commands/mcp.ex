@@ -112,37 +112,43 @@ defmodule MCPChat.CLI.Commands.MCP do
   end
 
   defp display_servers_with_enhanced_status(servers) do
-    # Create formatted table
-    headers = ["Name", "Status", "Tools", "Resources", "Last Connected"]
+    # Create formatted table with health metrics
+    headers = ["Name", "Status", "Health", "Tools", "Uptime", "Success%", "Avg RT"]
 
     rows =
       Enum.map(servers, fn %{name: name, server: server} ->
         status_display = get_status_display(server)
+        health_display = get_health_display(server)
         tools_count = length(server.capabilities.tools)
-        resources_count = length(server.capabilities.resources)
-        last_connected = format_last_connected(server.connected_at)
+        uptime = format_uptime(MCPChat.MCP.ServerManager.Server.uptime_seconds(server))
+        success_rate = format_success_rate(MCPChat.MCP.ServerManager.Server.success_rate(server))
+        avg_response_time = format_response_time(server.health.avg_response_time)
 
-        [name, status_display, "#{tools_count}", "#{resources_count}", last_connected]
+        [name, status_display, health_display, "#{tools_count}", uptime, success_rate, avg_response_time]
       end)
 
     # Display as simple table
     show_info(
-      String.pad_trailing("Name", 15) <>
+      String.pad_trailing("Name", 12) <>
         String.pad_trailing("Status", 15) <>
+        String.pad_trailing("Health", 10) <>
         String.pad_trailing("Tools", 8) <>
-        String.pad_trailing("Resources", 12) <>
-        "Last Connected"
+        String.pad_trailing("Uptime", 10) <>
+        String.pad_trailing("Success%", 10) <>
+        "Avg RT"
     )
 
-    show_info(String.duplicate("─", 70))
+    show_info(String.duplicate("─", 80))
 
-    Enum.each(rows, fn [name, status, tools, resources, last_connected] ->
+    Enum.each(rows, fn [name, status, health, tools, uptime, success_rate, avg_rt] ->
       show_info(
-        String.pad_trailing(name, 15) <>
+        String.pad_trailing(name, 12) <>
           String.pad_trailing(status, 15) <>
+          String.pad_trailing(health, 10) <>
           String.pad_trailing(tools, 8) <>
-          String.pad_trailing(resources, 12) <>
-          last_connected
+          String.pad_trailing(uptime, 10) <>
+          String.pad_trailing(success_rate, 10) <>
+          avg_rt
       )
     end)
   end
@@ -168,6 +174,22 @@ defmodule MCPChat.CLI.Commands.MCP do
       diff -> "#{div(diff, 86_400)}d ago"
     end
   end
+
+  defp get_health_display(%{health: %{is_healthy: true}}), do: "✓ HEALTHY"
+  defp get_health_display(%{health: %{is_healthy: false}}), do: "⚠ UNHEALTHY"
+  defp get_health_display(_), do: "? UNKNOWN"
+
+  defp format_uptime(nil), do: "N/A"
+  defp format_uptime(seconds) when seconds < 60, do: "#{seconds}s"
+  defp format_uptime(seconds) when seconds < 3_600, do: "#{div(seconds, 60)}m"
+  defp format_uptime(seconds) when seconds < 86_400, do: "#{div(seconds, 3_600)}h"
+  defp format_uptime(seconds), do: "#{div(seconds, 86_400)}d"
+
+  defp format_success_rate(rate) when is_float(rate), do: "#{Float.round(rate, 1)}%"
+  defp format_success_rate(_), do: "N/A"
+
+  defp format_response_time(time) when is_float(time) and time > 0, do: "#{Float.round(time, 0)}ms"
+  defp format_response_time(_), do: "N/A"
 
   defp list_saved_servers() do
     servers = ServerPersistence.load_all_servers()

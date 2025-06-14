@@ -186,7 +186,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
   end
 
   @doc """
-  Calls a tool on a specific server.
+  Calls a tool on a specific server with health tracking.
   """
   @spec call_tool(server_state(), String.t(), String.t(), map()) :: {:ok, term()} | {:error, term()}
   def call_tool(state, server_name, tool_name, arguments) do
@@ -196,10 +196,25 @@ defmodule MCPChat.MCP.ServerManager.Core do
 
       server ->
         if Server.connected?(server) do
-          ServerWrapper.call_tool(server.pid, tool_name, arguments)
+          call_tool_with_health_tracking(server.pid, server_name, tool_name, arguments)
         else
           {:error, :server_not_connected}
         end
+    end
+  end
+
+  defp call_tool_with_health_tracking(pid, server_name, tool_name, arguments) do
+    start_time = System.monotonic_time(:millisecond)
+
+    case ServerWrapper.call_tool(pid, tool_name, arguments) do
+      {:ok, result} = success ->
+        response_time = System.monotonic_time(:millisecond) - start_time
+        MCPChat.MCP.HealthMonitor.record_success(server_name, response_time)
+        success
+
+      {:error, _reason} = error ->
+        MCPChat.MCP.HealthMonitor.record_failure(server_name)
+        error
     end
   end
 
@@ -534,5 +549,35 @@ defmodule MCPChat.MCP.ServerManager.Core do
       |> Enum.map(fn {name, server} -> %{name: name, server: server} end)
 
     [builtin_server | server_list]
+  end
+
+  @doc """
+  Records a successful operation for health tracking.
+  """
+  @spec record_server_success(server_state(), String.t(), non_neg_integer()) :: server_state()
+  def record_server_success(state, server_name, response_time_ms) do
+    case Map.get(state.servers, server_name) do
+      nil ->
+        state
+
+      server ->
+        updated_server = Server.record_success(server, response_time_ms)
+        %{state | servers: Map.put(state.servers, server_name, updated_server)}
+    end
+  end
+
+  @doc """
+  Records a failed operation for health tracking.
+  """
+  @spec record_server_failure(server_state(), String.t()) :: server_state()
+  def record_server_failure(state, server_name) do
+    case Map.get(state.servers, server_name) do
+      nil ->
+        state
+
+      server ->
+        updated_server = Server.record_failure(server)
+        %{state | servers: Map.put(state.servers, server_name, updated_server)}
+    end
   end
 end

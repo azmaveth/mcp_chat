@@ -489,13 +489,14 @@ history_size = 1000
   - [x] Session listing with time ago, message count, and file size
   - [x] Fixed autosave ArgumentError with infinity interval
 
-## Phase 16: Enhanced MCP Features (PARTIAL)
-- [ ] MCP server health monitoring (requires ex_mcp enhancements)
-  - [ ] Use ex_mcp health check protocol (when implemented)
-  - [ ] Display server status in UI with indicators
-  - [ ] Show health metrics (latency, uptime, success rate)
-  - [ ] Auto-disable unhealthy servers
-  - [ ] Health status notifications to user
+## Phase 16: Enhanced MCP Features (COMPLETED)
+- [x] MCP server health monitoring
+  - [x] Implemented MCPChat.MCP.HealthMonitor GenServer for periodic health checks
+  - [x] Added health metrics to Server struct (uptime, success rate, avg response time)
+  - [x] Enhanced /mcp servers display with health status indicators
+  - [x] Auto-disable unhealthy servers after consecutive failures
+  - [x] Integrated health tracking into tool execution calls
+  - [x] Health status displayed with ✓ HEALTHY / ⚠ UNHEALTHY indicators
 - [x] Leverage new ex_mcp v0.2.0 features
   - [x] Progress notifications - integrate with UI
     - [x] Created MCPChat.MCP.ProgressTracker GenServer

@@ -17,7 +17,8 @@ defmodule MCPChat.MCP.ServerManager.Server do
           capabilities: map(),
           error: term() | nil,
           connected_at: DateTime.t() | nil,
-          last_attempt: DateTime.t() | nil
+          last_attempt: DateTime.t() | nil,
+          health: map()
         }
 
   defstruct [
@@ -29,7 +30,17 @@ defmodule MCPChat.MCP.ServerManager.Server do
     capabilities: %{tools: [], resources: [], prompts: []},
     error: nil,
     connected_at: nil,
-    last_attempt: nil
+    last_attempt: nil,
+    health: %{
+      uptime_start: nil,
+      total_requests: 0,
+      successful_requests: 0,
+      failed_requests: 0,
+      avg_response_time: 0.0,
+      last_ping: nil,
+      consecutive_failures: 0,
+      is_healthy: true
+    }
   ]
 
   @doc """
@@ -50,6 +61,8 @@ defmodule MCPChat.MCP.ServerManager.Server do
   """
   @spec mark_connected(t(), pid(), reference(), map()) :: t()
   def mark_connected(server, pid, monitor_ref, capabilities \\ %{}) do
+    now = DateTime.utc_now()
+
     %{
       server
       | status: :connected,
@@ -57,7 +70,13 @@ defmodule MCPChat.MCP.ServerManager.Server do
         monitor_ref: monitor_ref,
         capabilities: normalize_capabilities(capabilities),
         error: nil,
-        connected_at: DateTime.utc_now()
+        connected_at: now,
+        health:
+          Map.merge(server.health, %{
+            uptime_start: now,
+            consecutive_failures: 0,
+            is_healthy: true
+          })
     }
   end
 
@@ -126,6 +145,84 @@ defmodule MCPChat.MCP.ServerManager.Server do
   @spec get_prompts(t()) :: list()
   def get_prompts(%__MODULE__{status: :connected, capabilities: %{prompts: prompts}}), do: prompts
   def get_prompts(_), do: []
+
+  @doc """
+  Records a successful request for health tracking.
+  """
+  @spec record_success(t(), non_neg_integer()) :: t()
+  def record_success(server, response_time_ms) do
+    health = server.health
+    total = health.total_requests + 1
+    successful = health.successful_requests + 1
+
+    # Calculate new average response time
+    current_avg = health.avg_response_time
+    new_avg = (current_avg * health.total_requests + response_time_ms) / total
+
+    new_health = %{
+      health
+      | total_requests: total,
+        successful_requests: successful,
+        avg_response_time: new_avg,
+        last_ping: DateTime.utc_now(),
+        consecutive_failures: 0,
+        is_healthy: true
+    }
+
+    %{server | health: new_health}
+  end
+
+  @doc """
+  Records a failed request for health tracking.
+  """
+  @spec record_failure(t()) :: t()
+  def record_failure(server) do
+    health = server.health
+    total = health.total_requests + 1
+    failed = health.failed_requests + 1
+    consecutive = health.consecutive_failures + 1
+
+    # Mark as unhealthy if too many consecutive failures
+    is_healthy = consecutive < 3
+
+    new_health = %{
+      health
+      | total_requests: total,
+        failed_requests: failed,
+        consecutive_failures: consecutive,
+        is_healthy: is_healthy
+    }
+
+    %{server | health: new_health}
+  end
+
+  @doc """
+  Gets server health status.
+  """
+  @spec health_status(t()) :: :healthy | :unhealthy | :unknown
+  def health_status(%__MODULE__{status: :connected, health: %{is_healthy: true}}), do: :healthy
+  def health_status(%__MODULE__{status: :connected, health: %{is_healthy: false}}), do: :unhealthy
+  def health_status(_), do: :unknown
+
+  @doc """
+  Gets server uptime in seconds.
+  """
+  @spec uptime_seconds(t()) :: non_neg_integer() | nil
+  def uptime_seconds(%__MODULE__{health: %{uptime_start: nil}}), do: nil
+
+  def uptime_seconds(%__MODULE__{health: %{uptime_start: start_time}}) do
+    DateTime.diff(DateTime.utc_now(), start_time, :second)
+  end
+
+  @doc """
+  Gets success rate as a percentage.
+  """
+  @spec success_rate(t()) :: float()
+  def success_rate(%__MODULE__{health: %{total_requests: 0}}), do: 0.0
+
+  def success_rate(%__MODULE__{health: %{total_requests: total, successful_requests: successful}}) do
+    successful / total * 100.0
+  end
 
   # Private helpers
 

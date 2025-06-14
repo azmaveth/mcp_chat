@@ -149,10 +149,17 @@ MCP Chat supports various slash commands for control and configuration:
 
 ### MCP Server Commands
 
-- `/servers` - List connected MCP servers
-- `/discover` - Discover available MCP servers
-- `/connect <name>` - Connect to an MCP server
-- `/disconnect <name>` - Disconnect from an MCP server
+- `/mcp servers` - List connected MCP servers with health status
+- `/mcp discover` - Discover available MCP servers
+- `/mcp connect <name>` - Connect to an MCP server
+- `/mcp disconnect <name>` - Disconnect from an MCP server
+
+The `/mcp servers` command shows comprehensive server status including:
+- Connection status (✓ CONNECTED, ⟳ CONNECTING, ✗ FAILED, ⚠ DISCONNECTED)
+- Health indicators (✓ HEALTHY, ⚠ UNHEALTHY)
+- Server uptime and tool counts
+- Success rate percentage and average response time
+- Auto-disable feature for unhealthy servers after consecutive failures
 
 ### MCP Tool Commands
 
