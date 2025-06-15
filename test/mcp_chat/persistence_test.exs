@@ -4,7 +4,6 @@ defmodule MCPChat.PersistenceTest do
   alias Session
 
   @test_session %Session{
-  alias Static
     id: "test123",
     llm_backend: "anthropic",
     messages: [

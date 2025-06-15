@@ -2,11 +2,10 @@ defmodule AutosaveTest do
   use ExUnit.Case, async: false
   import ExUnit.CaptureLog
 
-  alias MCPChat.{Persistence, Session}
   alias Autosave
+  alias MCPChat.{Persistence, Session}
 
   @test_session %{
-  alias AutosaveTest
     id: "test_session_#{System.unique_integer([:positive])}",
     messages: [
       %{role: "user", content: "Hello"},
