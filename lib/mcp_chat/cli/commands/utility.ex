@@ -13,6 +13,8 @@ defmodule MCPChat.CLI.Commands.Utility do
   use MCPChat.CLI.Commands.Base
 
   alias MCPChat.{Cost, Persistence, Session}
+  alias MCPChat.CLI.Renderer
+  alias MCPChat.MCP.ServerManager
 
   @impl true
   def commands do
@@ -66,7 +68,7 @@ defmodule MCPChat.CLI.Commands.Utility do
     # Collect commands from all modules
     all_commands = collect_all_commands()
 
-    MCPChat.CLI.Renderer.show_text("## Available Commands\n")
+    Renderer.show_text("## Available Commands\n")
 
     # Show table header
     IO.puts("Command          | Description")
@@ -92,7 +94,7 @@ defmodule MCPChat.CLI.Commands.Utility do
   defp show_config do
     session = Session.get_current_session()
 
-    MCPChat.CLI.Renderer.show_text("## Current Configuration\n")
+    Renderer.show_text("## Current Configuration\n")
 
     # Show configuration in table format
     IO.puts("Setting              | Value")
@@ -101,7 +103,7 @@ defmodule MCPChat.CLI.Commands.Utility do
     IO.puts("Model                | #{session.context[:model] || "Not set"}")
 
     # Show MCP servers
-    servers = MCPChat.MCP.ServerManager.list_servers()
+    servers = ServerManager.list_servers()
     server_count = length(servers)
     IO.puts("MCP Servers          | #{server_count} connected")
 
@@ -116,7 +118,7 @@ defmodule MCPChat.CLI.Commands.Utility do
     session = Session.get_current_session()
     cost_info = Cost.calculate_session_cost(session, session.token_usage || %{input_tokens: 0, output_tokens: 0})
 
-    MCPChat.CLI.Renderer.show_text("## Session Cost Summary\n")
+    Renderer.show_text("## Session Cost Summary\n")
 
     IO.puts("Backend: #{session.llm_backend || "Not set"}")
     IO.puts("Model: #{session.context[:model] || "Not set"}")

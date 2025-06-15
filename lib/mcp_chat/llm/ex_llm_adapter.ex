@@ -11,6 +11,8 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   require Logger
 
   alias MCPChat.CircuitBreaker
+  alias ExLLM.{ConfigProvider, StreamRecovery}
+  alias ExLLM.Local.{EXLAConfig, ModelLoader}
 
   @doc """
   Initialize the adapter with configuration from mcp_chat's config system.
@@ -37,7 +39,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     {provider, ex_llm_options} = extract_options(options)
 
     # Add config provider to options
-    ex_llm_options = [{:config_provider, ExLLM.ConfigProvider.Env} | ex_llm_options]
+    ex_llm_options = [{:config_provider, ConfigProvider.Env} | ex_llm_options]
 
     # Call ExLLM through circuit breaker
     breaker = get_circuit_breaker()
@@ -68,7 +70,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     {provider, ex_llm_options} = extract_options(options)
 
     # Add config provider to options
-    ex_llm_options = [{:config_provider, ExLLM.ConfigProvider.Env} | ex_llm_options]
+    ex_llm_options = [{:config_provider, ConfigProvider.Env} | ex_llm_options]
 
     # Add recovery options if requested
     ex_llm_options = maybe_add_recovery_options(ex_llm_options, options)
@@ -245,7 +247,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   """
   def load_model(model_id) do
     if model_loader_available?() do
-      ExLLM.Local.ModelLoader.load_model(model_id)
+      ModelLoader.load_model(model_id)
     else
       {:error, "Model loader not available. Ensure ex_llm is properly configured."}
     end
@@ -257,7 +259,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   """
   def unload_model(model_id) do
     if model_loader_available?() do
-      ExLLM.Local.ModelLoader.unload_model(model_id)
+      ModelLoader.unload_model(model_id)
     else
       {:error, "Model loader not available. Ensure ex_llm is properly configured."}
     end
@@ -269,7 +271,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   """
   def list_loaded_models do
     if model_loader_available?() do
-      ExLLM.Local.ModelLoader.list_loaded_models()
+      ModelLoader.list_loaded_models()
     else
       []
     end
@@ -280,8 +282,8 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   Delegates to ExLLM.Local.EXLAConfig if available.
   """
   def acceleration_info do
-    if Code.ensure_loaded?(ExLLM.Local.EXLAConfig) do
-      ExLLM.Local.EXLAConfig.acceleration_info()
+    if Code.ensure_loaded?(EXLAConfig) do
+      EXLAConfig.acceleration_info()
     else
       %{
         type: :cpu,
@@ -292,7 +294,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   end
 
   defp model_loader_available? do
-    case Process.whereis(ExLLM.Local.ModelLoader) do
+    case Process.whereis(ModelLoader) do
       nil -> false
       _pid -> true
     end
@@ -320,7 +322,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   def resume_stream(recovery_id, options \\ []) do
     strategy = Keyword.get(options, :strategy, :paragraph)
 
-    case ExLLM.StreamRecovery.resume_stream(recovery_id, strategy: strategy) do
+    case StreamRecovery.resume_stream(recovery_id, strategy: strategy) do
       {:ok, stream} ->
         # Convert the resumed stream to MCPChat format
         converted_stream = Stream.map(stream, &convert_stream_chunk/1)
@@ -335,14 +337,14 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   List all recoverable streams.
   """
   def list_recoverable_streams do
-    ExLLM.StreamRecovery.list_recoverable_streams()
+    StreamRecovery.list_recoverable_streams()
   end
 
   @doc """
   Get partial response for a recovery ID.
   """
   def get_partial_response(recovery_id) do
-    ExLLM.StreamRecovery.get_partial_response(recovery_id)
+    StreamRecovery.get_partial_response(recovery_id)
   end
 
   defp get_circuit_breaker do

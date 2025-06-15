@@ -5,8 +5,10 @@ defmodule MCPChat.CLI.Chat do
 
   require Logger
   alias MCPChat.CLI.{Commands, Renderer}
-  alias MCPChat.Context.AtSymbolResolver
   alias MCPChat.{Config, Session}
+  alias MCPChat.CLI.ExReadlineAdapter
+  alias MCPChat.Context.AtSymbolResolver
+  alias MCPChat.LLM.ExLLMAdapter
 
   # alias MCPChat.LLM
 
@@ -19,7 +21,7 @@ defmodule MCPChat.CLI.Chat do
     Renderer.show_welcome()
 
     # Set up command completion
-    MCPChat.CLI.ExReadlineAdapter.set_completion_fn(&Commands.get_completions/1)
+    ExReadlineAdapter.set_completion_fn(&Commands.get_completions/1)
 
     # Start the chat loop
     chat_loop()
@@ -30,7 +32,7 @@ defmodule MCPChat.CLI.Chat do
     IO.write("\n")
     prompt = Renderer.format_prompt()
 
-    case MCPChat.CLI.ExReadlineAdapter.read_line(prompt) do
+    case ExReadlineAdapter.read_line(prompt) do
       :eof ->
         Renderer.show_goodbye()
         :ok
@@ -201,7 +203,7 @@ defmodule MCPChat.CLI.Chat do
     end
   end
 
-  defp get_llm_adapter(_), do: MCPChat.LLM.ExLLMAdapter
+  defp get_llm_adapter(_), do: ExLLMAdapter
 
   defp stream_response(adapter, messages, options) do
     # Add recovery options if enabled
@@ -323,7 +325,7 @@ defmodule MCPChat.CLI.Chat do
   end
 
   defp handle_recovery_continuation(recovery_id, continuation) do
-    case MCPChat.LLM.ExLLMAdapter.get_partial_response(recovery_id) do
+    case ExLLMAdapter.get_partial_response(recovery_id) do
       {:ok, chunks} ->
         partial = chunks |> Enum.map_join(& &1.content, "")
         full_response = partial <> continuation
