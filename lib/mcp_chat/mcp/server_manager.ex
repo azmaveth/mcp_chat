@@ -5,6 +5,7 @@ defmodule MCPChat.MCP.ServerManager do
   """
   use GenServer
 
+  alias MCPChat.MCP.{BuiltinResources, ExMCPAdapter}
   alias MCPChat.MCP.ServerManager.Core
 
   require Logger
@@ -199,19 +200,19 @@ defmodule MCPChat.MCP.ServerManager do
   def handle_call({:get_tools, server_name}, _from, state) do
     case Map.get(state.servers, server_name) do
       nil -> {:reply, {:error, :not_found}, state}
-      pid -> {:reply, MCPChat.MCP.ExMCPAdapter.get_tools(pid), state}
+      pid -> {:reply, ExMCPAdapter.get_tools(pid), state}
     end
   end
 
   @impl true
   def handle_call({:get_resources, server_name}, _from, state) do
     if server_name == "builtin" do
-      resources = MCPChat.MCP.BuiltinResources.list_resources()
+      resources = BuiltinResources.list_resources()
       {:reply, {:ok, resources}, state}
     else
       case Map.get(state.servers, server_name) do
         nil -> {:reply, {:error, :not_found}, state}
-        pid -> {:reply, MCPChat.MCP.ExMCPAdapter.get_resources(pid), state}
+        pid -> {:reply, ExMCPAdapter.get_resources(pid), state}
       end
     end
   end
@@ -219,12 +220,12 @@ defmodule MCPChat.MCP.ServerManager do
   @impl true
   def handle_call({:get_prompts, server_name}, _from, state) do
     if server_name == "builtin" do
-      prompts = MCPChat.MCP.BuiltinResources.list_prompts()
+      prompts = BuiltinResources.list_prompts()
       {:reply, {:ok, prompts}, state}
     else
       case Map.get(state.servers, server_name) do
         nil -> {:reply, {:error, :not_found}, state}
-        pid -> {:reply, MCPChat.MCP.ExMCPAdapter.get_prompts(pid), state}
+        pid -> {:reply, ExMCPAdapter.get_prompts(pid), state}
       end
     end
   end

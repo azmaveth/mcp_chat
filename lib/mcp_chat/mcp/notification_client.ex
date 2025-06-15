@@ -6,6 +6,8 @@ defmodule MCPChat.MCP.NotificationClient do
   use GenServer
   require Logger
 
+  alias MCPChat.MCP.ProgressTracker
+
   defstruct [
     :client_pid,
     :server_name,
@@ -86,7 +88,7 @@ defmodule MCPChat.MCP.NotificationClient do
     progress_token =
       if Keyword.get(opts, :with_progress, false) do
         {:ok, token} =
-          MCPChat.MCP.ProgressTracker.start_operation(
+          ProgressTracker.start_operation(
             state.server_name,
             name
           )
@@ -106,7 +108,7 @@ defmodule MCPChat.MCP.NotificationClient do
 
     # Complete operation on success
     if progress_token && match?({:ok, _}, result) do
-      MCPChat.MCP.ProgressTracker.complete_operation(progress_token)
+      ProgressTracker.complete_operation(progress_token)
     end
 
     {:reply, result, state}

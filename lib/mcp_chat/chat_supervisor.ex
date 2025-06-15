@@ -5,6 +5,9 @@ defmodule MCPChat.ChatSupervisor do
   use GenServer
   require Logger
 
+  alias MCPChat.{Session}
+  alias MCPChat.CLI.Chat
+
   defstruct [:chat_task, :session_backup, :restart_count, :max_restarts]
 
   @max_restarts 3
@@ -70,7 +73,7 @@ defmodule MCPChat.ChatSupervisor do
       task =
         Task.async(fn ->
           try do
-            MCPChat.CLI.Chat.start(opts)
+            Chat.start(opts)
           catch
             :exit, :normal ->
               :normal
@@ -160,7 +163,7 @@ defmodule MCPChat.ChatSupervisor do
 
   defp backup_session do
     try do
-      session = MCPChat.Session.get_current_session()
+      session = Session.get_current_session()
 
       %{
         messages: session.messages,
@@ -179,11 +182,11 @@ defmodule MCPChat.ChatSupervisor do
     try do
       # Restore messages
       Enum.each(backup.messages, fn msg ->
-        MCPChat.Session.add_message(msg.role, msg.content)
+        Session.add_message(msg.role, msg.content)
       end)
 
       # Restore context
-      MCPChat.Session.update_session(%{context: backup.context})
+      Session.update_session(%{context: backup.context})
 
       Logger.info("Session restored from backup")
       :ok
@@ -213,7 +216,7 @@ defmodule MCPChat.ChatSupervisor do
     task =
       Task.async(fn ->
         try do
-          MCPChat.CLI.Chat.start([])
+          Chat.start([])
         catch
           kind, reason ->
             {:error, {kind, reason}}

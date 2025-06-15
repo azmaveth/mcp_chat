@@ -11,7 +11,9 @@ defmodule MCPChat.CLI.Commands.MCP do
 
   use MCPChat.CLI.Commands.Base
 
-  alias MCPChat.MCP.{Discovery, ServerManager, ServerPersistence}
+  alias MCPChat.CLI.Commands.MCPExtended
+  alias MCPChat.MCP.{Discovery, NotificationClient, ServerManager, ServerPersistence}
+  alias MCPChat.MCP.ServerManager.Server
 
   @impl true
   def commands do
@@ -81,10 +83,10 @@ defmodule MCPChat.CLI.Commands.MCP do
   defp handle_mcp_subcommand(["prompts" | _args]), do: list_prompts()
   defp handle_mcp_subcommand(["prompt" | args]), do: get_prompt(args)
   # New v0.2.0 commands
-  defp handle_mcp_subcommand(["sample" | args]), do: MCPChat.CLI.Commands.MCPExtended.handle_sample(args)
-  defp handle_mcp_subcommand(["progress" | args]), do: MCPChat.CLI.Commands.MCPExtended.handle_progress(args)
-  defp handle_mcp_subcommand(["notify" | args]), do: MCPChat.CLI.Commands.MCPExtended.handle_notify(args)
-  defp handle_mcp_subcommand(["capabilities" | args]), do: MCPChat.CLI.Commands.MCPExtended.handle_capabilities(args)
+  defp handle_mcp_subcommand(["sample" | args]), do: MCPExtended.handle_sample(args)
+  defp handle_mcp_subcommand(["progress" | args]), do: MCPExtended.handle_progress(args)
+  defp handle_mcp_subcommand(["notify" | args]), do: MCPExtended.handle_notify(args)
+  defp handle_mcp_subcommand(["capabilities" | args]), do: MCPExtended.handle_capabilities(args)
 
   defp handle_mcp_subcommand([subcmd | _]) do
     show_error("Unknown MCP subcommand: #{subcmd}")
@@ -120,8 +122,8 @@ defmodule MCPChat.CLI.Commands.MCP do
         status_display = get_status_display(server)
         health_display = get_health_display(server)
         tools_count = length(server.capabilities.tools)
-        uptime = format_uptime(MCPChat.MCP.ServerManager.Server.uptime_seconds(server))
-        success_rate = format_success_rate(MCPChat.MCP.ServerManager.Server.success_rate(server))
+        uptime = format_uptime(Server.uptime_seconds(server))
+        success_rate = format_success_rate(Server.success_rate(server))
         avg_response_time = format_response_time(server.health.avg_response_time)
 
         [name, status_display, health_display, "#{tools_count}", uptime, success_rate, avg_response_time]
@@ -646,7 +648,7 @@ defmodule MCPChat.CLI.Commands.MCP do
       if with_progress do
         case ServerManager.get_server(server) do
           {:ok, %{client: client}} ->
-            MCPChat.MCP.NotificationClient.call_tool(client, tool, arguments, with_progress: true)
+            NotificationClient.call_tool(client, tool, arguments, with_progress: true)
 
           error ->
             error

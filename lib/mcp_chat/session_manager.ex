@@ -9,7 +9,8 @@ defmodule MCPChat.SessionManager do
   """
 
   require Logger
-  alias MCPChat.{Session, Persistence}
+  alias MCPChat.{Persistence, Session}
+  alias MCPChat.Session.Autosave
 
   @doc """
   Start a new chat session with automatic saving.
@@ -180,7 +181,7 @@ defmodule MCPChat.SessionManager do
 
   defp configure_autosave_for_immediate_save(session_name) do
     # Configure autosave to trigger on every change
-    MCPChat.Session.Autosave.configure(%{
+    Autosave.configure(%{
       # 24 hours - effectively disable periodic saves
       interval: 24 * 60 * 60 * 1_000,
       # Very short debounce for immediate saves
