@@ -41,6 +41,9 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Add config provider to options
     ex_llm_options = [{:config_provider, ConfigProvider.Env} | ex_llm_options]
 
+    # Apply context truncation if enabled
+    ex_llm_messages = maybe_truncate_messages(ex_llm_messages, provider, ex_llm_options, options)
+
     # Call ExLLM through circuit breaker
     breaker = get_circuit_breaker()
 
@@ -71,6 +74,9 @@ defmodule MCPChat.LLM.ExLLMAdapter do
 
     # Add config provider to options
     ex_llm_options = [{:config_provider, ConfigProvider.Env} | ex_llm_options]
+
+    # Apply context truncation if enabled
+    ex_llm_messages = maybe_truncate_messages(ex_llm_messages, provider, ex_llm_options, options)
 
     # Add recovery options if requested
     ex_llm_options = maybe_add_recovery_options(ex_llm_options, options)
@@ -357,6 +363,63 @@ defmodule MCPChat.LLM.ExLLMAdapter do
 
       pid ->
         pid
+    end
+  end
+
+  defp maybe_truncate_messages(messages, provider, ex_llm_options, mcp_options) do
+    # Check if context management is enabled
+    if Keyword.get(mcp_options, :truncate_context, true) do
+      model = Keyword.get(ex_llm_options, :model, default_model_for_provider(provider))
+      truncation_strategy = Keyword.get(mcp_options, :truncation_strategy, :smart)
+
+      # Use ExLLM's context truncation
+      truncation_options = [
+        strategy: truncation_strategy,
+        max_tokens: Keyword.get(ex_llm_options, :max_tokens)
+      ]
+
+      ExLLM.Context.truncate_messages(messages, provider, model, truncation_options)
+    else
+      messages
+    end
+  end
+
+  defp default_model_for_provider(:anthropic), do: "claude-sonnet-4-20250514"
+  defp default_model_for_provider(:openai), do: "gpt-4-turbo"
+  defp default_model_for_provider(:groq), do: "llama3-70b"
+  defp default_model_for_provider(:gemini), do: "gemini-1.5-pro"
+  defp default_model_for_provider(_), do: "default"
+
+  @doc """
+  Get context statistics for the current conversation.
+  Uses ExLLM's context window information.
+  """
+  def get_context_stats(messages, provider, model, options \\ []) do
+    ex_llm_messages = convert_messages(messages)
+
+    try do
+      context_window = ExLLM.Context.get_context_window(provider, model)
+      token_allocation = ExLLM.Context.get_token_allocation(provider, model, options)
+      estimated_tokens = ExLLM.Cost.estimate_tokens(ex_llm_messages)
+
+      %{
+        message_count: length(messages),
+        estimated_tokens: estimated_tokens,
+        context_window: context_window,
+        token_allocation: token_allocation,
+        tokens_used_percentage: Float.round(estimated_tokens / context_window * 100, 1),
+        tokens_remaining: max(0, context_window - estimated_tokens - 500)
+      }
+    rescue
+      _ ->
+        # Fallback to basic stats if model info not available
+        %{
+          message_count: length(messages),
+          estimated_tokens: ExLLM.Cost.estimate_tokens(ex_llm_messages),
+          context_window: 4_096,
+          tokens_used_percentage: 0.0,
+          tokens_remaining: 3_596
+        }
     end
   end
 end

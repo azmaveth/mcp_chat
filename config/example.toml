@@ -45,3 +45,8 @@ env = { GITHUB_TOKEN = "YOUR_GITHUB_TOKEN" }
 theme = "dark"
 history_size = 1000
 streaming = true
+
+[context]
+# Context window management settings
+strategy = "smart"  # Options: "sliding_window", "smart"
+max_tokens = 2048   # Maximum tokens to reserve for response

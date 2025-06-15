@@ -144,7 +144,24 @@ defmodule MCPChat.CLI.Chat do
   defp build_llm_options(session) do
     options = [{:provider, session.llm_backend}]
     options = maybe_add_model_option(options, session)
-    maybe_add_system_prompt_option(options, session)
+    options = maybe_add_system_prompt_option(options, session)
+
+    # Add context truncation settings
+    context_config = Config.get([:context], %{})
+    truncation_strategy = Map.get(context_config, "strategy", "smart")
+
+    options =
+      [
+        truncate_context: true,
+        truncation_strategy: String.to_atom(truncation_strategy)
+      ] ++ options
+
+    # Add max_tokens if configured
+    if max_tokens = Map.get(context_config, "max_tokens") do
+      [{:max_tokens, max_tokens} | options]
+    else
+      options
+    end
   end
 
   defp maybe_add_model_option(options, session) do

@@ -156,6 +156,7 @@ defmodule MCPChat.CLI.Commands.Utility do
     IO.puts("Created: #{session.created_at}")
 
     show_token_usage(session)
+    show_context_usage(session)
     :ok
   end
 
@@ -185,6 +186,42 @@ defmodule MCPChat.CLI.Commands.Utility do
 
     if cost > 0 do
       IO.puts("Estimated cost: $#{:erlang.float_to_binary(cost, decimals: 4)}")
+    end
+  end
+
+  defp show_context_usage(session) do
+    # Get context stats using ExLLM's context management
+    if session.llm_backend && session.llm_model do
+      provider = String.to_atom(session.llm_backend)
+      model = session.llm_model
+
+      try do
+        stats =
+          MCPChat.LLM.ExLLMAdapter.get_context_stats(
+            session.messages,
+            provider,
+            model
+          )
+
+        IO.puts("")
+        IO.puts("## Context Usage")
+        IO.puts("Context window: #{stats.context_window} tokens")
+        IO.puts("Estimated usage: #{stats.estimated_tokens} tokens (#{stats.tokens_used_percentage}%)")
+        IO.puts("Tokens remaining: #{stats.tokens_remaining}")
+
+        if stats[:token_allocation] do
+          alloc = stats.token_allocation
+          IO.puts("")
+          IO.puts("Token allocation:")
+          IO.puts("  System: #{alloc.system} tokens")
+          IO.puts("  Conversation: #{alloc.conversation} tokens")
+          IO.puts("  Response: #{alloc.response} tokens")
+        end
+      rescue
+        _ ->
+          # Silently skip if context stats fail
+          :ok
+      end
     end
   end
 
