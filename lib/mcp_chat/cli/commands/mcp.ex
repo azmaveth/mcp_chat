@@ -11,7 +11,7 @@ defmodule MCPChat.CLI.Commands.MCP do
 
   use MCPChat.CLI.Commands.Base
 
-  alias MCPChat.MCP.{ServerManager, Discovery, ServerPersistence}
+  alias MCPChat.MCP.{Discovery, ServerManager, ServerPersistence}
 
   @impl true
   def commands do

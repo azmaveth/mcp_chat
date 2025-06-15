@@ -7,8 +7,8 @@ defmodule MCPChat.AtSymbolE2ETest do
   """
 
   alias MCPChat.Context.AtSymbolResolver
-  alias MCPChat.Session
   alias MCPChat.MCP.ServerManager
+  alias MCPChat.Session
 
   @test_timeout 30_000
   @demo_servers_path Path.expand("../support", __DIR__)

@@ -7,8 +7,8 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
   - /mcp capabilities - Detailed server capabilities
   """
 
-  alias MCPChat.{Config, CLI.Renderer}
-  alias MCPChat.MCP.{ServerManager, ProgressTracker, NotificationRegistry}
+  alias MCPChat.MCP.{NotificationRegistry, ProgressTracker, ServerManager}
+  alias MCPChat.{CLI.Renderer, Config}
 
   @doc """
   Handles the /mcp sample command for server-side LLM generation.

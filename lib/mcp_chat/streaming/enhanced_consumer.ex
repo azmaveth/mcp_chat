@@ -12,8 +12,8 @@ defmodule MCPChat.Streaming.EnhancedConsumer do
   use GenServer
   require Logger
 
-  alias MCPChat.Streaming.{StreamBuffer, StreamManager}
   alias MCPChat.CLI.Renderer
+  alias MCPChat.Streaming.{StreamBuffer, StreamManager}
 
   defmodule State do
     @moduledoc false

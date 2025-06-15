@@ -3,11 +3,11 @@ defmodule MCPChat.CLI.Chat do
   Main chat interface for the MCP client.
   """
 
-  alias MCPChat.{Session, Config}
+  require Logger
   alias MCPChat.CLI.{Commands, Renderer}
   alias MCPChat.Context.AtSymbolResolver
+  alias MCPChat.{Session, Config}
 
-  require Logger
   # alias MCPChat.LLM
 
   def start do

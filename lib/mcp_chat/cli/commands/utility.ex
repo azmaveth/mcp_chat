@@ -12,7 +12,7 @@ defmodule MCPChat.CLI.Commands.Utility do
 
   use MCPChat.CLI.Commands.Base
 
-  alias MCPChat.{Session, Cost, Persistence}
+  alias MCPChat.{Cost, Persistence, Session}
 
   @impl true
   def commands do
@@ -263,8 +263,8 @@ defmodule MCPChat.CLI.Commands.Utility do
   defp format_cost(cost), do: "#{Float.round(cost, 2)}"
 
   defp resume_interrupted_response(_args) do
-    alias MCPChat.LLM.ExLLMAdapter
     alias MCPChat.CLI.Renderer
+    alias MCPChat.LLM.ExLLMAdapter
 
     case Session.get_last_recovery_id() do
       nil ->

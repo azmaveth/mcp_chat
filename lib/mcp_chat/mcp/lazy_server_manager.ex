@@ -11,8 +11,8 @@ defmodule MCPChat.MCP.LazyServerManager do
   use GenServer
   require Logger
 
-  alias MCPChat.MCP.ServerManager
   alias MCPChat.MCP.ParallelConnectionManager
+  alias MCPChat.MCP.ServerManager
 
   defstruct [
     :server_configs,

@@ -1,8 +1,8 @@
 defmodule MCPChat.MCP.NotificationIntegrationTest do
   use ExUnit.Case
 
-  alias MCPChat.MCP.{NotificationRegistry, ProgressTracker}
   alias MCPChat.MCP.Handlers.ProgressHandler
+  alias MCPChat.MCP.{NotificationRegistry, ProgressTracker}
 
   describe "notification system integration" do
     test "progress notifications update tracker" do

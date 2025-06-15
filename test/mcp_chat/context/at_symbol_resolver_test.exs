@@ -1,9 +1,8 @@
 defmodule MCPChat.Context.AtSymbolResolverTest do
   use ExUnit.Case, async: true
 
-  alias MCPChat.Context.{AtSymbolResolver, AtSymbolParser}
-
   import ExUnit.CaptureLog
+  alias MCPChat.Context.{AtSymbolResolver, AtSymbolParser}
 
   describe "resolve_reference/2 for files" do
     test "resolves existing text file" do

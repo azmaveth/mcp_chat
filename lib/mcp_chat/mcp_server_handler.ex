@@ -5,10 +5,9 @@ defmodule MCPChat.MCPServerHandler do
 
   use ExMCP.Server.Handler
 
-  alias MCPChat.Session
-  alias MCPChat.LLM.ExLLMAdapter
-
   require Logger
+  alias MCPChat.LLM.ExLLMAdapter
+  alias MCPChat.Session
 
   @impl true
   def init(_args) do

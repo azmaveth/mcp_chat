@@ -5,8 +5,8 @@ defmodule MCPChat.CLI.Commands.TUI do
 
   use MCPChat.CLI.Commands.Base
 
-  alias MCPChat.UI.TUIManager
   alias MCPChat.CLI.Renderer
+  alias MCPChat.UI.TUIManager
 
   @impl true
   def commands do

@@ -7,8 +7,8 @@ defmodule MCPChat.MCP.ResourceCache do
   use GenServer
   require Logger
 
-  alias MCPChat.MCP.ServerManager
   alias ExMCP.Client
+  alias MCPChat.MCP.ServerManager
 
   @table_name :mcp_resource_cache
   @stats_table :mcp_resource_cache_stats
