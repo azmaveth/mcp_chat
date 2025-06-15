@@ -6,7 +6,7 @@ defmodule MCPChat.CLI.Chat do
   require Logger
   alias MCPChat.CLI.{Commands, Renderer}
   alias MCPChat.Context.AtSymbolResolver
-  alias MCPChat.{Session, Config}
+  alias MCPChat.{Config, Session}
 
   # alias MCPChat.LLM
 

@@ -6,6 +6,8 @@ defmodule MCPChat.CLI.Commands.Base do
   and provides shared utilities for command handling.
   """
 
+  alias MCPChat.CLI.Renderer
+
   @doc """
   Defines the behavior that command modules must implement.
   """
@@ -51,7 +53,7 @@ defmodule MCPChat.CLI.Commands.Base do
   Displays an error message to the user.
   """
   def show_error(message) do
-    MCPChat.CLI.Renderer.show_error(message)
+    Renderer.show_error(message)
     :ok
   end
 
@@ -59,7 +61,7 @@ defmodule MCPChat.CLI.Commands.Base do
   Displays a success message to the user.
   """
   def show_success(message) do
-    MCPChat.CLI.Renderer.show_success(message)
+    Renderer.show_success(message)
     :ok
   end
 
@@ -67,7 +69,7 @@ defmodule MCPChat.CLI.Commands.Base do
   Displays an info message to the user.
   """
   def show_info(message) do
-    MCPChat.CLI.Renderer.show_info(message)
+    Renderer.show_info(message)
     :ok
   end
 
@@ -75,7 +77,7 @@ defmodule MCPChat.CLI.Commands.Base do
   Displays a warning message to the user.
   """
   def show_warning(message) do
-    MCPChat.CLI.Renderer.show_warning(message)
+    Renderer.show_warning(message)
     :ok
   end
 

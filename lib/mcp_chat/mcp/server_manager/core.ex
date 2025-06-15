@@ -6,10 +6,10 @@ defmodule MCPChat.MCP.ServerManager.Core do
   Updated to use Server structs for enhanced status tracking and background connections.
   """
 
-  alias MCPChat.MCP.ServerWrapper
-  alias MCPChat.MCP.ServerManager.Server
   alias MCPChat.ConfigProvider
   alias MCPChat.LoggerProvider
+  alias MCPChat.MCP.{BuiltinResources, HealthMonitor, ServerPersistence, ServerWrapper}
+  alias MCPChat.MCP.ServerManager.Server
 
   @type server_state :: %{
           servers: %{String.t() => Server.t()},
@@ -209,11 +209,11 @@ defmodule MCPChat.MCP.ServerManager.Core do
     case ServerWrapper.call_tool(pid, tool_name, arguments) do
       {:ok, result} = success ->
         response_time = System.monotonic_time(:millisecond) - start_time
-        MCPChat.MCP.HealthMonitor.record_success(server_name, response_time)
+        HealthMonitor.record_success(server_name, response_time)
         success
 
       {:error, _reason} = error ->
-        MCPChat.MCP.HealthMonitor.record_failure(server_name)
+        HealthMonitor.record_failure(server_name)
         error
     end
   end
@@ -235,7 +235,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
 
     # Add built-in resources
     builtin_resources =
-      MCPChat.MCP.BuiltinResources.list_resources()
+      BuiltinResources.list_resources()
       |> Enum.map(&Map.put(&1, "server", "builtin"))
 
     server_resources ++ builtin_resources
@@ -248,7 +248,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
   def read_resource(state, server_name, uri) do
     # Check if it's a built-in resource
     if server_name == "builtin" do
-      MCPChat.MCP.BuiltinResources.read_resource(uri)
+      BuiltinResources.read_resource(uri)
     else
       do_read_resource_from_server(state, server_name, uri)
     end
@@ -285,7 +285,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
 
     # Add built-in prompts
     builtin_prompts =
-      MCPChat.MCP.BuiltinResources.list_prompts()
+      BuiltinResources.list_prompts()
       |> Enum.map(&Map.put(&1, "server", "builtin"))
 
     server_prompts ++ builtin_prompts
@@ -298,7 +298,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
   def get_prompt(state, server_name, prompt_name, arguments) do
     # Check if it's a built-in prompt
     if server_name == "builtin" do
-      MCPChat.MCP.BuiltinResources.get_prompt(prompt_name)
+      BuiltinResources.get_prompt(prompt_name)
     else
       do_get_prompt_from_server(state, server_name, prompt_name, arguments)
     end
@@ -341,7 +341,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
   @spec start_auto_connect_servers(server_state(), keyword()) :: server_state()
   def start_auto_connect_servers(state, opts \\ []) do
     logger_provider = Keyword.get(opts, :logger_provider, LoggerProvider.Default)
-    saved_servers = MCPChat.MCP.ServerPersistence.load_all_servers()
+    saved_servers = ServerPersistence.load_all_servers()
     auto_connect_servers = Enum.filter(saved_servers, &(&1["auto_connect"] == true))
 
     Enum.reduce(auto_connect_servers, state, fn server_config, acc_state ->

@@ -8,6 +8,7 @@ defmodule MCPChat.Session do
   use GenServer
 
   alias MCPChat.Session.ExLLMSessionAdapter, as: SessionCore
+  alias MCPChat.Session.Autosave
 
   # Client API
 
@@ -168,8 +169,8 @@ defmodule MCPChat.Session do
     new_state = %{state | current_session: updated_session}
 
     # Trigger autosave on message addition
-    if Process.whereis(MCPChat.Session.Autosave) do
-      MCPChat.Session.Autosave.trigger_save()
+    if Process.whereis(Autosave) do
+      Autosave.trigger_save()
     end
 
     {:reply, :ok, new_state}

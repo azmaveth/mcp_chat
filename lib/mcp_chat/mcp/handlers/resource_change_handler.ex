@@ -5,9 +5,9 @@ defmodule MCPChat.MCP.Handlers.ResourceChangeHandler do
   """
   @behaviour MCPChat.MCP.NotificationHandler
 
+  require Logger
   alias MCPChat.{CLI.Renderer, Session}
 
-  require Logger
 
   defstruct [:session_pid, :cache]
 

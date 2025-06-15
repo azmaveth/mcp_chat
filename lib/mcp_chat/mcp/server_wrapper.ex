@@ -13,6 +13,8 @@ defmodule MCPChat.MCP.ServerWrapper do
   use GenServer
   require Logger
 
+  alias MCPChat.MCP.{NotificationClient, StdioProcessManager}
+
   def start_link(config, opts \\ []) do
     GenServer.start_link(__MODULE__, {config, opts})
   end
@@ -113,7 +115,7 @@ defmodule MCPChat.MCP.ServerWrapper do
       auto_start: true
     ]
 
-    {:ok, process_manager} = MCPChat.MCP.StdioProcessManager.start_link(process_manager_opts)
+    {:ok, process_manager} = StdioProcessManager.start_link(process_manager_opts)
     Process.monitor(process_manager)
     process_manager
   end
@@ -121,7 +123,7 @@ defmodule MCPChat.MCP.ServerWrapper do
   defp start_client(client_opts, notifications_enabled) do
     {:ok, client_pid} =
       if notifications_enabled do
-        MCPChat.MCP.NotificationClient.start_link(client_opts)
+        NotificationClient.start_link(client_opts)
       else
         ExMCP.Client.start_link(client_opts)
       end
@@ -147,7 +149,7 @@ defmodule MCPChat.MCP.ServerWrapper do
   def handle_call({:call_tool, tool, args}, _from, state) do
     forward_to_client(state, fn client ->
       if state.type == :notification do
-        MCPChat.MCP.NotificationClient.call_tool(client, tool, args)
+        NotificationClient.call_tool(client, tool, args)
       else
         ExMCP.Client.call_tool(client, tool, args)
       end
@@ -157,7 +159,7 @@ defmodule MCPChat.MCP.ServerWrapper do
   def handle_call(:get_tools, _from, state) do
     forward_to_client(state, fn client ->
       if state.type == :notification do
-        MCPChat.MCP.NotificationClient.list_tools(client)
+        NotificationClient.list_tools(client)
       else
         ExMCP.Client.list_tools(client)
       end
@@ -172,7 +174,7 @@ defmodule MCPChat.MCP.ServerWrapper do
         Task.async(fn ->
           try do
             if state.type == :notification do
-              MCPChat.MCP.NotificationClient.list_tools(state.client)
+              NotificationClient.list_tools(state.client)
             else
               ExMCP.Client.list_tools(state.client)
             end
@@ -195,7 +197,7 @@ defmodule MCPChat.MCP.ServerWrapper do
   def handle_call(:get_resources, _from, state) do
     forward_to_client(state, fn client ->
       if state.type == :notification do
-        MCPChat.MCP.NotificationClient.list_resources(client)
+        NotificationClient.list_resources(client)
       else
         ExMCP.Client.list_resources(client)
       end
@@ -205,7 +207,7 @@ defmodule MCPChat.MCP.ServerWrapper do
   def handle_call({:read_resource, uri}, _from, state) do
     forward_to_client(state, fn client ->
       if state.type == :notification do
-        MCPChat.MCP.NotificationClient.read_resource(client, uri)
+        NotificationClient.read_resource(client, uri)
       else
         ExMCP.Client.read_resource(client, uri)
       end
@@ -215,7 +217,7 @@ defmodule MCPChat.MCP.ServerWrapper do
   def handle_call(:get_prompts, _from, state) do
     forward_to_client(state, fn client ->
       if state.type == :notification do
-        MCPChat.MCP.NotificationClient.list_prompts(client)
+        NotificationClient.list_prompts(client)
       else
         ExMCP.Client.list_prompts(client)
       end
@@ -225,7 +227,7 @@ defmodule MCPChat.MCP.ServerWrapper do
   def handle_call({:get_prompt, name, args}, _from, state) do
     forward_to_client(state, fn client ->
       if state.type == :notification do
-        MCPChat.MCP.NotificationClient.get_prompt(client, name, args)
+        NotificationClient.get_prompt(client, name, args)
       else
         ExMCP.Client.get_prompt(client, name, args)
       end
@@ -256,7 +258,7 @@ defmodule MCPChat.MCP.ServerWrapper do
 
     # Stop the process manager if we have one (stdio transport)
     if state[:process_manager] do
-      MCPChat.MCP.StdioProcessManager.stop_process(state.process_manager)
+      StdioProcessManager.stop_process(state.process_manager)
     end
 
     :ok

@@ -10,9 +10,9 @@ defmodule MCPChat.MCP.ParallelConnectionManager do
   - Error isolation per server
   """
 
+  require Logger
   alias MCPChat.MCP.{LazyServerManager, ServerManager}
 
-  require Logger
 
   defmodule ConnectionResult do
     @moduledoc false
