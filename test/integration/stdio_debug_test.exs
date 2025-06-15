@@ -12,7 +12,7 @@ defmodule MCPChat.StdioDebugTest do
     File.write!(test_script, """
     # Simple echo server
     defmodule EchoServer do
-      def loop() do
+      def loop do
         case IO.gets("") do
           :eof -> :ok
           {:error, _} -> :ok

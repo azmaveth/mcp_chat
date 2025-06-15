@@ -38,7 +38,7 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
     GenServer.cast(__MODULE__, {:set_completion_fn, fun})
   end
 
-  def stop() do
+  def stop do
     GenServer.stop(__MODULE__)
   end
 
@@ -118,7 +118,7 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
 
   # Private helper functions
 
-  defp detect_best_implementation() do
+  defp detect_best_implementation do
     if iex_running?() do
       :simple
     else
@@ -130,7 +130,7 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
     Code.ensure_loaded?(IEx) and IEx.started?()
   end
 
-  defp detect_from_environment() do
+  defp detect_from_environment do
     case System.get_env("MCP_READLINE_MODE") do
       "advanced" -> :advanced
       "simple" -> :simple
@@ -138,7 +138,7 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
     end
   end
 
-  defp detect_from_terminal() do
+  defp detect_from_terminal do
     case :io.getopts(:standard_io) do
       opts when is_list(opts) ->
         check_terminal_options(opts)
@@ -172,7 +172,7 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
     end
   end
 
-  defp load_history() do
+  defp load_history do
     history_file = Path.expand(@history_file)
 
     case File.read(history_file) do

@@ -86,7 +86,7 @@ defmodule MCPChat do
     end
   end
 
-  defp show_help() do
+  defp show_help do
     IO.puts("""
     MCP Chat Client
 
@@ -124,7 +124,7 @@ defmodule MCPChat do
     if opts[:quiet] || !Code.ensure_loaded?(Mix), do: :error, else: :info
   end
 
-  defp start_application() do
+  defp start_application do
     {:ok, _} = Application.ensure_all_started(:mcp_chat)
   end
 
@@ -136,7 +136,7 @@ defmodule MCPChat do
     end
   end
 
-  defp continue_recent_session() do
+  defp continue_recent_session do
     case MCPChat.SessionManager.continue_most_recent() do
       {:ok, session_info} ->
         Logger.info("Continuing session: #{session_info.name}")
@@ -182,24 +182,24 @@ defmodule MCPChat do
     System.halt(1)
   end
 
-  defp start_chat_interface() do
+  defp start_chat_interface do
     profile_ui_setup()
     result = Chat.start()
     complete_ui_profiling()
     result
   end
 
-  defp profile_ui_setup() do
+  defp profile_ui_setup do
     MCPChat.StartupProfiler.start_phase(:ui_setup)
   end
 
-  defp complete_ui_profiling() do
+  defp complete_ui_profiling do
     MCPChat.StartupProfiler.end_phase(:ui_setup)
     MCPChat.StartupProfiler.end_phase(:total)
     MCPChat.StartupProfiler.report()
   end
 
-  defp list_sessions_and_exit() do
+  defp list_sessions_and_exit do
     # Start minimal application components needed for session listing
     {:ok, _} = Application.ensure_all_started(:mcp_chat)
 

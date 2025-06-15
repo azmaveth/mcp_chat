@@ -94,7 +94,7 @@ defmodule MCPChat.CLI.Commands.MCP do
 
   # Server management commands
 
-  defp list_servers() do
+  defp list_servers do
     servers = ServerManager.list_servers_with_status()
     display_server_list_with_status(servers)
     :ok
@@ -191,7 +191,7 @@ defmodule MCPChat.CLI.Commands.MCP do
   defp format_response_time(time) when is_float(time) and time > 0, do: "#{Float.round(time, 0)}ms"
   defp format_response_time(_), do: "N/A"
 
-  defp list_saved_servers() do
+  defp list_saved_servers do
     servers = ServerPersistence.load_all_servers()
     display_saved_servers(servers)
     :ok
@@ -222,7 +222,7 @@ defmodule MCPChat.CLI.Commands.MCP do
     end
   end
 
-  defp discover_servers() do
+  defp discover_servers do
     show_info("Discovering MCP servers...")
 
     quick_servers = Discovery.quick_setup_servers()
@@ -290,7 +290,7 @@ defmodule MCPChat.CLI.Commands.MCP do
 
   # Tool commands
 
-  defp list_tools() do
+  defp list_tools do
     servers = ServerManager.list_servers()
 
     if Enum.empty?(servers) do
@@ -367,7 +367,7 @@ defmodule MCPChat.CLI.Commands.MCP do
 
   # Resource commands
 
-  defp list_resources() do
+  defp list_resources do
     servers = ServerManager.list_servers()
 
     if Enum.empty?(servers) do
@@ -455,7 +455,7 @@ defmodule MCPChat.CLI.Commands.MCP do
 
   # Prompt commands
 
-  defp list_prompts() do
+  defp list_prompts do
     servers = ServerManager.list_servers()
 
     if Enum.empty?(servers) do

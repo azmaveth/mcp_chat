@@ -24,13 +24,13 @@ defmodule Mix.Tasks.TestTerminal do
     test_detection_logic()
   end
 
-  defp test_iex_status() do
+  defp test_iex_status do
     IO.puts("IEx loaded?: #{Code.ensure_loaded?(IEx)}")
     IO.puts("IEx started?: #{Code.ensure_loaded?(IEx) and IEx.started?()}")
     IO.puts("")
   end
 
-  defp test_io_options() do
+  defp test_io_options do
     IO.puts("Checking :io.getopts(:standard_io)...")
 
     case :io.getopts(:standard_io) do
@@ -52,13 +52,13 @@ defmodule Mix.Tasks.TestTerminal do
     IO.puts("Would use: #{if terminal in [:ebadf, false], do: "simple", else: "advanced"}")
   end
 
-  defp test_environment() do
+  defp test_environment do
     IO.puts("Mix loaded?: #{Code.ensure_loaded?(Mix)}")
     IO.puts("Mix env: #{if Code.ensure_loaded?(Mix), do: Mix.env(), else: "N/A"}")
     IO.puts("")
   end
 
-  defp test_tty_command() do
+  defp test_tty_command do
     IO.puts("Testing tty command:")
 
     case System.cmd("tty", [], stderr_to_stdout: true) do
@@ -76,7 +76,7 @@ defmodule Mix.Tasks.TestTerminal do
     IO.puts("  Is TTY: #{not String.contains?(output, "not a tty")}")
   end
 
-  defp test_io_columns() do
+  defp test_io_columns do
     IO.puts("\nTesting :io.columns():")
 
     case :io.columns() do
@@ -85,12 +85,12 @@ defmodule Mix.Tasks.TestTerminal do
     end
   end
 
-  defp test_detection_logic() do
+  defp test_detection_logic do
     result = detect_best_implementation()
     IO.puts("\nFinal detection result: #{result}")
   end
 
-  defp detect_best_implementation() do
+  defp detect_best_implementation do
     if iex_running?() do
       :simple
     else
@@ -102,7 +102,7 @@ defmodule Mix.Tasks.TestTerminal do
     Code.ensure_loaded?(IEx) and IEx.started?()
   end
 
-  defp detect_from_io_options() do
+  defp detect_from_io_options do
     case :io.getopts(:standard_io) do
       opts when is_list(opts) ->
         handle_io_options(opts)
@@ -122,7 +122,7 @@ defmodule Mix.Tasks.TestTerminal do
     end
   end
 
-  defp handle_limited_terminal() do
+  defp handle_limited_terminal do
     if mix_with_tty?() do
       :advanced
     else
@@ -150,7 +150,7 @@ defmodule Mix.Tasks.TestTerminal do
     _ -> false
   end
 
-  defp check_terminal_interaction() do
+  defp check_terminal_interaction do
     # Alternative method: try to get terminal size
     case :io.columns() do
       {:ok, _columns} -> true

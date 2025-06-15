@@ -61,7 +61,7 @@ defmodule MCPChat.MCP.ProgressTracker do
   @doc """
   Gets all active operations.
   """
-  def list_operations() do
+  def list_operations do
     GenServer.call(__MODULE__, :list_operations)
   end
 
@@ -75,7 +75,7 @@ defmodule MCPChat.MCP.ProgressTracker do
   @doc """
   Generates a unique progress token.
   """
-  def generate_token() do
+  def generate_token do
     GenServer.call(__MODULE__, :generate_token)
   end
 
@@ -83,7 +83,7 @@ defmodule MCPChat.MCP.ProgressTracker do
   Gets all progress items for display.
   Returns a map of token => progress data.
   """
-  def get_all_progress() do
+  def get_all_progress do
     GenServer.call(__MODULE__, :get_all_progress)
   end
 

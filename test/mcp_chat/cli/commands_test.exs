@@ -659,42 +659,42 @@ defmodule MCPChat.CLI.CommandsTest do
 
   # Helper functions
 
-  defp ensure_services_started() do
+  defp ensure_services_started do
     start_config()
     start_session()
     start_server_manager()
     start_alias()
   end
 
-  defp start_config() do
+  defp start_config do
     case Process.whereis(MCPChat.Config) do
       nil -> {:ok, _} = MCPChat.Config.start_link()
       _ -> :ok
     end
   end
 
-  defp start_session() do
+  defp start_session do
     case Process.whereis(MCPChat.Session) do
       nil -> {:ok, _} = MCPChat.Session.start_link()
       _ -> :ok
     end
   end
 
-  defp start_server_manager() do
+  defp start_server_manager do
     case Process.whereis(MCPChat.MCP.ServerManager) do
       nil -> {:ok, _} = MCPChat.MCP.ServerManager.start_link()
       _ -> :ok
     end
   end
 
-  defp start_alias() do
+  defp start_alias do
     case Process.whereis(MCPChat.Alias.ExAliasAdapter) do
       nil -> start_ex_alias_and_adapter()
       _ -> :ok
     end
   end
 
-  defp start_ex_alias_and_adapter() do
+  defp start_ex_alias_and_adapter do
     case Process.whereis(ExAlias) do
       nil -> {:ok, _} = ExAlias.start_link()
       _ -> :ok

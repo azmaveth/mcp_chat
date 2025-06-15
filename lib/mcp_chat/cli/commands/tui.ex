@@ -9,7 +9,7 @@ defmodule MCPChat.CLI.Commands.TUI do
   alias MCPChat.CLI.Renderer
 
   @impl true
-  def commands() do
+  def commands do
     %{
       "tui" => "Control TUI displays (progress and cache)"
     }
@@ -76,7 +76,7 @@ defmodule MCPChat.CLI.Commands.TUI do
     :ok
   end
 
-  defp show_tui_status() do
+  defp show_tui_status do
     status = TUIManager.status()
 
     Renderer.show_info("TUI Status:")
@@ -86,7 +86,7 @@ defmodule MCPChat.CLI.Commands.TUI do
     Renderer.show_info("  Cache Visible: #{status.cache_visible}")
   end
 
-  defp show_usage() do
+  defp show_usage do
     usage = """
     Usage: /tui <subcommand>
 

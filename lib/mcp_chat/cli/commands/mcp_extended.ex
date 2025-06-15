@@ -23,7 +23,7 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
     end
   end
 
-  defp show_sample_usage() do
+  defp show_sample_usage do
     Renderer.show_error("Usage: /mcp sample <server> <prompt> [--temperature 0.7] [--max-tokens 1_000]")
   end
 
@@ -104,7 +104,7 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
     end
   end
 
-  defp show_all_server_capabilities() do
+  defp show_all_server_capabilities do
     case ServerManager.list_servers() do
       [] ->
         Renderer.show_info("No connected servers")
@@ -269,7 +269,7 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
     "#{minutes}m #{secs}s"
   end
 
-  defp enable_notifications() do
+  defp enable_notifications do
     # Register default handlers
     NotificationRegistry.register_handler(
       MCPChat.MCP.Handlers.ResourceChangeHandler,
@@ -291,7 +291,7 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
     Config.set_runtime("notifications.enabled", true)
   end
 
-  defp disable_notifications() do
+  defp disable_notifications do
     # Unregister all handlers
     NotificationRegistry.unregister_handler(MCPChat.MCP.Handlers.ResourceChangeHandler)
     NotificationRegistry.unregister_handler(MCPChat.MCP.Handlers.ToolChangeHandler)
@@ -301,7 +301,7 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
     Config.set_runtime("notifications.enabled", false)
   end
 
-  defp show_notification_status() do
+  defp show_notification_status do
     handlers = NotificationRegistry.list_handlers()
     enabled = Config.get_runtime("notifications.enabled", false)
 

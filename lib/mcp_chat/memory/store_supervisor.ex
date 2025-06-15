@@ -38,7 +38,7 @@ defmodule MCPChat.Memory.StoreSupervisor do
   @doc """
   List all active message stores.
   """
-  def list_stores() do
+  def list_stores do
     DynamicSupervisor.which_children(__MODULE__)
     |> Enum.map(fn {_, pid, _, _} -> pid end)
     |> Enum.filter(&is_pid/1)

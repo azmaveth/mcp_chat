@@ -8,7 +8,7 @@ defmodule StandaloneMCPServer do
   A completely standalone MCP server that uses only Elixir stdlib.
   """
 
-  def start() do
+  def start do
     loop(%{initialized: false})
   end
 

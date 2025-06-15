@@ -38,7 +38,7 @@ defmodule MCPChat.MCP.NotificationRegistry do
   @doc """
   Gets the list of registered handlers.
   """
-  def list_handlers() do
+  def list_handlers do
     GenServer.call(__MODULE__, :list_handlers)
   end
 

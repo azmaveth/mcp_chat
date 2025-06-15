@@ -183,7 +183,7 @@ defmodule MCPChat.Streaming.EnhancedConsumer do
 
   # Private Functions
 
-  defp init_metrics() do
+  defp init_metrics do
     %{
       start_time: System.monotonic_time(:microsecond),
       chunks_received: 0,

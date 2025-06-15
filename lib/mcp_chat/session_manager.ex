@@ -55,7 +55,7 @@ defmodule MCPChat.SessionManager do
   @doc """
   Continue the most recent session.
   """
-  def continue_most_recent() do
+  def continue_most_recent do
     case Persistence.list_sessions() do
       {:ok, []} ->
         {:error, :no_sessions}
@@ -100,7 +100,7 @@ defmodule MCPChat.SessionManager do
   Save the current session immediately.
   Called by autosave when a new message is added.
   """
-  def save_current_session() do
+  def save_current_session do
     session = Session.get_current_session()
 
     # Get session name from metadata
@@ -123,7 +123,7 @@ defmodule MCPChat.SessionManager do
 
   # Private functions
 
-  defp generate_session_name() do
+  defp generate_session_name do
     # Get current directory name (last part of path)
     cwd = File.cwd!()
     dir_name = cwd |> Path.split() |> List.last() |> sanitize_for_filename()

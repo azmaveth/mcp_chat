@@ -140,7 +140,7 @@ defmodule DemoTimeServer do
     end
   end
 
-  defp read_current_time_resource() do
+  defp read_current_time_resource do
     current = DateTime.utc_now()
 
     Jason.encode!(%{
@@ -150,7 +150,7 @@ defmodule DemoTimeServer do
     })
   end
 
-  defp read_timezones_resource() do
+  defp read_timezones_resource do
     # Simple list of common timezones for testing
     zones = [
       "UTC",

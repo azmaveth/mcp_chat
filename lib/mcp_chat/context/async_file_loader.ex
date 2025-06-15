@@ -421,7 +421,7 @@ defmodule MCPChat.Context.AsyncFileLoader do
     Logger.info("Added #{file_info.name} to context (#{byte_size(file_info.content)} bytes)")
   end
 
-  defp generate_operation_id() do
+  defp generate_operation_id do
     "async_load_#{System.unique_integer([:positive])}_#{System.system_time(:millisecond)}"
   end
 end

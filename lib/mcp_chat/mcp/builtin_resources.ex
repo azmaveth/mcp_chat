@@ -7,7 +7,7 @@ defmodule MCPChat.MCP.BuiltinResources do
   @app_version Mix.Project.config()[:version]
 
   # Default Resources
-  def list_resources() do
+  def list_resources do
     [
       %{
         "uri" => "mcp-chat://docs/readme",
@@ -75,7 +75,7 @@ defmodule MCPChat.MCP.BuiltinResources do
     end
   end
 
-  defp get_resource_handler_map() do
+  defp get_resource_handler_map do
     %{
       "mcp-chat://docs/readme" => &get_readme_content/0,
       "mcp-chat://docs/commands" => fn -> {:ok, generate_command_reference()} end,
@@ -89,7 +89,7 @@ defmodule MCPChat.MCP.BuiltinResources do
     }
   end
 
-  defp get_readme_content() do
+  defp get_readme_content do
     {:ok,
      """
      # MCP Chat Quick Reference
@@ -122,7 +122,7 @@ defmodule MCPChat.MCP.BuiltinResources do
      """}
   end
 
-  defp get_mcp_servers_guide() do
+  defp get_mcp_servers_guide do
     {:ok,
      """
      # MCP Server Guide
@@ -169,7 +169,7 @@ defmodule MCPChat.MCP.BuiltinResources do
      """}
   end
 
-  defp get_version_info() do
+  defp get_version_info do
     {:ok,
      """
      MCP Chat v#{@app_version}
@@ -181,14 +181,14 @@ defmodule MCPChat.MCP.BuiltinResources do
      """}
   end
 
-  defp get_config_info() do
+  defp get_config_info do
     config = MCPChat.Config.get_all()
     config_string = format_config_as_json(config)
     {:ok, config_string}
   end
 
   # Default Prompts
-  def list_prompts() do
+  def list_prompts do
     [
       %{
         "name" => "getting_started",
@@ -242,7 +242,7 @@ defmodule MCPChat.MCP.BuiltinResources do
     end
   end
 
-  defp get_prompt_function_map() do
+  defp get_prompt_function_map do
     %{
       "getting_started" => &get_getting_started_prompt/0,
       "demo" => &get_demo_prompt/0,
@@ -257,7 +257,7 @@ defmodule MCPChat.MCP.BuiltinResources do
     }
   end
 
-  defp get_getting_started_prompt() do
+  defp get_getting_started_prompt do
     {:ok,
      %{
        name: "getting_started",
@@ -286,7 +286,7 @@ defmodule MCPChat.MCP.BuiltinResources do
      }}
   end
 
-  defp get_demo_prompt() do
+  defp get_demo_prompt do
     {:ok,
      %{
        name: "demo",
@@ -321,7 +321,7 @@ defmodule MCPChat.MCP.BuiltinResources do
      }}
   end
 
-  defp get_troubleshoot_prompt() do
+  defp get_troubleshoot_prompt do
     {:ok,
      %{
        name: "troubleshoot",
@@ -350,7 +350,7 @@ defmodule MCPChat.MCP.BuiltinResources do
      }}
   end
 
-  defp get_research_mode_prompt() do
+  defp get_research_mode_prompt do
     {:ok,
      %{
        name: "research_mode",
@@ -392,7 +392,7 @@ defmodule MCPChat.MCP.BuiltinResources do
      }}
   end
 
-  defp get_code_review_prompt() do
+  defp get_code_review_prompt do
     {:ok,
      %{
        name: "code_review",
@@ -426,7 +426,7 @@ defmodule MCPChat.MCP.BuiltinResources do
      }}
   end
 
-  defp get_setup_mcp_server_prompt() do
+  defp get_setup_mcp_server_prompt do
     {:ok,
      %{
        name: "setup_mcp_server",
@@ -456,7 +456,7 @@ defmodule MCPChat.MCP.BuiltinResources do
      }}
   end
 
-  defp get_explain_code_prompt() do
+  defp get_explain_code_prompt do
     {:ok,
      %{
        name: "explain_code",
@@ -486,7 +486,7 @@ defmodule MCPChat.MCP.BuiltinResources do
      }}
   end
 
-  defp get_debug_session_prompt() do
+  defp get_debug_session_prompt do
     {:ok,
      %{
        name: "debug_session",
@@ -523,7 +523,7 @@ defmodule MCPChat.MCP.BuiltinResources do
      }}
   end
 
-  defp get_create_agent_prompt() do
+  defp get_create_agent_prompt do
     {:ok,
      %{
        name: "create_agent",
@@ -575,7 +575,7 @@ defmodule MCPChat.MCP.BuiltinResources do
      }}
   end
 
-  defp get_api_integration_prompt() do
+  defp get_api_integration_prompt do
     {:ok,
      %{
        name: "api_integration",
@@ -657,7 +657,7 @@ defmodule MCPChat.MCP.BuiltinResources do
   end
 
   # Helper to generate multi-agent examples
-  defp generate_multi_agent_examples() do
+  defp generate_multi_agent_examples do
     """
     # Multi-Agent MCP Chat Examples
 
@@ -716,7 +716,7 @@ defmodule MCPChat.MCP.BuiltinResources do
   end
 
   # Helper to generate command reference
-  defp generate_command_reference() do
+  defp generate_command_reference do
     """
     # MCP Chat Command Reference
 
@@ -764,7 +764,7 @@ defmodule MCPChat.MCP.BuiltinResources do
     """
   end
 
-  defp generate_troubleshooting_guide() do
+  defp generate_troubleshooting_guide do
     """
     # MCP Chat Troubleshooting Guide
 
@@ -832,7 +832,7 @@ defmodule MCPChat.MCP.BuiltinResources do
     """
   end
 
-  defp generate_api_key_guide() do
+  defp generate_api_key_guide do
     """
     # API Key Configuration Guide
 
@@ -902,7 +902,7 @@ defmodule MCPChat.MCP.BuiltinResources do
     """
   end
 
-  defp generate_library_info() do
+  defp generate_library_info do
     """
     # MCP Chat Library Architecture
 
@@ -947,7 +947,7 @@ defmodule MCPChat.MCP.BuiltinResources do
     Add to your `mix.exs`:
 
     ```elixir
-    defp deps() do
+    defp deps do
       [
         {:ex_mcp, "~> 0.1"},
         {:ex_llm, "~> 0.2"},

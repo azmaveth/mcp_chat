@@ -46,7 +46,7 @@ defmodule MCPChat.CLI.RendererTest do
       message = """
       Here's some code:
       ```elixir
-      def hello() do
+      def hello do
         :world
       end
       ```
@@ -312,7 +312,7 @@ defmodule MCPChat.CLI.RendererTest do
   describe "show_code/1" do
     test "displays code in a box" do
       code = """
-      def hello() do
+      def hello do
         :world
       end
       """

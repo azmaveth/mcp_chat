@@ -31,11 +31,11 @@ defmodule MCPChat.UI.ResourceCacheDisplay do
     GenServer.cast(__MODULE__, {:show, mode})
   end
 
-  def hide() do
+  def hide do
     GenServer.cast(__MODULE__, :hide)
   end
 
-  def toggle_mode() do
+  def toggle_mode do
     GenServer.cast(__MODULE__, :toggle_mode)
   end
 
@@ -283,7 +283,7 @@ defmodule MCPChat.UI.ResourceCacheDisplay do
     end
   end
 
-  defp clear_display() do
+  defp clear_display do
     # Clear from cursor to end of screen
     IO.write("\e[J")
   end

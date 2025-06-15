@@ -65,7 +65,7 @@ defmodule MCPChat.MCP.LazyServerManager do
   @doc """
   Get connection statistics.
   """
-  def stats() do
+  def stats do
     GenServer.call(__MODULE__, :stats)
   end
 
@@ -73,7 +73,7 @@ defmodule MCPChat.MCP.LazyServerManager do
   Prepare servers for parallel connection.
   Returns list of {name, config} tuples ready for parallel processing.
   """
-  def prepare_parallel_connections() do
+  def prepare_parallel_connections do
     GenServer.call(__MODULE__, :prepare_parallel_connections)
   end
 

@@ -19,7 +19,7 @@ defmodule MCPChat.StartupProfiler do
     :total
   ]
 
-  def start_profiling() do
+  def start_profiling do
     if System.get_env("MCP_CHAT_STARTUP_PROFILING") == "true" do
       :persistent_term.put({__MODULE__, :enabled}, true)
       :persistent_term.put({__MODULE__, :timings}, %{})
@@ -50,7 +50,7 @@ defmodule MCPChat.StartupProfiler do
     end
   end
 
-  def report() do
+  def report do
     if enabled?() do
       total_start = :persistent_term.get({__MODULE__, :start_time}, 0)
       total_end = System.monotonic_time(:millisecond)
@@ -110,7 +110,7 @@ defmodule MCPChat.StartupProfiler do
     |> String.pad_trailing(20, ".")
   end
 
-  defp cleanup() do
+  defp cleanup do
     @phases
     |> Enum.each(fn phase ->
       :persistent_term.erase({__MODULE__, phase, :start})

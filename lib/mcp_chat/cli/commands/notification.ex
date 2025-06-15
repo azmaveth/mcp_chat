@@ -8,7 +8,7 @@ defmodule MCPChat.CLI.Commands.Notification do
   alias MCPChat.MCP.Handlers.ComprehensiveNotificationHandler
 
   @impl true
-  def commands() do
+  def commands do
     %{
       "notification" => "Manage MCP server notifications"
     }

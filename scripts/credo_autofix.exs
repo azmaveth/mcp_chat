@@ -10,6 +10,7 @@ defmodule CredoAutofix do
   - Missing trailing blank lines
   - Large numbers without underscores
   - Enum.map |> Enum.join to Enum.map_join
+  - Remove parentheses from zero-arity functions
   """
 
   def run do
@@ -136,17 +137,17 @@ defmodule CredoAutofix do
   end
   
   defp fix_parens_on_zero_arity(content) do
-    # Add parentheses to zero-arity function definitions
+    # Remove parentheses from zero-arity function definitions
     Regex.replace(
-      ~r/(\s+def\s+\w+)\s+do/,
+      ~r/(\s+def\s+\w+)\(\)\s+do/,
       content,
-      "\\1() do"
+      "\\1 do"
     )
     |> then(fn content ->
       Regex.replace(
-        ~r/(\s+defp\s+\w+)\s+do/,
+        ~r/(\s+defp\s+\w+)\(\)\s+do/,
         content,
-        "\\1() do"
+        "\\1 do"
       )
     end)
   end

@@ -14,12 +14,12 @@ defmodule MCPChat.CLI.Renderer do
     thinking: :magenta
   }
 
-  def clear_screen() do
+  def clear_screen do
     puts(IO.ANSI.clear())
     puts(IO.ANSI.cursor(0, 0))
   end
 
-  def show_welcome() do
+  def show_welcome do
     puts([
       Owl.Data.tag("╔════════════════════════════════════════╗", :cyan),
       "\n",
@@ -33,7 +33,7 @@ defmodule MCPChat.CLI.Renderer do
     ])
   end
 
-  def show_goodbye() do
+  def show_goodbye do
     puts([
       "\n",
       Owl.Data.tag("Goodbye! 👋", :cyan),
@@ -41,7 +41,7 @@ defmodule MCPChat.CLI.Renderer do
     ])
   end
 
-  def show_divider() do
+  def show_divider do
     puts(Owl.Data.tag(String.duplicate("─", 60), :light_black))
   end
 
@@ -65,7 +65,7 @@ defmodule MCPChat.CLI.Renderer do
     puts(formatted)
   end
 
-  def format_prompt() do
+  def format_prompt do
     [
       Owl.Data.tag("You", @colors.prompt),
       Owl.Data.tag(" › ", :light_black)
@@ -84,7 +84,7 @@ defmodule MCPChat.CLI.Renderer do
     ])
   end
 
-  def show_thinking() do
+  def show_thinking do
     [
       "\n",
       Owl.Data.tag("Assistant", @colors.assistant),
@@ -100,7 +100,7 @@ defmodule MCPChat.CLI.Renderer do
     IO.write(chunk)
   end
 
-  def end_stream() do
+  def end_stream do
     puts("")
   end
 

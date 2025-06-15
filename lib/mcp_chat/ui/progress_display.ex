@@ -25,11 +25,11 @@ defmodule MCPChat.UI.ProgressDisplay do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  def show() do
+  def show do
     GenServer.cast(__MODULE__, :show)
   end
 
-  def hide() do
+  def hide do
     GenServer.cast(__MODULE__, :hide)
   end
 
@@ -186,7 +186,7 @@ defmodule MCPChat.UI.ProgressDisplay do
   defp get_color_for_status(:cancelled), do: :yellow
   defp get_color_for_status(_), do: :white
 
-  defp clear_display() do
+  defp clear_display do
     # Clear from cursor to end of screen
     IO.write("\e[J")
   end

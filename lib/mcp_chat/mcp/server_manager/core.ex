@@ -30,7 +30,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
   Creates initial server manager state.
   """
   @spec new_state() :: server_state()
-  def new_state() do
+  def new_state do
     %{
       servers: %{},
       supervisor: nil
@@ -140,7 +140,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
     end
   end
 
-  defp get_builtin_server_info() do
+  defp get_builtin_server_info do
     {:ok,
      %{
        status: "running",

@@ -132,7 +132,7 @@ defmodule MCPChat.MCP.ConcurrentToolExecutor do
   @doc """
   Get execution statistics for monitoring.
   """
-  def get_execution_stats() do
+  def get_execution_stats do
     # This would be implemented with a statistics tracker GenServer
     # For now, return basic stats
     %{

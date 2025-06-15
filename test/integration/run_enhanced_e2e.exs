@@ -24,7 +24,7 @@ defmodule EnhancedE2ERunner do
   defp parse_args(["--help"]), do: :help
   defp parse_args(_), do: :help
 
-  defp check_prerequisites() do
+  defp check_prerequisites do
     IO.puts("Checking E2E test prerequisites...\n")
 
     checks = [
@@ -42,7 +42,7 @@ defmodule EnhancedE2ERunner do
     end
   end
 
-  defp check_ollama() do
+  defp check_ollama do
     IO.write("Checking Ollama... ")
 
     case System.cmd("curl", ["-s", "#{@ollama_url}/api/tags"], stderr_to_stdout: true) do
@@ -95,7 +95,7 @@ defmodule EnhancedE2ERunner do
     :ok
   end
 
-  defp check_elixir() do
+  defp check_elixir do
     IO.write("Checking Elixir environment... ")
 
     # Check if we can access ex_mcp
@@ -111,7 +111,7 @@ defmodule EnhancedE2ERunner do
     end
   end
 
-  defp check_demo_servers() do
+  defp check_demo_servers do
     IO.write("Checking demo servers... ")
 
     demo_support_path = Path.expand("../support", __DIR__)
@@ -132,7 +132,7 @@ defmodule EnhancedE2ERunner do
     end
   end
 
-  defp setup_environment() do
+  defp setup_environment do
     IO.puts("Setting up E2E test environment...\n")
 
     # Check Elixir dependencies
@@ -192,7 +192,7 @@ defmodule EnhancedE2ERunner do
     end
   end
 
-  defp run_tests() do
+  defp run_tests do
     IO.puts("Running enhanced E2E tests...\n")
 
     # Check prerequisites first
@@ -226,7 +226,7 @@ defmodule EnhancedE2ERunner do
     end
   end
 
-  defp cleanup() do
+  defp cleanup do
     IO.puts("Cleaning up test artifacts...\n")
 
     # Kill any running Elixir demo servers
@@ -255,7 +255,7 @@ defmodule EnhancedE2ERunner do
     IO.puts("\n✅ Cleanup complete!")
   end
 
-  defp print_help() do
+  defp print_help do
     IO.puts("""
     Enhanced E2E Test Runner
 

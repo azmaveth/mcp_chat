@@ -3,7 +3,7 @@ defmodule MCPChat.TestConfig do
   Test configuration helpers for E2E tests.
   """
 
-  def setup_test_config() do
+  def setup_test_config do
     # Set up a minimal test configuration
     config = %{
       "llm" => %{
@@ -40,7 +40,7 @@ defmodule MCPChat.TestConfig do
     :ok
   end
 
-  def reset_config() do
+  def reset_config do
     # Reset to default configuration
     Application.delete_env(:mcp_chat, :config)
     Application.delete_env(:mcp_chat, :llm)

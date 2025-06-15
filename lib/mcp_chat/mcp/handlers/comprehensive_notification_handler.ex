@@ -106,7 +106,7 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandler do
 
   # Helper Functions
 
-  defp load_notification_settings() do
+  defp load_notification_settings do
     %{
       enabled: true,
       connection: %{
@@ -307,7 +307,7 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandler do
 
   # Public API for notification control
 
-  def get_settings() do
+  def get_settings do
     GenServer.call(__MODULE__, :get_settings)
   rescue
     _ -> load_notification_settings()
@@ -319,7 +319,7 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandler do
     _ -> {:error, :not_running}
   end
 
-  def get_event_count() do
+  def get_event_count do
     GenServer.call(__MODULE__, :get_event_count)
   rescue
     _ -> 0

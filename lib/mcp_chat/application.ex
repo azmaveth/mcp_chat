@@ -74,14 +74,14 @@ defmodule MCPChat.Application do
     end
   end
 
-  defp get_startup_mode() do
+  defp get_startup_mode do
     case get_startup_mode_from_env() do
       nil -> get_startup_mode_from_config()
       mode -> mode
     end
   end
 
-  defp get_startup_mode_from_env() do
+  defp get_startup_mode_from_env do
     case System.get_env("MCP_STARTUP_MODE") do
       "eager" -> :eager
       "background" -> :background
@@ -90,7 +90,7 @@ defmodule MCPChat.Application do
     end
   end
 
-  defp get_startup_mode_from_config() do
+  defp get_startup_mode_from_config do
     config_path = Path.expand("~/.config/mcp_chat/config.toml")
 
     if File.exists?(config_path) do
@@ -116,7 +116,7 @@ defmodule MCPChat.Application do
     end
   end
 
-  defp register_health_monitors() do
+  defp register_health_monitors do
     # Give processes time to start
     Process.sleep(100)
 
@@ -144,7 +144,7 @@ defmodule MCPChat.Application do
     end
   end
 
-  defp mcp_server_children() do
+  defp mcp_server_children do
     # Wait a bit for Config to initialize
     Process.sleep(100)
 
@@ -206,7 +206,7 @@ defmodule MCPChat.Application do
     children
   end
 
-  defp enable_notifications() do
+  defp enable_notifications do
     # Give registry time to start
     Process.sleep(200)
 
@@ -235,7 +235,7 @@ defmodule MCPChat.Application do
     _ -> :ok
   end
 
-  defp autosave_config() do
+  defp autosave_config do
     # Default configuration - actual config will be loaded after Config starts
     [
       enabled: true,

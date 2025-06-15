@@ -296,7 +296,7 @@ defmodule E2ETestRunner do
     end
   end
 
-  defp test_mcp_server_startup() do
+  defp test_mcp_server_startup do
     IO.puts("\n2. Testing MCP server startup...")
 
     # Try to start a simple server

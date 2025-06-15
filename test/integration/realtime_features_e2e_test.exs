@@ -570,7 +570,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
 
   # Helper Functions
 
-  defp check_ollama() do
+  defp check_ollama do
     case HTTPoison.get("#{@ollama_url}/api/tags") do
       {:ok, %{status_code: 200, body: body}} ->
         check_ollama_models(body)
@@ -598,7 +598,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
     end
   end
 
-  defp setup_test_environment() do
+  defp setup_test_environment do
     # Ensure progress tracker is started
     unless Process.whereis(MCPChat.MCP.ProgressTracker) do
       {:ok, _} = MCPChat.MCP.ProgressTracker.start_link([])

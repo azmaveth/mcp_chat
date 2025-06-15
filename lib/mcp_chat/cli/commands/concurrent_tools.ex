@@ -101,7 +101,7 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
     end
   end
 
-  defp create_progress_callback() do
+  defp create_progress_callback do
     fn update ->
       case update.phase do
         :starting ->
@@ -356,7 +356,7 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
 
   defp format_tool_result(result), do: inspect(result)
 
-  defp show_execution_stats() do
+  defp show_execution_stats do
     stats = ConcurrentToolExecutor.get_execution_stats()
 
     show_info("Concurrent Tool Execution Statistics:")

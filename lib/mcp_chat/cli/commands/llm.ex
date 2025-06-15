@@ -143,7 +143,7 @@ defmodule MCPChat.CLI.Commands.LLM do
     end
   end
 
-  defp list_models() do
+  defp list_models do
     {backend, current_model} = get_current_model()
     adapter = get_adapter_module(backend)
 
@@ -165,7 +165,7 @@ defmodule MCPChat.CLI.Commands.LLM do
     end
   end
 
-  defp show_current_model_info() do
+  defp show_current_model_info do
     {backend, current_model} = get_current_model()
     show_info("Current backend: #{backend}")
     show_info("Current model: #{current_model}")
@@ -238,7 +238,7 @@ defmodule MCPChat.CLI.Commands.LLM do
     end
   end
 
-  defp show_unload_usage_and_models() do
+  defp show_unload_usage_and_models do
     show_error("Usage: /unloadmodel <model-id>")
 
     if local_model_support_available?() do
@@ -248,7 +248,7 @@ defmodule MCPChat.CLI.Commands.LLM do
     end
   end
 
-  defp display_loaded_models() do
+  defp display_loaded_models do
     models = MCPChat.LLM.ExLLMAdapter.list_loaded_models()
 
     if Enum.empty?(models) do
@@ -279,7 +279,7 @@ defmodule MCPChat.CLI.Commands.LLM do
     end
   end
 
-  defp show_acceleration_info() do
+  defp show_acceleration_info do
     info = MCPChat.LLM.ExLLMAdapter.acceleration_info()
 
     MCPChat.CLI.Renderer.show_text("## Hardware Acceleration Info\n")
@@ -425,7 +425,7 @@ defmodule MCPChat.CLI.Commands.LLM do
     end)
   end
 
-  defp fetch_and_display_local_models() do
+  defp fetch_and_display_local_models do
     if local_model_support_available?() do
       fetch_and_display_available_models()
     else
@@ -433,7 +433,7 @@ defmodule MCPChat.CLI.Commands.LLM do
     end
   end
 
-  defp show_local_model_unavailable_message() do
+  defp show_local_model_unavailable_message do
     show_info("\nLocal model support is not available.")
     show_info("To enable local models:")
     show_info("  1. Add Bumblebee and EXLA/EMLX dependencies to your mix.exs")
@@ -441,7 +441,7 @@ defmodule MCPChat.CLI.Commands.LLM do
     show_info("  3. Rebuild the application")
   end
 
-  defp fetch_and_display_available_models() do
+  defp fetch_and_display_available_models do
     case MCPChat.LLM.ExLLMAdapter.list_models(provider: :bumblebee) do
       {:ok, models} ->
         display_available_models(models)

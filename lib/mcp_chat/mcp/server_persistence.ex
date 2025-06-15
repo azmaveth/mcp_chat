@@ -139,7 +139,7 @@ defmodule MCPChat.MCP.ServerPersistence do
   @doc """
   Get the path to the saved servers file.
   """
-  def saved_servers_file() do
+  def saved_servers_file do
     Path.join(MCPChat.Config.config_dir(), "saved_servers.json")
   end
 

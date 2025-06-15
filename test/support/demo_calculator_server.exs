@@ -265,7 +265,7 @@ defmodule DemoCalculatorServer do
     }
   end
 
-  defp read_constants_resource() do
+  defp read_constants_resource do
     Jason.encode!(%{
       "pi" => :math.pi(),
       "e" => :math.exp(1),
@@ -274,7 +274,7 @@ defmodule DemoCalculatorServer do
     })
   end
 
-  defp read_history_resource() do
+  defp read_history_resource do
     # For testing, return a static history
     Jason.encode!(%{
       "history" => [

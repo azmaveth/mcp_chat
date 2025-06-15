@@ -207,7 +207,7 @@ defmodule MCPChat.Context do
     end
   end
 
-  defp default_summary_prompt() do
+  defp default_summary_prompt do
     """
     The conversation history is being truncated.
     Previous context has been omitted to stay within token limits.

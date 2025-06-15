@@ -101,7 +101,7 @@ defmodule MCPChat.Memory.SessionMemoryAdapter do
     :"message_store_#{session_id}"
   end
 
-  defp get_session_memory_limit() do
+  defp get_session_memory_limit do
     case MCPChat.Config.get([:memory, :session_cache_size]) do
       {:ok, limit} -> limit
       # Default to keeping 20 recent messages in session

@@ -712,7 +712,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
 
   # Helper Functions
 
-  defp check_environment() do
+  defp check_environment do
     with :ok <- check_ollama(),
          :ok <- check_python(),
          :ok <- check_disk_space() do
@@ -722,7 +722,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
     end
   end
 
-  defp check_ollama() do
+  defp check_ollama do
     case HTTPoison.get("#{@ollama_url}/api/tags") do
       {:ok, %{status_code: 200, body: body}} ->
         case Jason.decode(body) do
@@ -738,14 +738,14 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
     end
   end
 
-  defp check_python() do
+  defp check_python do
     case System.cmd("python3", ["--version"]) do
       {_, 0} -> :ok
       _ -> {:error, "Python 3 is not available"}
     end
   end
 
-  defp check_disk_space() do
+  defp check_disk_space do
     # Ensure we have space for test files
     tmp_dir = System.tmp_dir!()
 
@@ -755,7 +755,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
     end
   end
 
-  defp setup_test_config() do
+  defp setup_test_config do
     config = %{
       "llm" => %{
         "default" => "ollama",
@@ -769,7 +769,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
     MCPChat.Config.merge_config(config)
   end
 
-  defp cleanup_test_state() do
+  defp cleanup_test_state do
     MCPChat.Session.clear_session()
     MCPChat.MCP.ServerManager.stop_all_servers()
 

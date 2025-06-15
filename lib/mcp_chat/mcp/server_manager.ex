@@ -15,7 +15,7 @@ defmodule MCPChat.MCP.ServerManager do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  def start_configured_servers() do
+  def start_configured_servers do
     GenServer.call(__MODULE__, :start_configured_servers)
   end
 
@@ -27,11 +27,11 @@ defmodule MCPChat.MCP.ServerManager do
     GenServer.call(__MODULE__, {:stop_server, name})
   end
 
-  def list_servers() do
+  def list_servers do
     GenServer.call(__MODULE__, :list_servers)
   end
 
-  def list_servers_with_status() do
+  def list_servers_with_status do
     GenServer.call(__MODULE__, :list_servers_with_status)
   end
 
@@ -39,7 +39,7 @@ defmodule MCPChat.MCP.ServerManager do
     GenServer.call(__MODULE__, {:get_server, name})
   end
 
-  def list_all_tools() do
+  def list_all_tools do
     GenServer.call(__MODULE__, :list_all_tools)
   end
 
@@ -47,7 +47,7 @@ defmodule MCPChat.MCP.ServerManager do
     GenServer.call(__MODULE__, {:call_tool, server_name, tool_name, arguments})
   end
 
-  def list_all_resources() do
+  def list_all_resources do
     GenServer.call(__MODULE__, :list_all_resources)
   end
 
@@ -55,7 +55,7 @@ defmodule MCPChat.MCP.ServerManager do
     GenServer.call(__MODULE__, {:read_resource, server_name, uri})
   end
 
-  def list_all_prompts() do
+  def list_all_prompts do
     GenServer.call(__MODULE__, :list_all_prompts)
   end
 

@@ -25,7 +25,7 @@ defmodule MCPChat.UI.TUIManager do
   @doc """
   Show progress display.
   """
-  def show_progress() do
+  def show_progress do
     GenServer.cast(__MODULE__, :show_progress)
   end
 
@@ -39,28 +39,28 @@ defmodule MCPChat.UI.TUIManager do
   @doc """
   Show both displays.
   """
-  def show_both() do
+  def show_both do
     GenServer.cast(__MODULE__, :show_both)
   end
 
   @doc """
   Hide all displays.
   """
-  def hide_all() do
+  def hide_all do
     GenServer.cast(__MODULE__, :hide_all)
   end
 
   @doc """
   Toggle between display modes.
   """
-  def toggle_display() do
+  def toggle_display do
     GenServer.cast(__MODULE__, :toggle_display)
   end
 
   @doc """
   Get current display status.
   """
-  def status() do
+  def status do
     GenServer.call(__MODULE__, :status)
   end
 
@@ -187,22 +187,22 @@ defmodule MCPChat.UI.TUIManager do
     end
   end
 
-  defp show_both_displays() do
+  defp show_both_displays do
     ProgressDisplay.show()
     ResourceCacheDisplay.show()
   end
 
-  defp switch_to_cache_only() do
+  defp switch_to_cache_only do
     ProgressDisplay.hide()
     ResourceCacheDisplay.show()
   end
 
-  defp switch_to_progress_only() do
+  defp switch_to_progress_only do
     ResourceCacheDisplay.hide()
     ProgressDisplay.show()
   end
 
-  defp hide_all_displays() do
+  defp hide_all_displays do
     ProgressDisplay.hide()
     ResourceCacheDisplay.hide()
   end

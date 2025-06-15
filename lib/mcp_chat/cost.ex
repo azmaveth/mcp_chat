@@ -155,7 +155,7 @@ defmodule MCPChat.Cost do
   @doc """
   Get a summary of available models and their pricing.
   """
-  def list_pricing() do
+  def list_pricing do
     for {backend, models} <- @pricing,
         {model, prices} <- models do
       %{

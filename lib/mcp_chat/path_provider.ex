@@ -28,7 +28,7 @@ defmodule MCPChat.PathProvider do
     @behaviour MCPChat.PathProvider
 
     @impl true
-    def config_dir() do
+    def config_dir do
       Path.expand("~/.config/mcp_chat")
     end
 
@@ -69,7 +69,7 @@ defmodule MCPChat.PathProvider do
     end
 
     @impl true
-    def get_all_paths() do
+    def get_all_paths do
       %{
         config_dir: config_dir(),
         config_file: get_path(:config_file),

@@ -437,7 +437,7 @@ defmodule MCPChat.Context.AtSymbolResolver do
     end
   end
 
-  defp get_available_resources() do
+  defp get_available_resources do
     try do
       ServerManager.list_all_resources()
       |> Enum.flat_map(fn {_server_name, resources} ->
@@ -457,7 +457,7 @@ defmodule MCPChat.Context.AtSymbolResolver do
     end
   end
 
-  defp get_available_prompts() do
+  defp get_available_prompts do
     try do
       ServerManager.list_all_prompts()
       |> Enum.flat_map(fn {_server_name, prompts} ->
@@ -475,7 +475,7 @@ defmodule MCPChat.Context.AtSymbolResolver do
     end
   end
 
-  defp get_available_tools() do
+  defp get_available_tools do
     try do
       ServerManager.list_all_tools()
       |> Enum.flat_map(fn {_server_name, tools} ->

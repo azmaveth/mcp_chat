@@ -56,14 +56,14 @@ defmodule MCPChat.MCP.ResourceCache do
   @doc """
   Clear the entire cache.
   """
-  def clear_all() do
+  def clear_all do
     GenServer.cast(__MODULE__, :clear_all)
   end
 
   @doc """
   Get cache statistics.
   """
-  def get_stats() do
+  def get_stats do
     try do
       [{_, stats}] = :ets.lookup(@stats_table, :global)
       stats
@@ -83,7 +83,7 @@ defmodule MCPChat.MCP.ResourceCache do
   @doc """
   List all cached resources.
   """
-  def list_resources() do
+  def list_resources do
     try do
       :ets.tab2list(@table_name)
       |> Enum.map(fn {{server, uri}, resource} ->
@@ -436,7 +436,7 @@ defmodule MCPChat.MCP.ResourceCache do
     end
   end
 
-  defp update_cache_size() do
+  defp update_cache_size do
     # Calculate total size
     total_size =
       :ets.foldl(
@@ -461,7 +461,7 @@ defmodule MCPChat.MCP.ResourceCache do
     :ets.insert(@stats_table, {:global, new_stats})
   end
 
-  defp update_cleanup_time() do
+  defp update_cleanup_time do
     [{_, stats}] = :ets.lookup(@stats_table, :global)
     :ets.insert(@stats_table, {:global, %{stats | last_cleanup: DateTime.utc_now()}})
   end
@@ -484,7 +484,7 @@ defmodule MCPChat.MCP.ResourceCache do
     end)
   end
 
-  defp get_entries_sorted_by_access() do
+  defp get_entries_sorted_by_access do
     :ets.tab2list(@table_name)
     |> Enum.sort_by(fn {_, resource} -> resource.last_accessed end)
   end

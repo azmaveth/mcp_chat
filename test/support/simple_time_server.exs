@@ -9,7 +9,7 @@ defmodule SimpleMCPServer do
   Implements basic JSON-RPC 2.0 protocol over stdio.
   """
 
-  def start() do
+  def start do
     # Start receiving messages
     loop(%{initialized: false})
   end
@@ -30,7 +30,7 @@ defmodule SimpleMCPServer do
     end
   end
 
-  defp read_message() do
+  defp read_message do
     case IO.gets("") do
       :eof ->
         :eof

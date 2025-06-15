@@ -10,7 +10,7 @@ defmodule MCPChat.CLI.Chat do
   require Logger
   # alias MCPChat.LLM
 
-  def start() do
+  def start do
     start([])
   end
 

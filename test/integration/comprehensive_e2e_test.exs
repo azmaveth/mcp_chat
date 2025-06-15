@@ -803,7 +803,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
 
   # Helper Functions
 
-  defp check_ollama() do
+  defp check_ollama do
     case HTTPoison.get("#{@ollama_url}/api/tags") do
       {:ok, %{status_code: 200, body: body}} ->
         case Jason.decode(body) do
@@ -826,7 +826,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
     :ignore
   end
 
-  defp setup_test_config() do
+  defp setup_test_config do
     # Set up test configuration
     config = %{
       "llm" => %{
@@ -844,12 +844,12 @@ defmodule MCPChat.ComprehensiveE2ETest do
     MCPChat.Config.merge_config(config)
   end
 
-  defp reset_config() do
+  defp reset_config do
     # Reset to default configuration
     MCPChat.Config.reload()
   end
 
-  defp start_demo_servers() do
+  defp start_demo_servers do
     # Check if Python is available
     case System.cmd("python3", ["--version"]) do
       {_, 0} ->
@@ -868,7 +868,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
     :ok
   end
 
-  defp clean_test_files() do
+  defp clean_test_files do
     # Clean up any test files in temp directory
     test_files = Path.wildcard(Path.join(System.tmp_dir!(), "test_*"))
     Enum.each(test_files, &File.rm/1)
@@ -897,7 +897,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
     {:ok, config}
   end
 
-  defp list_ollama_models() do
+  defp list_ollama_models do
     url = "#{@ollama_url}/api/tags"
 
     case HTTPoison.get(url) do
@@ -951,7 +951,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
     end
   end
 
-  defp get_current_llm_client() do
+  defp get_current_llm_client do
     config = MCPChat.Config.get_llm_config()
     {:ok, client} = MCPChat.LLM.ExLLMAdapter.init(config)
     client

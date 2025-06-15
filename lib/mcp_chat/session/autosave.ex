@@ -55,21 +55,21 @@ defmodule MCPChat.Session.Autosave do
   @doc """
   Trigger an immediate save (debounced).
   """
-  def trigger_save() do
+  def trigger_save do
     GenServer.cast(__MODULE__, :trigger_save)
   end
 
   @doc """
   Force an immediate save (bypasses debouncing).
   """
-  def force_save() do
+  def force_save do
     GenServer.call(__MODULE__, :force_save)
   end
 
   @doc """
   Get autosave statistics.
   """
-  def get_stats() do
+  def get_stats do
     GenServer.call(__MODULE__, :get_stats)
   end
 

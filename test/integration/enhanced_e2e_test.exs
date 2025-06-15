@@ -527,7 +527,7 @@ defmodule MCPChat.EnhancedE2ETest do
 
   # Helper Functions
 
-  defp check_and_configure_ollama() do
+  defp check_and_configure_ollama do
     # Configure Ollama
     config = %{
       "provider" => "ollama",
@@ -618,7 +618,7 @@ defmodule MCPChat.EnhancedE2ETest do
     {:ok, %{content: "Streamed response", finish_reason: "stop"}}
   end
 
-  defp list_ollama_models() do
+  defp list_ollama_models do
     # Use ExLLM directly to list models with Env config provider
     case ExLLM.list_models(:ollama, config_provider: ExLLM.ConfigProvider.Env) do
       {:ok, models} ->
@@ -630,7 +630,7 @@ defmodule MCPChat.EnhancedE2ETest do
     end
   end
 
-  defp start_demo_servers() do
+  defp start_demo_servers do
     # No need to start external servers - we'll use stdio-based Elixir servers
     # that are started on demand when connecting
     {:ok, []}
@@ -655,7 +655,7 @@ defmodule MCPChat.EnhancedE2ETest do
     MCPChat.MCP.ServerManager.start_server(server_config)
   end
 
-  defp time_server_config() do
+  defp time_server_config do
     %{
       "command" => "elixir",
       "args" => [Path.expand("../support/demo_time_server_stdio.exs", __DIR__)],
@@ -663,7 +663,7 @@ defmodule MCPChat.EnhancedE2ETest do
     }
   end
 
-  defp calculator_server_config() do
+  defp calculator_server_config do
     %{
       "command" => "elixir",
       "args" => [Path.expand("../support/demo_calculator_server.exs", __DIR__)],
@@ -671,7 +671,7 @@ defmodule MCPChat.EnhancedE2ETest do
     }
   end
 
-  defp data_server_config() do
+  defp data_server_config do
     # For now, use time server as a data server substitute
     %{
       "command" => "elixir",
@@ -680,7 +680,7 @@ defmodule MCPChat.EnhancedE2ETest do
     }
   end
 
-  defp dynamic_server_config() do
+  defp dynamic_server_config do
     %{
       "command" => "elixir",
       "args" => [Path.expand("../support/demo_dynamic_server.exs", __DIR__)],
@@ -822,7 +822,7 @@ defmodule MCPChat.EnhancedE2ETest do
     end
   end
 
-  defp cleanup_test_environment() do
+  defp cleanup_test_environment do
     # Clean up any test files
     test_sessions_dir = Path.expand("~/.config/mcp_chat/test_sessions")
     if File.exists?(test_sessions_dir), do: File.rm_rf(test_sessions_dir)
@@ -833,7 +833,7 @@ defmodule MCPChat.EnhancedE2ETest do
     Application.delete_env(:mcp_chat, :enable_notifications)
   end
 
-  defp clean_test_files() do
+  defp clean_test_files do
     # Clean up any temporary files created during tests
     test_files = Path.wildcard("/tmp/test_export*")
     Enum.each(test_files, &File.rm/1)

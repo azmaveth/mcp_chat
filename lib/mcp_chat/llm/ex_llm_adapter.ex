@@ -113,13 +113,13 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   end
 
   @impl MCPChat.LLM.Adapter
-  def default_model() do
+  def default_model do
     # Return a reasonable default
     "claude-sonnet-4-20250514"
   end
 
   @impl MCPChat.LLM.Adapter
-  def list_models() do
+  def list_models do
     # Try to list models from configured providers
     providers = [:anthropic, :openai, :ollama, :bedrock, :gemini, :bumblebee]
     options = [{:config_provider, ExLLM.ConfigProvider.Env}]
@@ -265,7 +265,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   List loaded models.
   Delegates to ExLLM.Local.ModelLoader if available.
   """
-  def list_loaded_models() do
+  def list_loaded_models do
     if model_loader_available?() do
       ExLLM.Local.ModelLoader.list_loaded_models()
     else
@@ -277,7 +277,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   Get hardware acceleration info.
   Delegates to ExLLM.Local.EXLAConfig if available.
   """
-  def acceleration_info() do
+  def acceleration_info do
     if Code.ensure_loaded?(ExLLM.Local.EXLAConfig) do
       ExLLM.Local.EXLAConfig.acceleration_info()
     else
@@ -332,7 +332,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   @doc """
   List all recoverable streams.
   """
-  def list_recoverable_streams() do
+  def list_recoverable_streams do
     ExLLM.StreamRecovery.list_recoverable_streams()
   end
 
@@ -343,7 +343,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     ExLLM.StreamRecovery.get_partial_response(recovery_id)
   end
 
-  defp get_circuit_breaker() do
+  defp get_circuit_breaker do
     # Get the circuit breaker for LLM calls
     case Process.whereis(MCPChat.CircuitBreaker.LLM) do
       nil ->

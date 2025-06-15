@@ -26,7 +26,7 @@ defmodule MCPChat.Alias.ExAliasAdapter do
     GenServer.call(__MODULE__, {:get_alias, name})
   end
 
-  def list_aliases() do
+  def list_aliases do
     GenServer.call(__MODULE__, :list_aliases)
   end
 
@@ -42,11 +42,11 @@ defmodule MCPChat.Alias.ExAliasAdapter do
     end
   end
 
-  def save() do
+  def save do
     GenServer.call(__MODULE__, :save)
   end
 
-  def load() do
+  def load do
     GenServer.call(__MODULE__, :load)
   end
 
@@ -119,7 +119,7 @@ defmodule MCPChat.Alias.ExAliasAdapter do
 
   # Private helper functions
 
-  defp load_mcp_chat_aliases() do
+  defp load_mcp_chat_aliases do
     case load_from_mcp_chat_format() do
       {:ok, aliases} ->
         Enum.each(aliases, fn {name, commands} ->
@@ -153,7 +153,7 @@ defmodule MCPChat.Alias.ExAliasAdapter do
     end
   end
 
-  defp load_from_mcp_chat_format() do
+  defp load_from_mcp_chat_format do
     file_path = get_mcp_chat_alias_file()
 
     case File.read(file_path) do
@@ -188,7 +188,7 @@ defmodule MCPChat.Alias.ExAliasAdapter do
     {:ok, aliases}
   end
 
-  defp get_mcp_chat_alias_file() do
+  defp get_mcp_chat_alias_file do
     # Use the same path that MCPChat.Alias.Core would use
     Path.expand("~/.config/mcp_chat/aliases.json")
   end

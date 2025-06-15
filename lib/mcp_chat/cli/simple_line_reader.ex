@@ -84,7 +84,7 @@ defmodule MCPChat.CLI.SimpleLineReader do
     end
   end
 
-  defp load_history() do
+  defp load_history do
     path = Path.expand(@history_file)
 
     case File.read(path) do

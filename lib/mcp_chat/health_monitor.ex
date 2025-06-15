@@ -39,14 +39,14 @@ defmodule MCPChat.HealthMonitor do
   @doc """
   Gets current health status of all monitored processes.
   """
-  def get_health_status() do
+  def get_health_status do
     GenServer.call(__MODULE__, :get_health_status)
   end
 
   @doc """
   Performs an immediate health check.
   """
-  def check_now() do
+  def check_now do
     GenServer.call(__MODULE__, :check_now)
   end
 

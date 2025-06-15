@@ -143,7 +143,7 @@ defmodule MCPChat.CLI.LineEditor do
     {:ok, state.buffer}
   end
 
-  defp handle_ctrl_c() do
+  defp handle_ctrl_c do
     IO.write("^C\n")
     {:error, :interrupted}
   end
@@ -270,7 +270,7 @@ defmodule MCPChat.CLI.LineEditor do
     end
   end
 
-  defp read_key() do
+  defp read_key do
     case IO.getn("", 1) do
       :eof -> {:error, :eof}
       {:error, reason} -> {:error, reason}
@@ -526,7 +526,7 @@ defmodule MCPChat.CLI.LineEditor do
     end
   end
 
-  defp clear_screen() do
+  defp clear_screen do
     IO.write("\e[2J\e[H")
   end
 
@@ -540,7 +540,7 @@ defmodule MCPChat.CLI.LineEditor do
     end
   end
 
-  defp load_history() do
+  defp load_history do
     path = Path.expand(@history_file)
 
     case File.read(path) do

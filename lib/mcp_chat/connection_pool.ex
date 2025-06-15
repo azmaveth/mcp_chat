@@ -260,7 +260,7 @@ defmodule MCPChat.ConnectionPool do
 
   # Private Functions
 
-  defp create_connection() do
+  defp create_connection do
     # This is a placeholder - actual implementation would create
     # HTTP client connections (e.g., Mint, Finch, etc.)
     {:ok, make_ref()}

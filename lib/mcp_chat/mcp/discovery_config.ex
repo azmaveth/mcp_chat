@@ -93,7 +93,7 @@ defmodule MCPChat.MCP.DiscoveryConfig do
   @doc """
   Get the path to the known servers configuration file.
   """
-  def config_file_path() do
+  def config_file_path do
     Application.app_dir(:mcp_chat, ["priv", "known_servers.json"])
   end
 end
