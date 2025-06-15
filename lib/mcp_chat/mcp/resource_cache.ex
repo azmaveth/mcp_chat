@@ -64,34 +64,30 @@ defmodule MCPChat.MCP.ResourceCache do
   Get cache statistics.
   """
   def get_stats do
-    try do
-      [{_, stats}] = :ets.lookup(@stats_table, :global)
-      stats
-    rescue
-      _ ->
-        %{
-          total_resources: 0,
-          total_size: 0,
-          hit_rate: 0.0,
-          avg_response_time: 0,
-          memory_usage: 0,
-          last_cleanup: nil
-        }
-    end
+    [{_, stats}] = :ets.lookup(@stats_table, :global)
+    stats
+  rescue
+    _ ->
+      %{
+        total_resources: 0,
+        total_size: 0,
+        hit_rate: 0.0,
+        avg_response_time: 0,
+        memory_usage: 0,
+        last_cleanup: nil
+      }
   end
 
   @doc """
   List all cached resources.
   """
   def list_resources do
-    try do
-      :ets.tab2list(@table_name)
-      |> Enum.map(fn {{server, uri}, resource} ->
-        Map.merge(resource, %{server_name: server, uri: uri})
-      end)
-    rescue
-      _ -> []
-    end
+    :ets.tab2list(@table_name)
+    |> Enum.map(fn {{server, uri}, resource} ->
+      Map.merge(resource, %{server_name: server, uri: uri})
+    end)
+  rescue
+    _ -> []
   end
 
   # Server Callbacks
@@ -177,7 +173,18 @@ defmodule MCPChat.MCP.ResourceCache do
 
     update_cache_size()
 
-    {:noreply, state}
+    # Unsubscribe from this specific resource
+    key = {server_name, uri}
+
+    new_state =
+      if Map.has_key?(state.subscriptions, key) do
+        unsubscribe_single_resource(server_name, uri)
+        %{state | subscriptions: Map.delete(state.subscriptions, key)}
+      else
+        state
+      end
+
+    {:noreply, new_state}
   end
 
   @impl true
@@ -194,6 +201,7 @@ defmodule MCPChat.MCP.ResourceCache do
     update_cache_size()
 
     # Unsubscribe from all resources for this server
+    unsubscribe_server_resources(state, server_name)
     new_subscriptions = Map.reject(state.subscriptions, fn {{srv, _}, _} -> srv == server_name end)
 
     {:noreply, %{state | subscriptions: new_subscriptions}}
@@ -227,10 +235,7 @@ defmodule MCPChat.MCP.ResourceCache do
     )
 
     # Unsubscribe from all resources
-    Enum.each(state.subscriptions, fn {_, sub_ref} ->
-      # TODO: Implement unsubscribe when ex_mcp supports it
-      _ = sub_ref
-    end)
+    unsubscribe_all_resources(state)
 
     {:noreply, %{state | subscriptions: %{}}}
   end
@@ -365,6 +370,40 @@ defmodule MCPChat.MCP.ResourceCache do
       {:error, reason} ->
         Logger.warning("Failed to subscribe to resource: #{inspect(reason)}")
         state
+    end
+  end
+
+  defp unsubscribe_all_resources(state) do
+    if map_size(state.subscriptions) > 0 do
+      Logger.debug("Unsubscribing from #{map_size(state.subscriptions)} resources")
+
+      Enum.each(state.subscriptions, fn {{server_name, uri}, _subscription_ref} ->
+        unsubscribe_single_resource(server_name, uri)
+      end)
+    end
+  end
+
+  defp unsubscribe_server_resources(state, server_name) do
+    state.subscriptions
+    |> Enum.filter(fn {{srv, _}, _} -> srv == server_name end)
+    |> Enum.each(fn {{_srv, uri}, _} ->
+      unsubscribe_single_resource(server_name, uri)
+    end)
+  end
+
+  defp unsubscribe_single_resource(server_name, uri) do
+    case ServerManager.get_server(server_name) do
+      {:ok, client} ->
+        case Client.unsubscribe_resource(client, uri) do
+          {:ok, _} ->
+            Logger.debug("Unsubscribed from resource: #{server_name} - #{uri}")
+
+          {:error, reason} ->
+            Logger.warning("Failed to unsubscribe from #{server_name} - #{uri}: #{inspect(reason)}")
+        end
+
+      _ ->
+        Logger.debug("Server #{server_name} not available for unsubscribe")
     end
   end
 

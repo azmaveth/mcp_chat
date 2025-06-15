@@ -17,7 +17,7 @@ defmodule MCPChat.MCP.ConcurrentToolExecutor do
   """
 
   require Logger
-  alias MCPChat.MCP.{ServerManager, ProgressTracker}
+  alias MCPChat.MCP.{ProgressTracker, ServerManager}
 
   defmodule ToolExecution do
     @moduledoc false

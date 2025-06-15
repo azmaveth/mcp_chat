@@ -1,6 +1,6 @@
-defmodule MCPChat.MCP.ServerManagerTest do
+defmodule ServerManagerTest do
   use ExUnit.Case, async: false
-
+  alias ServerManagerTest
   # We'll create simpler tests that don't require mocking the entire system
   # Since ServerManager depends heavily on the application being started,
   # we'll test the core logic without full integration

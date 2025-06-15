@@ -11,6 +11,11 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
   @test_timeout 30_000
   @demo_servers_path Path.expand("../../examples/demo_servers", __DIR__)
 
+  alias ExLLMAdapter
+  alias NotificationRegistry
+  alias ProgressTracker
+  alias ServerManager
+
   setup_all do
     case check_ollama() do
       :ok ->
@@ -27,7 +32,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
   setup do
     # Reset state for each test
     MCPChat.Session.clear_session()
-    MCPChat.MCP.ServerManager.stop_all_servers()
+    ServerManager.stop_all_servers()
     :ok
   end
 
@@ -42,7 +47,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
         "stream" => true
       }
 
-      {:ok, client} = MCPChat.LLM.ExLLMAdapter.init(config)
+      {:ok, client} = ExLLMAdapter.init(config)
 
       # Create a prompt that generates longer output
       messages = [
@@ -53,7 +58,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       chunks = []
       start_time = System.monotonic_time(:millisecond)
 
-      {:ok, stream} = MCPChat.LLM.ExLLMAdapter.stream(client, messages, %{})
+      {:ok, stream} = ExLLMAdapter.stream(client, messages, %{})
 
       chunks =
         stream
@@ -91,13 +96,13 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
         "stream" => true
       }
 
-      {:ok, client} = MCPChat.LLM.ExLLMAdapter.init(config)
+      {:ok, client} = ExLLMAdapter.init(config)
 
       messages = [
         %{role: "user", content: "Count from 1 to 100 slowly"}
       ]
 
-      {:ok, stream} = MCPChat.LLM.ExLLMAdapter.stream(client, messages, %{})
+      {:ok, stream} = ExLLMAdapter.stream(client, messages, %{})
 
       # Collect only first few chunks then stop
       partial_chunks =
@@ -123,7 +128,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
         "stream" => true
       }
 
-      {:ok, client} = MCPChat.LLM.ExLLMAdapter.init(config)
+      {:ok, client} = ExLLMAdapter.init(config)
 
       # Clear session
       MCPChat.Session.clear_session()
@@ -135,7 +140,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       # Add user message
       MCPChat.Session.add_message("user", messages |> hd() |> Map.get(:content))
 
-      {:ok, stream} = MCPChat.LLM.ExLLMAdapter.stream(client, messages, %{})
+      {:ok, stream} = ExLLMAdapter.stream(client, messages, %{})
 
       # Collect all chunks and simulate adding to session
       chunks = Enum.to_list(stream)
@@ -173,7 +178,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       task =
         Task.async(fn ->
           # Generate large dataset
-          MCPChat.MCP.ServerManager.call_tool(
+          ServerManager.call_tool(
             "data",
             "generate_users",
             %{count: 100}
@@ -185,7 +190,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
         Enum.each([0.1, 0.3, 0.5, 0.7, 0.9, 1.0], fn progress ->
           Process.sleep(100)
 
-          MCPChat.MCP.ProgressTracker.update_progress(
+          ProgressTracker.update_progress(
             progress_token,
             progress,
             "Generating users: #{round(progress * 100)}%"
@@ -200,7 +205,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
 
       # Progress should be completed
       Process.sleep(200)
-      progress = MCPChat.MCP.ProgressTracker.get_progress(progress_token)
+      progress = ProgressTracker.get_progress(progress_token)
       # Completed progress is removed
       assert progress == nil
     end
@@ -232,13 +237,13 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
             # Simulate different operations
             cond do
               String.contains?(token, "op-1") ->
-                MCPChat.MCP.ServerManager.call_tool("calc", "calculate", %{expression: "sum(1..1_000)"})
+                ServerManager.call_tool("calc", "calculate", %{expression: "sum(1..1_000)"})
 
               String.contains?(token, "op-2") ->
-                MCPChat.MCP.ServerManager.call_tool("data", "generate_products", %{count: 50})
+                ServerManager.call_tool("data", "generate_products", %{count: 50})
 
               true ->
-                MCPChat.MCP.ServerManager.call_tool("data", "generate_users", %{count: 30})
+                ServerManager.call_tool("data", "generate_users", %{count: 30})
             end
           end)
         end)
@@ -248,7 +253,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
         spawn(fn ->
           Enum.each([0.2, 0.5, 0.8, 1.0], fn progress ->
             Process.sleep(50)
-            MCPChat.MCP.ProgressTracker.update_progress(token, progress, "Processing...")
+            ProgressTracker.update_progress(token, progress, "Processing...")
           end)
         end)
       end)
@@ -265,7 +270,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       Process.sleep(300)
 
       Enum.each(tokens, fn token ->
-        assert MCPChat.MCP.ProgressTracker.get_progress(token) == nil
+        assert ProgressTracker.get_progress(token) == nil
       end)
     end
   end
@@ -277,9 +282,9 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       test_pid = self()
       handler_ref = make_ref()
 
-      MCPChat.MCP.NotificationRegistry.start_link()
+      NotificationRegistry.start_link()
 
-      MCPChat.MCP.NotificationRegistry.register_handler(
+      NotificationRegistry.register_handler(
         :tool_list_changed,
         fn notification ->
           send(test_pid, {:tool_change, handler_ref, notification})
@@ -296,7 +301,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       Process.sleep(1_000)
 
       # Simulate tool list change (in real scenario, server would notify)
-      MCPChat.MCP.NotificationRegistry.notify(:tool_list_changed, %{
+      NotificationRegistry.notify(:tool_list_changed, %{
         server: "calc",
         timestamp: DateTime.utc_now(),
         change_type: :added,
@@ -324,7 +329,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       Process.sleep(2000)
 
       # Get initial resource list
-      {:ok, initial_resources} = MCPChat.MCP.ServerManager.list_resources("resources")
+      {:ok, initial_resources} = ServerManager.list_resources("resources")
       initial_count = length(initial_resources)
 
       # Create a new file (simulating resource change)
@@ -332,7 +337,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       File.write!(test_file, "New resource content")
 
       # Simulate resource change notification
-      MCPChat.MCP.NotificationRegistry.notify(:resource_list_changed, %{
+      NotificationRegistry.notify(:resource_list_changed, %{
         server: "resources",
         timestamp: DateTime.utc_now()
       })
@@ -340,7 +345,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       # In a real implementation, the client would auto-refresh
       # For now, manually refresh
       Process.sleep(500)
-      {:ok, updated_resources} = MCPChat.MCP.ServerManager.list_resources("resources")
+      {:ok, updated_resources} = ServerManager.list_resources("resources")
 
       # Clean up
       File.rm!(test_file)
@@ -361,7 +366,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
         "stream" => true
       }
 
-      {:ok, client} = MCPChat.LLM.ExLLMAdapter.init(config)
+      {:ok, client} = ExLLMAdapter.init(config)
 
       # Start MCP servers
       {:ok, _} =
@@ -393,7 +398,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
         Enum.each(1..steps, fn i ->
           Process.sleep(50)
 
-          MCPChat.MCP.ProgressTracker.update_progress(
+          ProgressTracker.update_progress(
             progress_token,
             i / steps,
             "Calculating square of #{i}..."
@@ -405,7 +410,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       sum_of_squares = Enum.reduce(1..10, 0, fn i, acc -> acc + i * i end)
 
       {:ok, result} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "calc",
           "calculate",
           %{expression: "1^2 + 2^2 + 3^2 + 4^2 + 5^2 + 6^2 + 7^2 + 8^2 + 9^2 + 10^2"}
@@ -450,7 +455,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       notification_count = :counters.new(1, [])
       test_pid = self()
 
-      MCPChat.MCP.NotificationRegistry.register_handler(
+      NotificationRegistry.register_handler(
         # Listen to all notifications
         :all,
         fn _notification ->
@@ -462,7 +467,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       notification_task =
         Task.async(fn ->
           Enum.each(1..100, fn i ->
-            MCPChat.MCP.NotificationRegistry.notify(:resource_updated, %{
+            NotificationRegistry.notify(:resource_updated, %{
               server: "data",
               resource: "item_#{i}",
               timestamp: DateTime.utc_now()
@@ -482,7 +487,7 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
 
       # Call a tool
       {:ok, result} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "data",
           "generate_users",
           %{count: 5}
@@ -516,14 +521,14 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
         "model" => "test-model"
       }
 
-      {:ok, client} = MCPChat.LLM.ExLLMAdapter.init(config)
+      {:ok, client} = ExLLMAdapter.init(config)
 
       messages = [%{role: "user", content: "Hello"}]
 
       # First few attempts should try to connect
       results =
         Enum.map(1..5, fn _ ->
-          MCPChat.LLM.ExLLMAdapter.complete(client, messages, %{})
+          ExLLMAdapter.complete(client, messages, %{})
         end)
 
       # All should fail
@@ -546,22 +551,22 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
         "model" => @streaming_model
       }
 
-      {:ok, client} = MCPChat.LLM.ExLLMAdapter.init(config)
+      {:ok, client} = ExLLMAdapter.init(config)
       messages = [%{role: "user", content: "Hello"}]
 
       # Should work
-      {:ok, response1} = MCPChat.LLM.ExLLMAdapter.complete(client, messages, %{})
+      {:ok, response1} = ExLLMAdapter.complete(client, messages, %{})
       assert response1 != ""
 
       # Simulate temporary failure by using bad config
       bad_client = %{client | config: Map.put(client.config, "base_url", "http://localhost:99_999")}
 
       # This should fail
-      result = MCPChat.LLM.ExLLMAdapter.complete(bad_client, messages, %{})
+      result = ExLLMAdapter.complete(bad_client, messages, %{})
       assert match?({:error, _}, result)
 
       # Switch back to good config
-      {:ok, response2} = MCPChat.LLM.ExLLMAdapter.complete(client, messages, %{})
+      {:ok, response2} = ExLLMAdapter.complete(client, messages, %{})
       assert response2 != ""
 
       # Circuit should recover and allow calls
@@ -600,13 +605,13 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
 
   defp setup_test_environment do
     # Ensure progress tracker is started
-    unless Process.whereis(MCPChat.MCP.ProgressTracker) do
-      {:ok, _} = MCPChat.MCP.ProgressTracker.start_link([])
+    unless Process.whereis(ProgressTracker) do
+      {:ok, _} = ProgressTracker.start_link([])
     end
 
     # Ensure notification registry is started
-    unless Process.whereis(MCPChat.MCP.NotificationRegistry) do
-      {:ok, _} = MCPChat.MCP.NotificationRegistry.start_link()
+    unless Process.whereis(NotificationRegistry) do
+      {:ok, _} = NotificationRegistry.start_link()
     end
   end
 
@@ -617,6 +622,6 @@ defmodule MCPChat.RealtimeFeaturesE2ETest do
       "args" => tl(command)
     }
 
-    MCPChat.MCP.ServerManager.start_server(config)
+    ServerManager.start_server(config)
   end
 end

@@ -1,7 +1,9 @@
-defmodule MCPChat.Memory.MessageStoreTest do
+defmodule MessageStoreTest do
   use ExUnit.Case, async: true
 
-  alias MCPChat.Memory.MessageStore
+  alias MessageStore
+
+  alias MessageStoreTest
 
   setup do
     # Start a test message store

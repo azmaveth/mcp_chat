@@ -5,6 +5,10 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
   alias MCPChat.MCP.ParallelConnectionManager
   alias MCPChat.MCP.ParallelConnectionManager.ConnectionResult
 
+  alias MCPChat.MCP.LazyServerManager
+  alias MCPChat.MCP.ParallelConnectionManagerTest
+  alias ServerManager.Core
+
   describe "connect_servers_parallel/2" do
     test "connects multiple servers successfully" do
       servers = [
@@ -14,8 +18,8 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
       ]
 
       # Mock ServerManager.Core.start_server to return success
-      :meck.new(MCPChat.MCP.ServerManager.Core, [:non_strict])
-      :meck.expect(MCPChat.MCP.ServerManager.Core, :start_server, fn _name, _config -> {:ok, self()} end)
+      :meck.new(Core, [:non_strict])
+      :meck.expect(Core, :start_server, fn _name, _config -> {:ok, self()} end)
 
       # Mock GenServer.call to simulate successful connection
       :meck.new(GenServer, [:unstick, :passthrough])
@@ -45,7 +49,7 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
         assert "server2" in server_names
         assert "server3" in server_names
       after
-        :meck.unload(MCPChat.MCP.ServerManager.Core)
+        :meck.unload(Core)
         :meck.unload(GenServer)
       end
     end
@@ -58,9 +62,9 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
       ]
 
       # Mock with mixed success/failure
-      :meck.new(MCPChat.MCP.ServerManager.Core, [:non_strict])
+      :meck.new(Core, [:non_strict])
 
-      :meck.expect(MCPChat.MCP.ServerManager.Core, :start_server, fn
+      :meck.expect(Core, :start_server, fn
         "bad_server", _config -> {:error, :connection_failed}
         _name, _config -> {:ok, self()}
       end)
@@ -89,7 +93,7 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
         another_result = results_by_name["another_good"] |> List.first()
         assert another_result.status == :connected
       after
-        :meck.unload(MCPChat.MCP.ServerManager.Core)
+        :meck.unload(Core)
         :meck.unload(GenServer)
       end
     end
@@ -108,9 +112,9 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
       :ets.insert(concurrent_count, {:count, 0})
       :ets.insert(concurrent_count, {:max_seen, 0})
 
-      :meck.new(MCPChat.MCP.ServerManager.Core, [:non_strict])
+      :meck.new(Core, [:non_strict])
 
-      :meck.expect(MCPChat.MCP.ServerManager.Core, :start_server, fn _name, _config ->
+      :meck.expect(Core, :start_server, fn _name, _config ->
         # Increment counter
         current = :ets.update_counter(concurrent_count, :count, 1)
         max_seen = :ets.lookup_element(concurrent_count, :max_seen, 2)
@@ -145,7 +149,7 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
         assert max_concurrent <= 2
       after
         :ets.delete(concurrent_count)
-        :meck.unload(MCPChat.MCP.ServerManager.Core)
+        :meck.unload(Core)
         :meck.unload(GenServer)
       end
     end
@@ -162,8 +166,8 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
         send(self(), {:progress, update})
       end
 
-      :meck.new(MCPChat.MCP.ServerManager.Core, [:non_strict])
-      :meck.expect(MCPChat.MCP.ServerManager.Core, :start_server, fn _name, _config -> {:ok, self()} end)
+      :meck.new(Core, [:non_strict])
+      :meck.expect(Core, :start_server, fn _name, _config -> {:ok, self()} end)
 
       :meck.new(GenServer, [:unstick, :passthrough])
       :meck.expect(GenServer, :call, fn _pid, :get_info, _timeout -> {:ok, %{status: :connected}} end)
@@ -192,7 +196,7 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
         assert completed_msg.total == 2
         assert completed_msg.completed + completed_msg.failed == 2
       after
-        :meck.unload(MCPChat.MCP.ServerManager.Core)
+        :meck.unload(Core)
         :meck.unload(GenServer)
       end
     end
@@ -211,8 +215,8 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
 
       servers = [{"test_server", %{command: ["echo", "test"]}}]
 
-      :meck.new(MCPChat.MCP.ServerManager.Core, [:non_strict])
-      :meck.expect(MCPChat.MCP.ServerManager.Core, :start_server, fn _name, _config -> {:ok, self()} end)
+      :meck.new(Core, [:non_strict])
+      :meck.expect(Core, :start_server, fn _name, _config -> {:ok, self()} end)
 
       :meck.new(GenServer, [:unstick, :passthrough])
       :meck.expect(GenServer, :call, fn _pid, :get_info, _timeout -> {:ok, %{status: :connected}} end)
@@ -225,7 +229,7 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
         assert :meck.called(MCPChat.Config, :get, [[:startup, :parallel]])
       after
         :meck.unload(MCPChat.Config)
-        :meck.unload(MCPChat.MCP.ServerManager.Core)
+        :meck.unload(Core)
         :meck.unload(GenServer)
       end
     end
@@ -235,8 +239,8 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
     test "handles eager mode with parallel connections" do
       servers = [{"server1", %{command: ["echo", "1"]}}]
 
-      :meck.new(MCPChat.MCP.ServerManager.Core, [:non_strict])
-      :meck.expect(MCPChat.MCP.ServerManager.Core, :start_server, fn _name, _config -> {:ok, self()} end)
+      :meck.new(Core, [:non_strict])
+      :meck.expect(Core, :start_server, fn _name, _config -> {:ok, self()} end)
 
       :meck.new(GenServer, [:unstick, :passthrough])
       :meck.expect(GenServer, :call, fn _pid, :get_info, _timeout -> {:ok, %{status: :connected}} end)
@@ -245,7 +249,7 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
         assert {:ok, results} = ParallelConnectionManager.connect_with_mode(servers, :eager)
         assert length(results) == 1
       after
-        :meck.unload(MCPChat.MCP.ServerManager.Core)
+        :meck.unload(Core)
         :meck.unload(GenServer)
       end
     end
@@ -265,9 +269,9 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
     test "handles lazy mode preparation" do
       servers = [{"server1", %{command: ["echo", "1"]}}]
 
-      :meck.new(MCPChat.MCP.LazyServerManager, [:non_strict])
+      :meck.new(LazyServerManager, [:non_strict])
 
-      :meck.expect(MCPChat.MCP.LazyServerManager, :prepare_parallel_connections, fn _servers, _opts ->
+      :meck.expect(LazyServerManager, :prepare_parallel_connections, fn _servers, _opts ->
         {:ok, :prepared}
       end)
 
@@ -275,7 +279,7 @@ defmodule MCPChat.MCP.ParallelConnectionManagerTest do
         assert {:ok, results} = ParallelConnectionManager.connect_with_mode(servers, :lazy)
         assert results == []
       after
-        :meck.unload(MCPChat.MCP.LazyServerManager)
+        :meck.unload(LazyServerManager)
       end
     end
   end

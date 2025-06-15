@@ -118,13 +118,11 @@ defmodule DemoCalculatorServer do
 
   defp handle_calculate(%{"expression" => expr}) do
     # Simple expression evaluator for basic operations
-    try do
-      result = evaluate_expression(expr)
-      add_to_history(expr, result)
-      {:ok, %{"expression" => expr, "result" => result}}
-    rescue
-      _ -> {:error, "Invalid expression: #{expr}"}
-    end
+    result = evaluate_expression(expr)
+    add_to_history(expr, result)
+    {:ok, %{"expression" => expr, "result" => result}}
+  rescue
+    _ -> {:error, "Invalid expression: #{expr}"}
   end
 
   defp handle_factorial(server, %{"n" => n} = params) when is_integer(n) and n >= 0 do
@@ -183,11 +181,9 @@ defmodule DemoCalculatorServer do
   end
 
   defp parse_number(str) do
-    try do
-      String.to_float(str)
-    rescue
-      _ -> String.to_integer(str)
-    end
+    String.to_float(str)
+  rescue
+    _ -> String.to_integer(str)
   end
 
   defp apply_operation("+", a, b), do: a + b

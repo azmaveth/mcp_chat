@@ -14,7 +14,9 @@ defmodule MCPChat.EnhancedE2ETest do
   require Logger
   import MCPChat.TestConfig
   import MCPChat.MCPTestHelpers
-
+  alias AtSymbolResolver
+  alias NotificationRegistry
+  alias ServerManager
   # Configuration
   @ollama_url "http://localhost:11_434"
   # 2 minutes for complex operations
@@ -55,8 +57,8 @@ defmodule MCPChat.EnhancedE2ETest do
 
     # Reset MCP server connections by stopping each one
     try do
-      for server <- MCPChat.MCP.ServerManager.list_servers() do
-        MCPChat.MCP.ServerManager.stop_server(server.name)
+      for server <- ServerManager.list_servers() do
+        ServerManager.stop_server(server.name)
       end
     rescue
       # ignore if no servers are running
@@ -170,12 +172,12 @@ defmodule MCPChat.EnhancedE2ETest do
       # Use proper MCP architecture with test helpers
       with_mcp_server("time-server", time_server_config(), fn server_name ->
         # List available tools
-        {:ok, tools} = MCPChat.MCP.ServerManager.get_tools(server_name)
+        {:ok, tools} = ServerManager.get_tools(server_name)
         assert Enum.any?(tools, &(&1["name"] == "get_current_time"))
 
         # Execute tool
         {:ok, result} =
-          MCPChat.MCP.ServerManager.call_tool(
+          ServerManager.call_tool(
             server_name,
             "get_current_time",
             %{"timezone" => "UTC"}
@@ -202,14 +204,14 @@ defmodule MCPChat.EnhancedE2ETest do
 
       # Execute tools from both servers
       {:ok, time_result} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "time-server",
           "get_current_time",
           %{"timezone" => "UTC"}
         )
 
       {:ok, calc_result} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "calc-server",
           "calculate",
           %{"expression" => "365 * 24"}
@@ -241,12 +243,12 @@ defmodule MCPChat.EnhancedE2ETest do
       Process.sleep(1_000)
 
       # List resources
-      {:ok, resources} = MCPChat.MCP.ServerManager.get_resources("data-server")
+      {:ok, resources} = ServerManager.get_resources("data-server")
       assert length(resources) > 0
 
       # Read a resource
       resource_uri = Enum.at(resources, 0)["uri"]
-      {:ok, content} = MCPChat.MCP.ServerManager.read_resource("data-server", resource_uri)
+      {:ok, content} = ServerManager.read_resource("data-server", resource_uri)
 
       assert content != nil
 
@@ -274,12 +276,12 @@ defmodule MCPChat.EnhancedE2ETest do
       progress_updates = :ets.new(:progress_updates, [:set, :public])
 
       # Subscribe to progress notifications
-      MCPChat.MCP.NotificationRegistry.subscribe(self())
+      NotificationRegistry.subscribe(self())
 
       # Execute long-running calculation
       task =
         Task.async(fn ->
-          MCPChat.MCP.ServerManager.call_tool(
+          ServerManager.call_tool(
             "calc-server",
             "factorial",
             %{"n" => 20, "with_progress" => true}
@@ -313,15 +315,15 @@ defmodule MCPChat.EnhancedE2ETest do
       Process.sleep(1_000)
 
       # Subscribe to notifications
-      MCPChat.MCP.NotificationRegistry.subscribe(self())
+      NotificationRegistry.subscribe(self())
 
       # Get initial tools
-      {:ok, initial_tools} = MCPChat.MCP.ServerManager.get_tools("dynamic-server")
+      {:ok, initial_tools} = ServerManager.get_tools("dynamic-server")
       initial_count = length(initial_tools)
 
       # Trigger tool addition
       {:ok, _} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "dynamic-server",
           "add_tool",
           %{"name" => "new_tool"}
@@ -331,7 +333,7 @@ defmodule MCPChat.EnhancedE2ETest do
       assert_receive {:notification, :tools_changed, _}, 5_000
 
       # Verify tools updated
-      {:ok, updated_tools} = MCPChat.MCP.ServerManager.get_tools("dynamic-server")
+      {:ok, updated_tools} = ServerManager.get_tools("dynamic-server")
       assert length(updated_tools) == initial_count + 1
     end
   end
@@ -437,14 +439,14 @@ defmodule MCPChat.EnhancedE2ETest do
       Process.sleep(1_000)
 
       # Verify it works
-      {:ok, _tools} = MCPChat.MCP.ServerManager.get_tools("crash-test")
+      {:ok, _tools} = ServerManager.get_tools("crash-test")
 
       # Kill the server process
       Process.exit(pid, :kill)
       Process.sleep(100)
 
       # Should fail
-      result = MCPChat.MCP.ServerManager.get_tools("crash-test")
+      result = ServerManager.get_tools("crash-test")
       assert {:error, _} = result
 
       # Restart server
@@ -452,7 +454,7 @@ defmodule MCPChat.EnhancedE2ETest do
       Process.sleep(1_000)
 
       # Should work again
-      {:ok, tools} = MCPChat.MCP.ServerManager.get_tools("crash-test")
+      {:ok, tools} = ServerManager.get_tools("crash-test")
       assert length(tools) > 0
     end
 
@@ -504,12 +506,12 @@ defmodule MCPChat.EnhancedE2ETest do
       {:ok, _} = start_mcp_server("test-server", time_server_config())
 
       # List tools
-      {:ok, tools} = MCPChat.MCP.ServerManager.get_tools("test-server")
+      {:ok, tools} = ServerManager.get_tools("test-server")
       assert length(tools) > 0
 
       # Execute tool
       {:ok, result} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "test-server",
           "get_current_time",
           %{"timezone" => "UTC"}
@@ -638,21 +640,19 @@ defmodule MCPChat.EnhancedE2ETest do
 
   defp stop_demo_servers(_pids) do
     # Stop any MCP servers that might be running
-    try do
-      for server <- MCPChat.MCP.ServerManager.list_servers() do
-        MCPChat.MCP.ServerManager.stop_server(server.name)
-      end
-    rescue
-      # ignore if no servers are running
-      _ -> :ok
+    for server <- ServerManager.list_servers() do
+      ServerManager.stop_server(server.name)
     end
+  rescue
+    # ignore if no servers are running
+    _ -> :ok
   end
 
   defp start_mcp_server(name, config) do
     # Create a full server config with name
     server_config = Map.put(config, "name", name)
 
-    MCPChat.MCP.ServerManager.start_server(server_config)
+    ServerManager.start_server(server_config)
   end
 
   defp time_server_config do
@@ -712,7 +712,7 @@ defmodule MCPChat.EnhancedE2ETest do
       message = "What does @file:#{test_file} say about the answer?"
 
       # Resolve @ symbols
-      resolved = MCPChat.Context.AtSymbolResolver.resolve_all(message)
+      resolved = AtSymbolResolver.resolve_all(message)
 
       assert resolved.resolved_text =~ "The answer to everything is 42"
       assert length(resolved.results) == 1
@@ -732,7 +732,7 @@ defmodule MCPChat.EnhancedE2ETest do
       message = "Show me the constants from @resource:calc://constants"
 
       # Resolve @ symbols
-      resolved = MCPChat.Context.AtSymbolResolver.resolve_all(message)
+      resolved = AtSymbolResolver.resolve_all(message)
 
       # Should contain mathematical constants
       assert resolved.resolved_text =~ "pi"
@@ -750,7 +750,7 @@ defmodule MCPChat.EnhancedE2ETest do
       message = "Calculate @tool:calculate:expression=10*5 for me"
 
       # Resolve @ symbols
-      resolved = MCPChat.Context.AtSymbolResolver.resolve_all(message)
+      resolved = AtSymbolResolver.resolve_all(message)
 
       # Should contain calculation result
       assert resolved.resolved_text =~ "50"
@@ -773,7 +773,7 @@ defmodule MCPChat.EnhancedE2ETest do
       message = "Compare @file:#{file1} with @file:#{file2} and calculate @tool:calculate:expression=2+2"
 
       # Resolve @ symbols
-      resolved = MCPChat.Context.AtSymbolResolver.resolve_all(message)
+      resolved = AtSymbolResolver.resolve_all(message)
 
       # Should contain all resolved content
       assert resolved.resolved_text =~ "First file content"
@@ -802,7 +802,7 @@ defmodule MCPChat.EnhancedE2ETest do
       last_message = List.last(messages)
 
       # Resolve @ symbols
-      resolved = MCPChat.Context.AtSymbolResolver.resolve_all(last_message.content)
+      resolved = AtSymbolResolver.resolve_all(last_message.content)
 
       # Create modified messages for LLM
       resolved_messages =

@@ -5,8 +5,8 @@ defmodule MCPChat.ChatSupervisor do
   use GenServer
   require Logger
 
-  alias MCPChat.{Session}
   alias MCPChat.CLI.Chat
+  alias MCPChat.Session
 
   defstruct [:chat_task, :session_backup, :restart_count, :max_restarts]
 
@@ -162,39 +162,35 @@ defmodule MCPChat.ChatSupervisor do
   # Private Functions
 
   defp backup_session do
-    try do
-      session = Session.get_current_session()
+    session = Session.get_current_session()
 
-      %{
-        messages: session.messages,
-        context: session.context,
-        timestamp: DateTime.utc_now()
-      }
-    catch
-      _, _ ->
-        nil
-    end
+    %{
+      messages: session.messages,
+      context: session.context,
+      timestamp: DateTime.utc_now()
+    }
+  catch
+    _, _ ->
+      nil
   end
 
   defp restore_session(nil), do: :ok
 
   defp restore_session(backup) do
-    try do
-      # Restore messages
-      Enum.each(backup.messages, fn msg ->
-        Session.add_message(msg.role, msg.content)
-      end)
+    # Restore messages
+    Enum.each(backup.messages, fn msg ->
+      Session.add_message(msg.role, msg.content)
+    end)
 
-      # Restore context
-      Session.update_session(%{context: backup.context})
+    # Restore context
+    Session.update_session(%{context: backup.context})
 
-      Logger.info("Session restored from backup")
-      :ok
-    catch
-      _, reason ->
-        Logger.error("Failed to restore session: #{inspect(reason)}")
-        {:error, reason}
-    end
+    Logger.info("Session restored from backup")
+    :ok
+  catch
+    _, reason ->
+      Logger.error("Failed to restore session: #{inspect(reason)}")
+      {:error, reason}
   end
 
   defp should_restart?(%{restart_count: count, max_restarts: max}) do

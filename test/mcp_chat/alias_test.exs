@@ -1,6 +1,6 @@
 defmodule MCPChat.AliasTest do
   use ExUnit.Case
-  alias MCPChat.Alias.ExAliasAdapter, as: Alias
+  alias ExAliasAdapter, as: Alias
 
   setup do
     # Start ExAlias if not already started

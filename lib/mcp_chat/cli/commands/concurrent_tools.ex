@@ -254,30 +254,28 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
   end
 
   defp parse_tool_specifications(specs) do
-    try do
-      tool_calls =
-        Enum.map(specs, fn spec ->
-          case String.split(spec, ":", parts: 3) do
-            [server, tool] ->
-              {server, tool, %{}}
+    tool_calls =
+      Enum.map(specs, fn spec ->
+        case String.split(spec, ":", parts: 3) do
+          [server, tool] ->
+            {server, tool, %{}}
 
-            [server, tool, args_str] ->
-              args = parse_arguments(args_str)
-              {server, tool, args}
+          [server, tool, args_str] ->
+            args = parse_arguments(args_str)
+            {server, tool, args}
 
-            _ ->
-              throw({:invalid_format, spec})
-          end
-        end)
+          _ ->
+            throw({:invalid_format, spec})
+        end
+      end)
 
-      {:ok, tool_calls}
-    catch
-      {:invalid_format, spec} ->
-        {:error, "Invalid format for '#{spec}'. Use server:tool:arg1=value1,arg2=value2"}
+    {:ok, tool_calls}
+  catch
+    {:invalid_format, spec} ->
+      {:error, "Invalid format for '#{spec}'. Use server:tool:arg1=value1,arg2=value2"}
 
-      error ->
-        {:error, "Parse error: #{inspect(error)}"}
-    end
+    error ->
+      {:error, "Parse error: #{inspect(error)}"}
   end
 
   defp parse_arguments(args_str) do

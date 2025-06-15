@@ -10,6 +10,9 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
   @test_model "nomic-embed-text:latest"
   @test_timeout 60_000
   @demo_servers_path Path.expand("../../examples/demo_servers", __DIR__)
+  alias ExLLMAdapter
+  alias NotificationRegistry
+  alias ServerManager
 
   setup_all do
     case check_environment() do
@@ -58,14 +61,14 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
 
       # Research agent generates data
       {:ok, users} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "data",
           "generate_users",
           %{count: 20}
         )
 
       {:ok, products} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "data",
           "generate_products",
           %{count: 10}
@@ -108,7 +111,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
       avg_age_expr = "(#{Enum.join(ages, " + ")}) / #{length(ages)}"
 
       {:ok, avg_result} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "calc",
           "calculate",
           %{expression: avg_age_expr}
@@ -119,7 +122,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
       total_value_expr = Enum.join(prices, " + ")
 
       {:ok, total_result} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "calc",
           "calculate",
           %{expression: total_value_expr}
@@ -243,7 +246,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
       Process.sleep(1_000)
 
       {:ok, users} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "data",
           "generate_users",
           %{count: 50}
@@ -283,7 +286,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
       avg_age_expr = "(#{users |> Enum.map_join(& &1["age"], " + ")}) / #{length(users)}"
 
       {:ok, avg_age} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "calc",
           "calculate",
           %{expression: avg_age_expr}
@@ -338,7 +341,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
       results =
         Enum.map(workflow_steps, fn {step_name, expression} ->
           result =
-            MCPChat.MCP.ServerManager.call_tool(
+            ServerManager.call_tool(
               "calc",
               "calculate",
               %{expression: expression}
@@ -408,7 +411,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
       tasks =
         Enum.map(calculations, fn {expr, _expected} ->
           Task.async(fn ->
-            MCPChat.MCP.ServerManager.call_tool(
+            ServerManager.call_tool(
               "calc",
               "calculate",
               %{expression: expr}
@@ -459,18 +462,18 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
       assert successful >= 3
 
       # List all running servers
-      running = MCPChat.MCP.ServerManager.list_servers()
+      running = ServerManager.list_servers()
       assert length(running) >= 3
 
       # Clean up all servers
       Enum.each(started_servers, fn {name, _} ->
-        MCPChat.MCP.ServerManager.stop_server(name)
+        ServerManager.stop_server(name)
       end)
 
       Process.sleep(500)
 
       # Verify cleanup
-      remaining = MCPChat.MCP.ServerManager.list_servers()
+      remaining = ServerManager.list_servers()
       assert Enum.empty?(remaining)
     end
   end
@@ -583,7 +586,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
       # For now, we'll simulate the interaction
 
       # Check if any connected server supports sampling
-      servers = MCPChat.MCP.ServerManager.list_servers()
+      servers = ServerManager.list_servers()
 
       # In a real scenario, we'd check server capabilities
       sampling_capable_server =
@@ -595,7 +598,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
 
       if sampling_capable_server do
         # Would call sampling endpoint
-        # result = MCPChat.MCP.ServerManager.create_message(
+        # result = ServerManager.create_message(
         #   sampling_capable_server.name,
         #   messages,
         #   %{max_tokens: 100}
@@ -610,7 +613,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
     @tag timeout: @test_timeout
     test "handles custom MCP protocol extensions" do
       # Test handling of custom notification types
-      MCPChat.MCP.NotificationRegistry.register_handler(
+      NotificationRegistry.register_handler(
         :custom_notification,
         fn notification ->
           send(self(), {:custom, notification})
@@ -618,7 +621,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
       )
 
       # Send custom notification
-      MCPChat.MCP.NotificationRegistry.notify(:custom_notification, %{
+      NotificationRegistry.notify(:custom_notification, %{
         type: "experimental_feature",
         data: %{
           feature: "quantum_computation",
@@ -771,7 +774,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
 
   defp cleanup_test_state do
     MCPChat.Session.clear_session()
-    MCPChat.MCP.ServerManager.stop_all_servers()
+    ServerManager.stop_all_servers()
 
     # Clean temp files
     Path.wildcard(Path.join(System.tmp_dir!(), "agent_*"))
@@ -788,7 +791,7 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
       "args" => tl(command)
     }
 
-    MCPChat.MCP.ServerManager.start_server(config)
+    ServerManager.start_server(config)
   end
 
   defp set_llm_backend(provider, model) do
@@ -808,9 +811,9 @@ defmodule MCPChat.AdvancedScenariosE2ETest do
 
   defp get_llm_response(messages) do
     config = MCPChat.Config.get_llm_config()
-    {:ok, client} = MCPChat.LLM.ExLLMAdapter.init(config)
+    {:ok, client} = ExLLMAdapter.init(config)
 
-    case MCPChat.LLM.ExLLMAdapter.complete(client, messages, %{}) do
+    case ExLLMAdapter.complete(client, messages, %{}) do
       {:ok, response} ->
         {:ok, response}
 

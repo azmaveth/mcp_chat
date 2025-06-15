@@ -1,7 +1,9 @@
-defmodule MCPChat.Context.AtSymbolParserTest do
+defmodule AtSymbolParserTest do
   use ExUnit.Case, async: true
 
-  alias MCPChat.Context.AtSymbolParser
+  alias AtSymbolParser
+
+  alias AtSymbolParserTest
 
   describe "parse/1" do
     test "parses single @ reference" do

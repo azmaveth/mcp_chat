@@ -97,14 +97,12 @@ defmodule MCPChat.PortSupervisor do
   end
 
   def handle_call({:send, data}, _from, %{port: port} = state) do
-    try do
-      Port.command(port, data)
-      {:reply, :ok, state}
-    catch
-      :error, :badarg ->
-        # Port is dead
-        {:reply, {:error, :port_closed}, state}
-    end
+    Port.command(port, data)
+    {:reply, :ok, state}
+  catch
+    :error, :badarg ->
+      # Port is dead
+      {:reply, {:error, :port_closed}, state}
   end
 
   def handle_call(:close, _from, %{port: nil} = state) do
@@ -158,28 +156,26 @@ defmodule MCPChat.PortSupervisor do
   # Private Functions
 
   defp open_port(command, args, env) do
-    try do
-      port_opts = [
-        :binary,
-        :exit_status,
-        :use_stdio,
-        :hide,
-        args: args
-      ]
+    port_opts = [
+      :binary,
+      :exit_status,
+      :use_stdio,
+      :hide,
+      args: args
+    ]
 
-      port_opts =
-        if env != [] do
-          [{:env, env} | port_opts]
-        else
-          port_opts
-        end
+    port_opts =
+      if env != [] do
+        [{:env, env} | port_opts]
+      else
+        port_opts
+      end
 
-      port = Port.open({:spawn_executable, command}, port_opts)
-      {:ok, port}
-    catch
-      :error, reason ->
-        {:error, reason}
-    end
+    port = Port.open({:spawn_executable, command}, port_opts)
+    {:ok, port}
+  catch
+    :error, reason ->
+      {:error, reason}
   end
 
   defp should_restart?(%{restart_count: count, max_restarts: max}) do

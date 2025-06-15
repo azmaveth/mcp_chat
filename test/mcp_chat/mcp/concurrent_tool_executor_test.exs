@@ -5,6 +5,10 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
   alias MCPChat.MCP.ConcurrentToolExecutor
   alias MCPChat.MCP.ConcurrentToolExecutor.ExecutionResult
 
+  alias MCPChat.MCP.ConcurrentToolExecutorTest
+  alias ProgressTracker
+  alias ServerManager
+
   describe "execute_concurrent/2" do
     test "executes multiple tools concurrently" do
       tool_calls = [
@@ -14,23 +18,23 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
       ]
 
       # Mock ServerManager.call_tool to return success
-      :meck.new(MCPChat.MCP.ServerManager, [:non_strict])
+      :meck.new(ServerManager, [:non_strict])
 
-      :meck.expect(MCPChat.MCP.ServerManager, :call_tool, fn _server, _tool, _args ->
+      :meck.expect(ServerManager, :call_tool, fn _server, _tool, _args ->
         # Simulate work
         Process.sleep(10)
         {:ok, %{"result" => "success"}}
       end)
 
       # Mock ProgressTracker
-      :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
+      :meck.new(ProgressTracker, [:non_strict])
 
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _name, _params ->
+      :meck.expect(ProgressTracker, :start_operation, fn _name, _params ->
         {:ok, "progress_token_#{:rand.uniform(1_000)}"}
       end)
 
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _token -> :ok end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _token, _reason -> :ok end)
+      :meck.expect(ProgressTracker, :complete_operation, fn _token -> :ok end)
+      :meck.expect(ProgressTracker, :fail_operation, fn _token, _reason -> :ok end)
 
       try do
         assert {:ok, results} =
@@ -52,10 +56,10 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
         end)
 
         # Should have called all tools
-        assert :meck.num_calls(MCPChat.MCP.ServerManager, :call_tool, :_) == 3
+        assert :meck.num_calls(ServerManager, :call_tool, :_) == 3
       after
-        :meck.unload(MCPChat.MCP.ServerManager)
-        :meck.unload(MCPChat.MCP.ProgressTracker)
+        :meck.unload(ServerManager)
+        :meck.unload(ProgressTracker)
       end
     end
 
@@ -67,17 +71,17 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
       ]
 
       # Mock with mixed success/failure
-      :meck.new(MCPChat.MCP.ServerManager, [:non_strict])
+      :meck.new(ServerManager, [:non_strict])
 
-      :meck.expect(MCPChat.MCP.ServerManager, :call_tool, fn
+      :meck.expect(ServerManager, :call_tool, fn
         _server, "bad_tool", _args -> {:error, :tool_failed}
         _server, _tool, _args -> {:ok, %{"result" => "success"}}
       end)
 
-      :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _name, _params -> {:ok, "progress_token"} end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _token -> :ok end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _token, _reason -> :ok end)
+      :meck.new(ProgressTracker, [:non_strict])
+      :meck.expect(ProgressTracker, :start_operation, fn _name, _params -> {:ok, "progress_token"} end)
+      :meck.expect(ProgressTracker, :complete_operation, fn _token -> :ok end)
+      :meck.expect(ProgressTracker, :fail_operation, fn _token, _reason -> :ok end)
 
       try do
         assert {:ok, results} = ConcurrentToolExecutor.execute_concurrent(tool_calls)
@@ -97,8 +101,8 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
         another_result = results_by_tool["another_good"] |> List.first()
         assert another_result.status == :success
       after
-        :meck.unload(MCPChat.MCP.ServerManager)
-        :meck.unload(MCPChat.MCP.ProgressTracker)
+        :meck.unload(ServerManager)
+        :meck.unload(ProgressTracker)
       end
     end
 
@@ -114,9 +118,9 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
       test_pid = self()
       execution_order = :ets.new(:execution_order, [:public, :ordered_set])
 
-      :meck.new(MCPChat.MCP.ServerManager, [:non_strict])
+      :meck.new(ServerManager, [:non_strict])
 
-      :meck.expect(MCPChat.MCP.ServerManager, :call_tool, fn server, tool, _args ->
+      :meck.expect(ServerManager, :call_tool, fn server, tool, _args ->
         timestamp = System.monotonic_time(:microsecond)
         :ets.insert(execution_order, {timestamp, {server, tool}})
         # Ensure measurable time difference
@@ -124,10 +128,10 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
         {:ok, %{"result" => "success"}}
       end)
 
-      :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> {:ok, "token"} end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _ -> :ok end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _, _ -> :ok end)
+      :meck.new(ProgressTracker, [:non_strict])
+      :meck.expect(ProgressTracker, :start_operation, fn _, _ -> {:ok, "token"} end)
+      :meck.expect(ProgressTracker, :complete_operation, fn _ -> :ok end)
+      :meck.expect(ProgressTracker, :fail_operation, fn _, _ -> :ok end)
 
       try do
         assert {:ok, _results} =
@@ -167,8 +171,8 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
         end
       after
         :ets.delete(execution_order)
-        :meck.unload(MCPChat.MCP.ServerManager)
-        :meck.unload(MCPChat.MCP.ProgressTracker)
+        :meck.unload(ServerManager)
+        :meck.unload(ProgressTracker)
       end
     end
 
@@ -184,16 +188,16 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
         send(self(), {:progress, update})
       end
 
-      :meck.new(MCPChat.MCP.ServerManager, [:non_strict])
+      :meck.new(ServerManager, [:non_strict])
 
-      :meck.expect(MCPChat.MCP.ServerManager, :call_tool, fn _server, _tool, _args ->
+      :meck.expect(ServerManager, :call_tool, fn _server, _tool, _args ->
         {:ok, %{"result" => "success"}}
       end)
 
-      :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> {:ok, "token"} end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _ -> :ok end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _, _ -> :ok end)
+      :meck.new(ProgressTracker, [:non_strict])
+      :meck.expect(ProgressTracker, :start_operation, fn _, _ -> {:ok, "token"} end)
+      :meck.expect(ProgressTracker, :complete_operation, fn _ -> :ok end)
+      :meck.expect(ProgressTracker, :fail_operation, fn _, _ -> :ok end)
 
       try do
         assert {:ok, _results} =
@@ -219,8 +223,8 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
         assert completed_msg.total == 2
         assert completed_msg.completed + completed_msg.failed == 2
       after
-        :meck.unload(MCPChat.MCP.ServerManager)
-        :meck.unload(MCPChat.MCP.ProgressTracker)
+        :meck.unload(ServerManager)
+        :meck.unload(ProgressTracker)
       end
     end
   end
@@ -258,16 +262,16 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
 
   describe "execute_single/4" do
     test "executes a single tool" do
-      :meck.new(MCPChat.MCP.ServerManager, [:non_strict])
+      :meck.new(ServerManager, [:non_strict])
 
-      :meck.expect(MCPChat.MCP.ServerManager, :call_tool, fn _server, _tool, _args ->
+      :meck.expect(ServerManager, :call_tool, fn _server, _tool, _args ->
         {:ok, %{"result" => "single_success"}}
       end)
 
-      :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> {:ok, "token"} end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _ -> :ok end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _, _ -> :ok end)
+      :meck.new(ProgressTracker, [:non_strict])
+      :meck.expect(ProgressTracker, :start_operation, fn _, _ -> {:ok, "token"} end)
+      :meck.expect(ProgressTracker, :complete_operation, fn _ -> :ok end)
+      :meck.expect(ProgressTracker, :fail_operation, fn _, _ -> :ok end)
 
       try do
         assert {:ok, results} =
@@ -283,8 +287,8 @@ defmodule MCPChat.MCP.ConcurrentToolExecutorTest do
         assert result.server_name == "test_server"
         assert result.tool_name == "test_tool"
       after
-        :meck.unload(MCPChat.MCP.ServerManager)
-        :meck.unload(MCPChat.MCP.ProgressTracker)
+        :meck.unload(ServerManager)
+        :meck.unload(ProgressTracker)
       end
     end
   end

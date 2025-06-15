@@ -10,6 +10,7 @@ defmodule MCPChat.CLI.Commands do
 
   alias MCPChat.Alias.ExAliasAdapter
   alias MCPChat.CLI.{Commands, Renderer}
+
   alias Commands.{
     Alias,
     ConcurrentTools,

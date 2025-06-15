@@ -1,8 +1,10 @@
-defmodule MCPChat.MCP.StdioProcessManagerTest do
+defmodule StdioProcessManagerTest do
   use ExUnit.Case, async: true
-  alias MCPChat.MCP.StdioProcessManager
+  alias StdioProcessManager
 
   @moduletag :integration
+
+  alias StdioProcessManagerTest
 
   describe "stdio process management" do
     test "starts and stops a simple echo process" do

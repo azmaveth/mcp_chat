@@ -11,8 +11,8 @@ defmodule MCPChat.CLI.Commands.Session do
 
   use MCPChat.CLI.Commands.Base
 
-  alias MCPChat.{Persistence, Session}
   alias MCPChat.CLI.Renderer
+  alias MCPChat.{Persistence, Session}
 
   @impl true
   def commands do

@@ -3,6 +3,8 @@ defmodule MCPChat.CLI.RendererTest do
   import ExUnit.CaptureIO
   alias MCPChat.CLI.Renderer
 
+  alias MCPChat.CLI.RendererTest
+
   describe "show_welcome/0" do
     test "displays welcome message" do
       output = capture_io(fn -> Renderer.show_welcome() end)

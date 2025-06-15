@@ -1,6 +1,8 @@
-defmodule MCPChat.MCP.DiscoveryTest do
+defmodule DiscoveryTest do
   use ExUnit.Case
-  alias MCPChat.MCP.Discovery
+  alias Discovery
+
+  alias DiscoveryTest
 
   describe "discover_servers/1" do
     test "returns discovered servers sorted by name" do

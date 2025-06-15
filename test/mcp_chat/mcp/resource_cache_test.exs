@@ -4,6 +4,8 @@ defmodule MCPChat.MCP.ResourceCacheTest do
 
   @cache_dir Path.join(System.tmp_dir!(), "mcp_chat_test_cache_#{:os.getpid()}")
 
+  alias MCPChat.MCP.ResourceCacheTest
+
   setup do
     # Ensure clean cache directory
     File.rm_rf!(@cache_dir)

@@ -5,6 +5,8 @@ defmodule MCPChat.MCP.StdioIntegrationTest do
 
   @moduletag :integration
 
+  alias MCPChat.MCP.StdioProcessSupervisor
+
   describe "stdio server integration" do
     @tag :skip
     test "starts and manages stdio MCP server through ServerManager" do
@@ -45,7 +47,7 @@ defmodule MCPChat.MCP.StdioIntegrationTest do
   describe "stdio process lifecycle" do
     test "handles server crash and restart" do
       # Start the supervisor first
-      {:ok, _sup} = MCPChat.MCP.StdioProcessSupervisor.start_link([])
+      {:ok, _sup} = StdioProcessSupervisor.start_link([])
 
       # Use a command that will exit after a short time
       config = %{
@@ -55,7 +57,7 @@ defmodule MCPChat.MCP.StdioIntegrationTest do
       }
 
       {:ok, manager} =
-        MCPChat.MCP.StdioProcessSupervisor.start_process(
+        StdioProcessSupervisor.start_process(
           config,
           max_restarts: 2,
           restart_delay: 100,
@@ -77,7 +79,7 @@ defmodule MCPChat.MCP.StdioIntegrationTest do
       assert status_after.running == false
 
       # Cleanup
-      MCPChat.MCP.StdioProcessSupervisor.stop_process(manager)
+      StdioProcessSupervisor.stop_process(manager)
     end
   end
 

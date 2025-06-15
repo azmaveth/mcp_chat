@@ -14,8 +14,9 @@ defmodule MCPChat.CLI.Commands.LLM do
 
   require Logger
 
-  alias MCPChat.{Session}
+  alias MCPChat.CLI.Renderer
   alias MCPChat.LLM.ExLLMAdapter
+  alias MCPChat.Session
 
   @impl true
   def commands do
@@ -285,7 +286,7 @@ defmodule MCPChat.CLI.Commands.LLM do
   defp show_acceleration_info do
     info = ExLLMAdapter.acceleration_info()
 
-    MCPChat.CLI.Renderer.show_text("## Hardware Acceleration Info\n")
+    Renderer.show_text("## Hardware Acceleration Info\n")
 
     IO.puts("Type: #{info.name}")
     IO.puts("Backend: #{info.backend}")

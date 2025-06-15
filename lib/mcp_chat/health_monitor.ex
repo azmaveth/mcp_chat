@@ -207,30 +207,28 @@ defmodule MCPChat.HealthMonitor do
   end
 
   defp gather_process_metrics(pid, check_types) do
-    try do
-      info =
-        Process.info(pid, [
-          :memory,
-          :message_queue_len,
-          :reductions,
-          :current_function,
-          :status
-        ])
+    info =
+      Process.info(pid, [
+        :memory,
+        :message_queue_len,
+        :reductions,
+        :current_function,
+        :status
+      ])
 
-      base_metrics = %{
-        memory: info[:memory],
-        message_queue_len: info[:message_queue_len],
-        reductions: info[:reductions],
-        current_function: info[:current_function],
-        status: info[:status]
-      }
+    base_metrics = %{
+      memory: info[:memory],
+      message_queue_len: info[:message_queue_len],
+      reductions: info[:reductions],
+      current_function: info[:current_function],
+      status: info[:status]
+    }
 
-      # Filter to requested check types
-      Map.take(base_metrics, check_types)
-    catch
-      _, _ ->
-        %{}
-    end
+    # Filter to requested check types
+    Map.take(base_metrics, check_types)
+  catch
+    _, _ ->
+      %{}
   end
 
   defp evaluate_health_status(metrics, thresholds) do

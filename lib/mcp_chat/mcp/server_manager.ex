@@ -5,7 +5,7 @@ defmodule MCPChat.MCP.ServerManager do
   """
   use GenServer
 
-  alias MCPChat.{StartupProfiler}
+  alias MCPChat.StartupProfiler
   alias MCPChat.MCP.{BuiltinResources, ExMCPAdapter, ServerSupervisor, ServerWrapper}
   alias MCPChat.MCP.ServerManager.Core
 

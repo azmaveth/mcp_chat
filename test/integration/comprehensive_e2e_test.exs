@@ -5,7 +5,11 @@ defmodule MCPChat.ComprehensiveE2ETest do
   Comprehensive end-to-end tests for MCP Chat using real Ollama backend.
   No mocks - tests the entire system with actual servers and models.
   """
-
+  alias Commands
+  alias ExLLMAdapter
+  alias NotificationRegistry
+  alias ProgressTracker
+  alias ServerManager
   # Test configuration
   @ollama_url "http://localhost:11_434"
   # Small, fast model for testing
@@ -47,7 +51,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
     MCPChat.Session.clear_session()
 
     # Reset MCP server connections
-    MCPChat.MCP.ServerManager.stop_all_servers()
+    ServerManager.stop_all_servers()
 
     # Clean up any test files
     clean_test_files()
@@ -66,7 +70,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
       }
 
       # Initialize LLM adapter
-      {:ok, client} = MCPChat.LLM.ExLLMAdapter.init(config)
+      {:ok, client} = ExLLMAdapter.init(config)
 
       # List available models
       {:ok, models} = list_ollama_models()
@@ -164,14 +168,14 @@ defmodule MCPChat.ComprehensiveE2ETest do
       Process.sleep(1_000)
 
       # List available tools
-      {:ok, tools} = MCPChat.MCP.ServerManager.list_tools("time")
+      {:ok, tools} = ServerManager.list_tools("time")
 
       assert Enum.any?(tools, &(&1.name == "get_current_time"))
       assert Enum.any?(tools, &(&1.name == "timezone_converter"))
 
       # Execute get_current_time tool
       {:ok, result} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "time",
           "get_current_time",
           %{timezone: "UTC", format: "24h"}
@@ -182,7 +186,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
 
       # Execute timezone conversion
       {:ok, conversion} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "time",
           "timezone_converter",
           %{
@@ -209,14 +213,14 @@ defmodule MCPChat.ComprehensiveE2ETest do
       Process.sleep(1_000)
 
       # List tools
-      {:ok, tools} = MCPChat.MCP.ServerManager.list_tools("calc")
+      {:ok, tools} = ServerManager.list_tools("calc")
 
       assert Enum.any?(tools, &(&1.name == "calculate"))
       assert Enum.any?(tools, &(&1.name == "scientific_calc"))
 
       # Basic calculation
       {:ok, result} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "calc",
           "calculate",
           %{expression: "(10 + 20) * 3"}
@@ -227,7 +231,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
 
       # Scientific calculation
       {:ok, sci_result} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "calc",
           "scientific_calc",
           %{operation: "sin", value: 90}
@@ -254,19 +258,19 @@ defmodule MCPChat.ComprehensiveE2ETest do
       Process.sleep(2000)
 
       # Verify all servers are connected
-      connected = MCPChat.MCP.ServerManager.list_servers()
+      connected = ServerManager.list_servers()
       assert length(connected) >= 3
 
       # Execute tool on each server concurrently
       tasks = [
         Task.async(fn ->
-          MCPChat.MCP.ServerManager.call_tool("time", "get_current_time", %{})
+          ServerManager.call_tool("time", "get_current_time", %{})
         end),
         Task.async(fn ->
-          MCPChat.MCP.ServerManager.call_tool("calc", "calculate", %{expression: "2+2"})
+          ServerManager.call_tool("calc", "calculate", %{expression: "2+2"})
         end),
         Task.async(fn ->
-          MCPChat.MCP.ServerManager.call_tool("data", "generate_users", %{count: 5})
+          ServerManager.call_tool("data", "generate_users", %{count: 5})
         end)
       ]
 
@@ -296,7 +300,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
       Process.sleep(2000)
 
       # List resources
-      {:ok, resources} = MCPChat.MCP.ServerManager.list_resources("fs")
+      {:ok, resources} = ServerManager.list_resources("fs")
 
       assert is_list(resources)
 
@@ -307,7 +311,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
         end)
 
       if test_resource do
-        {:ok, content} = MCPChat.MCP.ServerManager.read_resource("fs", test_resource.uri)
+        {:ok, content} = ServerManager.read_resource("fs", test_resource.uri)
         assert content =~ "Hello from MCP resource!"
       end
 
@@ -332,7 +336,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
       Process.sleep(1_000)
 
       # Get available tools
-      {:ok, tools} = MCPChat.MCP.ServerManager.list_tools("calc")
+      {:ok, tools} = ServerManager.list_tools("calc")
 
       # Create a message that would trigger tool use
       MCPChat.Session.add_message("user", "Calculate (15 + 25) * 2 for me")
@@ -340,7 +344,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
       # In a real scenario, the LLM would decide to use tools
       # For testing, we'll manually execute the tool
       {:ok, calc_result} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "calc",
           "calculate",
           %{expression: "(15 + 25) * 2"}
@@ -375,7 +379,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
       MCPChat.Session.add_message("user", "What's 50 divided by 5?")
 
       {:ok, result1} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "calc",
           "calculate",
           %{expression: "50 / 5"}
@@ -387,7 +391,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
       MCPChat.Session.add_message("user", "Now multiply that by 7")
 
       {:ok, result2} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "calc",
           "calculate",
           # Using the previous result
@@ -411,34 +415,34 @@ defmodule MCPChat.ComprehensiveE2ETest do
       # For now, we'll simulate this since demo servers don't send progress
 
       # Create a progress tracker
-      {:ok, tracker} = MCPChat.MCP.ProgressTracker.start_link([])
+      {:ok, tracker} = ProgressTracker.start_link([])
 
       # Simulate progress notification
       progress_token = "test-progress-123"
-      MCPChat.MCP.ProgressTracker.update_progress(progress_token, 0.5, "Processing...")
+      ProgressTracker.update_progress(progress_token, 0.5, "Processing...")
 
       # Check progress status
-      progress = MCPChat.MCP.ProgressTracker.get_progress(progress_token)
+      progress = ProgressTracker.get_progress(progress_token)
       assert progress.progress == 0.5
       assert progress.message == "Processing..."
 
       # Complete progress
-      MCPChat.MCP.ProgressTracker.complete_progress(progress_token)
+      ProgressTracker.complete_progress(progress_token)
 
       # Verify completion
-      progress = MCPChat.MCP.ProgressTracker.get_progress(progress_token)
+      progress = ProgressTracker.get_progress(progress_token)
       assert progress == nil
     end
 
     @tag timeout: @test_timeout
     test "handles resource change notifications" do
       # Set up notification registry
-      MCPChat.MCP.NotificationRegistry.start_link()
+      NotificationRegistry.start_link()
 
       # Register a handler
       handler_ref = make_ref()
 
-      MCPChat.MCP.NotificationRegistry.register_handler(
+      NotificationRegistry.register_handler(
         :resource_list_changed,
         fn notification ->
           send(self(), {:notification, handler_ref, notification})
@@ -446,7 +450,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
       )
 
       # Simulate a resource change notification
-      MCPChat.MCP.NotificationRegistry.notify(:resource_list_changed, %{
+      NotificationRegistry.notify(:resource_list_changed, %{
         server: "test-server",
         timestamp: DateTime.utc_now()
       })
@@ -533,7 +537,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
         "model" => "test-model"
       }
 
-      {:ok, client} = MCPChat.LLM.ExLLMAdapter.init(config)
+      {:ok, client} = ExLLMAdapter.init(config)
 
       # Try to get response
       messages = [%{role: "user", content: "Hello"}]
@@ -554,16 +558,16 @@ defmodule MCPChat.ComprehensiveE2ETest do
       Process.sleep(1_000)
 
       # Verify it's running
-      servers = MCPChat.MCP.ServerManager.list_servers()
+      servers = ServerManager.list_servers()
       assert Enum.any?(servers, &(&1.name == "test"))
 
       # Force stop the server
-      MCPChat.MCP.ServerManager.stop_server("test")
+      ServerManager.stop_server("test")
 
       Process.sleep(500)
 
       # Verify it's stopped
-      servers = MCPChat.MCP.ServerManager.list_servers()
+      servers = ServerManager.list_servers()
       refute Enum.any?(servers, &(&1.name == "test"))
 
       # Restart should work
@@ -575,7 +579,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
 
       Process.sleep(1_000)
 
-      servers = MCPChat.MCP.ServerManager.list_servers()
+      servers = ServerManager.list_servers()
       assert Enum.any?(servers, &(&1.name == "test"))
     end
 
@@ -595,7 +599,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
 
       # Try invalid calculation
       result =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "calc",
           "calculate",
           %{expression: "invalid expression !!!"}
@@ -705,7 +709,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
 
       # 1. Generate users
       {:ok, users} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "data",
           "generate_users",
           %{count: 10}
@@ -718,7 +722,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
       avg_age_expr = "(#{Enum.join(ages, " + ")}) / #{length(ages)}"
 
       {:ok, avg_result} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "calc",
           "calculate",
           %{expression: avg_age_expr}
@@ -728,7 +732,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
 
       # 3. Get timestamp
       {:ok, time_result} =
-        MCPChat.MCP.ServerManager.call_tool(
+        ServerManager.call_tool(
           "time",
           "get_current_time",
           %{timezone: "UTC"}
@@ -760,28 +764,28 @@ defmodule MCPChat.ComprehensiveE2ETest do
       assert MCPChat.Session.get_messages() == []
 
       # 2. Set system message
-      MCPChat.CLI.Commands.handle_command("/system You are a helpful assistant", %{})
+      Commands.handle_command("/system You are a helpful assistant", %{})
       session = MCPChat.Session.get_current_session()
       assert session.context["system_message"] == "You are a helpful assistant"
 
       # 3. Create an alias
-      MCPChat.CLI.Commands.handle_command(
+      Commands.handle_command(
         "/alias calc-simple /mcp call calc calculate expression:",
         %{}
       )
 
       # 4. Check available models
       capture_io(fn ->
-        MCPChat.CLI.Commands.handle_command("/models", %{})
+        Commands.handle_command("/models", %{})
       end) =~ "Available models"
 
       # 5. Save empty session (should handle gracefully)
-      result = MCPChat.CLI.Commands.handle_command("/save empty_test", %{})
+      result = Commands.handle_command("/save empty_test", %{})
       assert result == :ok
 
       # 6. Start MCP server via command
       result =
-        MCPChat.CLI.Commands.handle_command(
+        Commands.handle_command(
           "/mcp connect time python3 #{Path.join(@demo_servers_path, "time_server.py")}",
           %{}
         )
@@ -791,7 +795,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
       # 7. List connected servers
       output =
         capture_io(fn ->
-          MCPChat.CLI.Commands.handle_command("/mcp servers", %{})
+          Commands.handle_command("/mcp servers", %{})
         end)
 
       assert output =~ "time"
@@ -930,7 +934,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
       end
 
     # Get completion
-    case MCPChat.LLM.ExLLMAdapter.complete(client, messages, %{}) do
+    case ExLLMAdapter.complete(client, messages, %{}) do
       {:ok, response} ->
         {:ok, %{role: "assistant", content: response}}
 
@@ -942,7 +946,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
   defp get_llm_stream(messages, client \\ nil) do
     client = client || get_current_llm_client()
 
-    case MCPChat.LLM.ExLLMAdapter.stream(client, messages, %{}) do
+    case ExLLMAdapter.stream(client, messages, %{}) do
       {:ok, stream} ->
         {:ok, stream}
 
@@ -953,7 +957,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
 
   defp get_current_llm_client do
     config = MCPChat.Config.get_llm_config()
-    {:ok, client} = MCPChat.LLM.ExLLMAdapter.init(config)
+    {:ok, client} = ExLLMAdapter.init(config)
     client
   end
 
@@ -964,7 +968,7 @@ defmodule MCPChat.ComprehensiveE2ETest do
       "args" => tl(command)
     }
 
-    MCPChat.MCP.ServerManager.start_server(config)
+    ServerManager.start_server(config)
   end
 
   defp capture_io(fun) do

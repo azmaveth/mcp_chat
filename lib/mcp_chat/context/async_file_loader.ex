@@ -295,54 +295,45 @@ defmodule MCPChat.Context.AsyncFileLoader do
   end
 
   defp load_single_file(operation, opts) do
-    try do
-      Logger.debug("Loading file: #{operation.file_path}")
+    Logger.debug("Loading file: #{operation.file_path}")
 
-      # Validate file first
-      case validate_file_for_context(operation.file_path, opts) do
-        :ok ->
-          # Load file content
-          case read_file_efficiently(operation.file_path, opts) do
-            {:ok, content} ->
-              duration_ms = System.monotonic_time(:millisecond) - operation.start_time
-
-              # Validate content if requested
-              content =
-                if opts[:validate_content] do
-                  validate_and_clean_content(content)
-                else
-                  content
-                end
-
-              file_info = %{
-                path: operation.file_path,
-                name: Path.basename(operation.file_path),
-                content: content,
-                size: byte_size(content),
-                loaded_at: DateTime.utc_now(),
-                load_duration_ms: duration_ms
-              }
-
-              Logger.debug(
-                "Successfully loaded #{operation.file_path} (#{byte_size(content)} bytes) in #{duration_ms}ms"
-              )
-
-              %{operation | status: :success, result: file_info}
-
-            {:error, reason} ->
-              Logger.warning("Failed to read #{operation.file_path}: #{inspect(reason)}")
-              %{operation | status: :failed, error: reason}
-          end
-
-        {:error, reason} ->
-          Logger.warning("File validation failed for #{operation.file_path}: #{inspect(reason)}")
-          %{operation | status: :failed, error: reason}
-      end
-    rescue
-      e ->
-        Logger.error("Exception loading #{operation.file_path}: #{inspect(e)}")
-        %{operation | status: :crashed, error: e}
+    with :ok <- validate_file_for_context(operation.file_path, opts),
+         {:ok, content} <- read_file_efficiently(operation.file_path, opts) do
+      process_loaded_file(operation, content, opts)
+    else
+      {:error, reason} ->
+        Logger.warning("Failed to load #{operation.file_path}: #{inspect(reason)}")
+        %{operation | status: :failed, error: reason}
     end
+  rescue
+    e ->
+      Logger.error("Exception loading #{operation.file_path}: #{inspect(e)}")
+      %{operation | status: :crashed, error: e}
+  end
+
+  defp process_loaded_file(operation, content, opts) do
+    duration_ms = System.monotonic_time(:millisecond) - operation.start_time
+
+    # Validate content if requested
+    content =
+      if opts[:validate_content] do
+        validate_and_clean_content(content)
+      else
+        content
+      end
+
+    file_info = %{
+      path: operation.file_path,
+      name: Path.basename(operation.file_path),
+      content: content,
+      size: byte_size(content),
+      loaded_at: DateTime.utc_now(),
+      load_duration_ms: duration_ms
+    }
+
+    Logger.debug("Successfully loaded #{operation.file_path} (#{byte_size(content)} bytes) in #{duration_ms}ms")
+
+    %{operation | status: :success, result: file_info}
   end
 
   defp read_file_efficiently(file_path, opts) do
@@ -358,15 +349,13 @@ defmodule MCPChat.Context.AsyncFileLoader do
   end
 
   defp read_file_in_chunks(file_path, chunk_size) do
-    try do
-      content =
-        File.stream!(file_path, [], chunk_size)
-        |> Enum.join()
+    content =
+      File.stream!(file_path, [], chunk_size)
+      |> Enum.join()
 
-      {:ok, content}
-    rescue
-      e -> {:error, e}
-    end
+    {:ok, content}
+  rescue
+    e -> {:error, e}
   end
 
   defp validate_and_clean_content(content) do

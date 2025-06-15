@@ -255,26 +255,24 @@ defmodule MCPChat.Session.Autosave do
   end
 
   defp do_save_async(_state) do
-    try do
-      # Use SessionManager to save the current session
-      case MCPChat.SessionManager.save_current_session() do
-        :ok ->
-          # Get session to calculate hash for change detection
-          session = Session.get_current_session()
-          session_hash = calculate_session_hash(session)
-          session_size = estimate_session_size(session)
+    # Use SessionManager to save the current session
+    case MCPChat.SessionManager.save_current_session() do
+      :ok ->
+        # Get session to calculate hash for change detection
+        session = Session.get_current_session()
+        session_hash = calculate_session_hash(session)
+        session_size = estimate_session_size(session)
 
-          {:ok, %{hash: session_hash, size: session_size}}
+        {:ok, %{hash: session_hash, size: session_size}}
 
-        {:error, reason} ->
-          Logger.error("Autosave failed: #{inspect(reason)}")
-          {:error, reason}
-      end
-    rescue
-      e ->
-        Logger.error("Autosave crashed: #{inspect(e)}")
-        {:error, {:crashed, e}}
+      {:error, reason} ->
+        Logger.error("Autosave failed: #{inspect(reason)}")
+        {:error, reason}
     end
+  rescue
+    e ->
+      Logger.error("Autosave crashed: #{inspect(e)}")
+      {:error, {:crashed, e}}
   end
 
   defp handle_save_result({:ok, :no_changes}, state) do

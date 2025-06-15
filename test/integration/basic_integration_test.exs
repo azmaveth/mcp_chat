@@ -5,6 +5,7 @@ defmodule MCPChat.BasicIntegrationTest do
   Basic integration tests for MCP Chat application.
   Tests core functionality with minimal setup.
   """
+  alias Session
 
   describe "MCP Protocol integration" do
     test "protocol encoding and response parsing work together" do
@@ -58,7 +59,7 @@ defmodule MCPChat.BasicIntegrationTest do
       test_name = "integration_test_#{System.unique_integer([:positive])}"
 
       # Create a test session with proper structure
-      test_session = %MCPChat.Types.Session{
+      test_session = %Session{
         id: "test_#{System.unique_integer([:positive])}",
         messages: [
           %{role: :user, content: "Test message", timestamp: DateTime.utc_now()},

@@ -2,6 +2,8 @@ defmodule MCPChat.MCP.BuiltinResourcesTest do
   use ExUnit.Case
   alias MCPChat.MCP.BuiltinResources
 
+  alias MCPChat.MCP.BuiltinResourcesTest
+
   setup do
     # Ensure Config is started for the config resource test
     case Process.whereis(MCPChat.Config) do

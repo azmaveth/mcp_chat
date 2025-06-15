@@ -8,7 +8,6 @@ defmodule MCPChat.MCP.Handlers.ResourceChangeHandler do
   require Logger
   alias MCPChat.{CLI.Renderer, Session}
 
-
   defstruct [:session_pid, :cache]
 
   @impl true

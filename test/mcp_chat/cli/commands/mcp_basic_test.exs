@@ -1,4 +1,4 @@
-defmodule MCPChat.CLI.Commands.MCPBasicTest do
+defmodule Commands.MCPBasicTest do
   @moduledoc """
   Basic tests for MCP CLI commands focusing on the /tools command functionality.
   These tests ensure that the command parsing and display logic continues to work
@@ -6,11 +6,13 @@ defmodule MCPChat.CLI.Commands.MCPBasicTest do
   """
 
   use ExUnit.Case, async: false
-  alias MCPChat.CLI.Commands.MCP
-  alias MCPChat.MCP.ServerManager
+  alias Commands.MCP
+  alias ServerManager
 
   import ExUnit.CaptureIO
   import :meck
+
+  alias Commands.MCPBasicTest
 
   setup do
     # Mock ServerManager to avoid actual server connections

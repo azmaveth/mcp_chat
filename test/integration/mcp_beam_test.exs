@@ -8,6 +8,7 @@ defmodule MCPChat.MCPBeamTest do
 
   require Logger
   import MCPChat.MCPTestHelpers
+  alias ServerManager
 
   describe "MCP BEAM Transport Integration" do
     test "basic tool execution with BEAM transport" do
@@ -52,14 +53,14 @@ defmodule MCPChat.MCPBeamTest do
       # Use BEAM transport for testing
       with_beam_mcp_server("test-server", handler, fn server_name ->
         # List tools
-        {:ok, tools} = MCPChat.MCP.ServerManager.get_tools(server_name)
+        {:ok, tools} = ServerManager.get_tools(server_name)
         assert length(tools) == 2
         assert Enum.find(tools, &(&1["name"] == "echo"))
         assert Enum.find(tools, &(&1["name"] == "add"))
 
         # Test echo tool
         {:ok, result} =
-          MCPChat.MCP.ServerManager.call_tool(
+          ServerManager.call_tool(
             server_name,
             "echo",
             %{"message" => "Hello MCP!"}
@@ -71,7 +72,7 @@ defmodule MCPChat.MCPBeamTest do
 
         # Test add tool
         {:ok, result} =
-          MCPChat.MCP.ServerManager.call_tool(
+          ServerManager.call_tool(
             server_name,
             "add",
             %{"a" => 5, "b" => 3}
@@ -103,7 +104,7 @@ defmodule MCPChat.MCPBeamTest do
       with_beam_mcp_server("error-server", handler, fn server_name ->
         # Try to call failing tool
         result =
-          MCPChat.MCP.ServerManager.call_tool(
+          ServerManager.call_tool(
             server_name,
             "failing_tool",
             %{}
@@ -114,7 +115,7 @@ defmodule MCPChat.MCPBeamTest do
 
         # Try to call non-existent tool
         result =
-          MCPChat.MCP.ServerManager.call_tool(
+          ServerManager.call_tool(
             server_name,
             "does_not_exist",
             %{}
@@ -168,13 +169,13 @@ defmodule MCPChat.MCPBeamTest do
       with_beam_mcp_server("time-server", time_handler, fn time_server ->
         with_beam_mcp_server("calc-server", calc_handler, fn calc_server ->
           # List all servers
-          servers = MCPChat.MCP.ServerManager.list_servers()
+          servers = ServerManager.list_servers()
           assert Enum.find(servers, &(&1.name == time_server))
           assert Enum.find(servers, &(&1.name == calc_server))
 
           # Call tool from first server
           {:ok, result} =
-            MCPChat.MCP.ServerManager.call_tool(
+            ServerManager.call_tool(
               time_server,
               "get_time",
               %{}
@@ -184,7 +185,7 @@ defmodule MCPChat.MCPBeamTest do
 
           # Call tool from second server
           {:ok, result} =
-            MCPChat.MCP.ServerManager.call_tool(
+            ServerManager.call_tool(
               calc_server,
               "multiply",
               %{"x" => 7, "y" => 6}

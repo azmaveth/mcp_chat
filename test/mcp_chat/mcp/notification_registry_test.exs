@@ -1,11 +1,13 @@
-defmodule MCPChat.MCP.NotificationRegistryTest do
+defmodule NotificationRegistryTest do
   use ExUnit.Case, async: true
 
-  alias MCPChat.MCP.NotificationRegistry
+  alias NotificationRegistry
 
+  alias MCPChat.MCP.NotificationHandler
+  alias NotificationRegistryTest
   # Test handler module
   defmodule TestHandler do
-    @behaviour MCPChat.MCP.NotificationHandler
+    @behaviour NotificationHandler
 
     def init(args) do
       {:ok, %{test_pid: args[:test_pid], calls: []}}
@@ -93,7 +95,7 @@ defmodule MCPChat.MCP.NotificationRegistryTest do
 
       # Register a second handler (same module but will create new state)
       defmodule SecondHandler do
-        @behaviour MCPChat.MCP.NotificationHandler
+        @behaviour NotificationHandler
 
         def init(args) do
           {:ok, %{test_pid: args[:test_pid]}}
@@ -120,7 +122,7 @@ defmodule MCPChat.MCP.NotificationRegistryTest do
   describe "error handling" do
     test "continues processing if handler fails", %{registry: registry} do
       defmodule FailingHandler do
-        @behaviour MCPChat.MCP.NotificationHandler
+        @behaviour NotificationHandler
 
         def init(_args), do: {:ok, %{}}
 

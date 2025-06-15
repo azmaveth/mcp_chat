@@ -4,11 +4,11 @@ defmodule MCPChat.CLI.Chat do
   """
 
   require Logger
-  alias MCPChat.CLI.{Commands, Renderer}
-  alias MCPChat.{Config, Session}
   alias MCPChat.CLI.ExReadlineAdapter
+  alias MCPChat.CLI.{Commands, Renderer}
   alias MCPChat.Context.AtSymbolResolver
   alias MCPChat.LLM.ExLLMAdapter
+  alias MCPChat.{Config, Session}
 
   # alias MCPChat.LLM
 
@@ -287,19 +287,17 @@ defmodule MCPChat.CLI.Chat do
   end
 
   defp stream_simple(stream) do
-    try do
-      response =
-        stream
-        |> Enum.reduce("", fn chunk, acc ->
-          Renderer.show_stream_chunk(chunk.delta)
-          acc <> chunk.delta
-        end)
+    response =
+      stream
+      |> Enum.reduce("", fn chunk, acc ->
+        Renderer.show_stream_chunk(chunk.delta)
+        acc <> chunk.delta
+      end)
 
-      Renderer.end_stream()
-      {:ok, response}
-    rescue
-      e -> {:error, Exception.message(e)}
-    end
+    Renderer.end_stream()
+    {:ok, response}
+  rescue
+    e -> {:error, Exception.message(e)}
   end
 
   defp handle_resumed_stream(stream) do

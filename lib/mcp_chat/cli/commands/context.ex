@@ -11,9 +11,9 @@ defmodule MCPChat.CLI.Commands.Context do
 
   use MCPChat.CLI.Commands.Base
 
-  alias MCPChat.{Context, Session}
   alias MCPChat.CLI.Renderer
   alias MCPChat.Context.AsyncFileLoader
+  alias MCPChat.{Context, Session}
 
   @impl true
   def commands do

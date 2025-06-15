@@ -1,7 +1,9 @@
-defmodule MCPChat.MCP.ServerManager.ServerTest do
+defmodule ServerManager.ServerTest do
   use ExUnit.Case
 
-  alias MCPChat.MCP.ServerManager.Server
+  alias ServerManager.Server
+
+  alias ServerManager.ServerTest
 
   describe "Server struct creation and initialization" do
     test "new/2 creates server with initial health metrics" do

@@ -98,7 +98,7 @@ defmodule Mix.Tasks.TestTerminal do
     end
   end
 
-  defp iex_running?() do
+  defp iex_running? do
     Code.ensure_loaded?(IEx) and IEx.started?()
   end
 
@@ -130,12 +130,12 @@ defmodule Mix.Tasks.TestTerminal do
     end
   end
 
-  defp mix_with_tty?() do
+  defp mix_with_tty? do
     Code.ensure_loaded?(Mix) and tty?()
   end
 
   # Check if we're connected to a real TTY
-  defp tty?() do
+  defp tty? do
     # Try to detect if stdin/stdout are connected to a terminal
     case System.cmd("tty", [], stderr_to_stdout: true) do
       {output, 0} ->

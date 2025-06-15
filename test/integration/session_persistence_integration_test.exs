@@ -7,6 +7,7 @@ defmodule MCPChat.SessionPersistenceIntegrationTest do
   """
 
   @test_dir "test/tmp/sessions"
+  alias Static
 
   setup_all do
     Application.ensure_all_started(:mcp_chat)
@@ -27,7 +28,7 @@ defmodule MCPChat.SessionPersistenceIntegrationTest do
 
     # Start a static path provider for this test
     {:ok, path_provider} =
-      MCPChat.PathProvider.Static.start_link(%{
+      Static.start_link(%{
         sessions_dir: @test_dir,
         config_dir: @test_dir
       })

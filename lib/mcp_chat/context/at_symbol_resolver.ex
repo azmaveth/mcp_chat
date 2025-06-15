@@ -358,138 +358,130 @@ defmodule MCPChat.Context.AtSymbolResolver do
   end
 
   defp find_resource_server(resource_uri) do
-    try do
-      # Get all servers and their resources
-      all_resources = ServerManager.list_all_resources()
+    # Get all servers and their resources
+    all_resources = ServerManager.list_all_resources()
 
-      # Find which server has the requested resource
-      resource_found =
-        Enum.find(all_resources, fn {_server_name, resources} ->
-          Enum.any?(resources, fn resource ->
-            case resource do
-              %{uri: ^resource_uri} -> true
-              %{name: ^resource_uri} -> true
-              %{"uri" => ^resource_uri} -> true
-              %{"name" => ^resource_uri} -> true
-              _ -> false
-            end
-          end)
-        end)
+    # Find which server has the requested resource
+    resource_found =
+      Enum.find(all_resources, fn {_server_name, resources} ->
+        Enum.any?(resources, &resource_matches?(&1, resource_uri))
+      end)
 
-      case resource_found do
-        {server_name, _resources} -> {:ok, server_name}
-        nil -> {:error, "Resource not found: #{resource_uri}"}
-      end
-    rescue
-      _ -> {:error, "No MCP servers available or not started"}
+    case resource_found do
+      {server_name, _resources} -> {:ok, server_name}
+      nil -> {:error, "Resource not found: #{resource_uri}"}
+    end
+  rescue
+    _ -> {:error, "No MCP servers available or not started"}
+  end
+
+  defp resource_matches?(resource, uri) do
+    case resource do
+      %{uri: ^uri} -> true
+      %{name: ^uri} -> true
+      %{"uri" => ^uri} -> true
+      %{"name" => ^uri} -> true
+      _ -> false
     end
   end
 
   defp find_prompt_server(prompt_name) do
-    try do
-      # Get all servers and their prompts
-      all_prompts = ServerManager.list_all_prompts()
+    # Get all servers and their prompts
+    all_prompts = ServerManager.list_all_prompts()
 
-      # Find which server has the requested prompt
-      prompt_found =
-        Enum.find(all_prompts, fn {_server_name, prompts} ->
-          Enum.any?(prompts, fn prompt ->
-            case prompt do
-              %{name: ^prompt_name} -> true
-              %{"name" => ^prompt_name} -> true
-              _ -> false
-            end
-          end)
-        end)
+    # Find which server has the requested prompt
+    prompt_found =
+      Enum.find(all_prompts, fn {_server_name, prompts} ->
+        Enum.any?(prompts, &prompt_matches?(&1, prompt_name))
+      end)
 
-      case prompt_found do
-        {server_name, _prompts} -> {:ok, server_name}
-        nil -> {:error, "Prompt not found: #{prompt_name}"}
-      end
-    rescue
-      _ -> {:error, "No MCP servers available or not started"}
+    case prompt_found do
+      {server_name, _prompts} -> {:ok, server_name}
+      nil -> {:error, "Prompt not found: #{prompt_name}"}
+    end
+  rescue
+    _ -> {:error, "No MCP servers available or not started"}
+  end
+
+  defp prompt_matches?(prompt, name) do
+    case prompt do
+      %{name: ^name} -> true
+      %{"name" => ^name} -> true
+      _ -> false
     end
   end
 
   defp find_tool_server(tool_name) do
-    try do
-      # Get all servers and their tools
-      all_tools = ServerManager.list_all_tools()
+    # Get all servers and their tools
+    all_tools = ServerManager.list_all_tools()
 
-      # Find which server has the requested tool
-      tool_found =
-        Enum.find(all_tools, fn {_server_name, tools} ->
-          Enum.any?(tools, fn tool ->
-            case tool do
-              %{name: ^tool_name} -> true
-              %{"name" => ^tool_name} -> true
-              _ -> false
-            end
-          end)
-        end)
+    # Find which server has the requested tool
+    tool_found =
+      Enum.find(all_tools, fn {_server_name, tools} ->
+        Enum.any?(tools, &tool_matches?(&1, tool_name))
+      end)
 
-      case tool_found do
-        {server_name, _tools} -> {:ok, server_name}
-        nil -> {:error, "Tool not found: #{tool_name}"}
-      end
-    rescue
-      _ -> {:error, "No MCP servers available or not started"}
+    case tool_found do
+      {server_name, _tools} -> {:ok, server_name}
+      nil -> {:error, "Tool not found: #{tool_name}"}
+    end
+  rescue
+    _ -> {:error, "No MCP servers available or not started"}
+  end
+
+  defp tool_matches?(tool, name) do
+    case tool do
+      %{name: ^name} -> true
+      %{"name" => ^name} -> true
+      _ -> false
     end
   end
 
   defp get_available_resources do
-    try do
-      ServerManager.list_all_resources()
-      |> Enum.flat_map(fn {_server_name, resources} ->
-        Enum.map(resources, fn resource ->
-          case resource do
-            %{name: name} -> name
-            %{"name" => name} -> name
-            %{uri: uri} -> uri
-            %{"uri" => uri} -> uri
-            _ -> nil
-          end
-        end)
-      end)
-      |> Enum.filter(& &1)
-    rescue
-      _ -> []
+    ServerManager.list_all_resources()
+    |> Enum.flat_map(fn {_server_name, resources} ->
+      Enum.map(resources, &extract_resource_identifier/1)
+    end)
+    |> Enum.filter(& &1)
+  rescue
+    _ -> []
+  end
+
+  defp extract_resource_identifier(resource) do
+    case resource do
+      %{name: name} -> name
+      %{"name" => name} -> name
+      %{uri: uri} -> uri
+      %{"uri" => uri} -> uri
+      _ -> nil
     end
   end
 
   defp get_available_prompts do
-    try do
-      ServerManager.list_all_prompts()
-      |> Enum.flat_map(fn {_server_name, prompts} ->
-        Enum.map(prompts, fn prompt ->
-          case prompt do
-            %{name: name} -> name
-            %{"name" => name} -> name
-            _ -> nil
-          end
-        end)
-      end)
-      |> Enum.filter(& &1)
-    rescue
-      _ -> []
-    end
+    ServerManager.list_all_prompts()
+    |> Enum.flat_map(fn {_server_name, prompts} ->
+      Enum.map(prompts, &extract_name/1)
+    end)
+    |> Enum.filter(& &1)
+  rescue
+    _ -> []
   end
 
   defp get_available_tools do
-    try do
-      ServerManager.list_all_tools()
-      |> Enum.flat_map(fn {_server_name, tools} ->
-        Enum.map(tools, fn tool ->
-          case tool do
-            %{name: name} -> name
-            %{"name" => name} -> name
-            _ -> nil
-          end
-        end)
-      end)
-      |> Enum.filter(& &1)
-    rescue
-      _ -> []
+    ServerManager.list_all_tools()
+    |> Enum.flat_map(fn {_server_name, tools} ->
+      Enum.map(tools, &extract_name/1)
+    end)
+    |> Enum.filter(& &1)
+  rescue
+    _ -> []
+  end
+
+  defp extract_name(item) do
+    case item do
+      %{name: name} -> name
+      %{"name" => name} -> name
+      _ -> nil
     end
   end
 

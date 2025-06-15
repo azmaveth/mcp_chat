@@ -12,9 +12,9 @@ defmodule MCPChat.CLI.Commands.Utility do
 
   use MCPChat.CLI.Commands.Base
 
-  alias MCPChat.{Cost, Persistence, Session}
   alias MCPChat.CLI.Renderer
   alias MCPChat.MCP.ServerManager
+  alias MCPChat.{Cost, Persistence, Session}
 
   @impl true
   def commands do

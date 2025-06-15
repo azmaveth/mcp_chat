@@ -12,8 +12,8 @@ defmodule MCPChat.CLI.Commands.MCP do
   use MCPChat.CLI.Commands.Base
 
   alias MCPChat.CLI.Commands.MCPExtended
-  alias MCPChat.MCP.{Discovery, NotificationClient, ServerManager, ServerPersistence}
   alias MCPChat.MCP.ServerManager.Server
+  alias MCPChat.MCP.{Discovery, NotificationClient, ServerManager, ServerPersistence}
 
   @impl true
   def commands do

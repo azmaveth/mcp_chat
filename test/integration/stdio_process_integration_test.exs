@@ -1,7 +1,7 @@
 defmodule MCPChat.StdioProcessIntegrationTest do
   use ExUnit.Case, async: false
 
-  alias MCPChat.MCP.{StdioProcessManager, ServerWrapper}
+  alias MCPChat.MCP.{ServerWrapper, StdioProcessManager}
 
   @moduletag :integration
   @moduletag :mcp

@@ -2,8 +2,11 @@ defmodule MCPChat.MCP.HealthMonitorTest do
   use ExUnit.Case, async: false
 
   alias MCPChat.MCP.HealthMonitor
-  alias MCPChat.MCP.ServerManager
+  alias ServerManager
 
+  alias MCPChat.MCP.HealthMonitorTest
+  alias ServerManager.Server
+  alias ServerWrapper
   # Import test helpers
   import ExUnit.CaptureLog
 
@@ -34,7 +37,7 @@ defmodule MCPChat.MCP.HealthMonitorTest do
 
     test "get_health_metrics returns server metrics" do
       # Create a mock server with health data
-      mock_server = %MCPChat.MCP.ServerManager.Server{
+      mock_server = %Server{
         name: "test-server",
         status: :connected,
         health: %{
@@ -96,7 +99,7 @@ defmodule MCPChat.MCP.HealthMonitorTest do
 
     test "record_failure updates server metrics and checks health" do
       # Mock ServerManager and server info
-      mock_server = %MCPChat.MCP.ServerManager.Server{
+      mock_server = %Server{
         name: "test-server",
         status: :connected,
         health: %{consecutive_failures: 3, is_healthy: false}
@@ -142,15 +145,15 @@ defmodule MCPChat.MCP.HealthMonitorTest do
 
       mock_server_info = %{
         name: "test-server",
-        server: %MCPChat.MCP.ServerManager.Server{
+        server: %Server{
           name: "test-server",
           pid: mock_pid,
           status: :connected
         }
       }
 
-      :meck.new(MCPChat.MCP.ServerWrapper, [:passthrough])
-      :meck.expect(MCPChat.MCP.ServerWrapper, :get_tools, fn ^mock_pid -> {:ok, []} end)
+      :meck.new(ServerWrapper, [:passthrough])
+      :meck.expect(ServerWrapper, :get_tools, fn ^mock_pid -> {:ok, []} end)
 
       :meck.new(HealthMonitor, [:passthrough])
       :meck.expect(HealthMonitor, :record_success, fn "test-server", _response_time -> :ok end)
@@ -166,9 +169,9 @@ defmodule MCPChat.MCP.HealthMonitorTest do
         Process.sleep(50)
 
         # Verify that get_tools was called
-        assert :meck.num_calls(MCPChat.MCP.ServerWrapper, :get_tools, [mock_pid]) > 0
+        assert :meck.num_calls(ServerWrapper, :get_tools, [mock_pid]) > 0
       after
-        :meck.unload(MCPChat.MCP.ServerWrapper)
+        :meck.unload(ServerWrapper)
         :meck.unload(HealthMonitor)
         :meck.unload(ServerManager)
       end
@@ -180,15 +183,15 @@ defmodule MCPChat.MCP.HealthMonitorTest do
 
       mock_server_info = %{
         name: "test-server",
-        server: %MCPChat.MCP.ServerManager.Server{
+        server: %Server{
           name: "test-server",
           pid: mock_pid,
           status: :connected
         }
       }
 
-      :meck.new(MCPChat.MCP.ServerWrapper, [:passthrough])
-      :meck.expect(MCPChat.MCP.ServerWrapper, :get_tools, fn ^mock_pid -> {:error, :timeout} end)
+      :meck.new(ServerWrapper, [:passthrough])
+      :meck.expect(ServerWrapper, :get_tools, fn ^mock_pid -> {:error, :timeout} end)
 
       :meck.new(HealthMonitor, [:passthrough])
       :meck.expect(HealthMonitor, :record_failure, fn "test-server" -> :ok end)
@@ -206,10 +209,10 @@ defmodule MCPChat.MCP.HealthMonitorTest do
           end)
 
         # Verify that get_tools was called and failure was logged
-        assert :meck.num_calls(MCPChat.MCP.ServerWrapper, :get_tools, [mock_pid]) > 0
+        assert :meck.num_calls(ServerWrapper, :get_tools, [mock_pid]) > 0
         assert log =~ "Health check failed for server 'test-server'"
       after
-        :meck.unload(MCPChat.MCP.ServerWrapper)
+        :meck.unload(ServerWrapper)
         :meck.unload(HealthMonitor)
         :meck.unload(ServerManager)
       end

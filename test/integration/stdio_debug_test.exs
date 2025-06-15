@@ -1,9 +1,11 @@
 defmodule MCPChat.StdioDebugTest do
   use ExUnit.Case, async: false
 
-  alias MCPChat.MCP.StdioProcessManager
+  alias StdioProcessManager
 
   @moduletag :debug
+
+  alias ServerWrapper
 
   test "debug stdio communication" do
     # Create a minimal echo server for testing
@@ -114,13 +116,13 @@ defmodule MCPChat.StdioDebugTest do
     }
 
     # Just start the wrapper and see what happens
-    {:ok, wrapper} = MCPChat.MCP.ServerWrapper.start_link(config)
+    {:ok, wrapper} = ServerWrapper.start_link(config)
 
     # Give it time to initialize
     Process.sleep(1_000)
 
     # Try to get status
-    status = MCPChat.MCP.ServerWrapper.get_status(wrapper)
+    status = ServerWrapper.get_status(wrapper)
     IO.puts("Status: #{inspect(status)}")
 
     # Clean up

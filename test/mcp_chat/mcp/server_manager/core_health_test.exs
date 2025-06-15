@@ -1,8 +1,12 @@
-defmodule MCPChat.MCP.ServerManager.CoreHealthTest do
+defmodule ServerManager.CoreHealthTest do
   use ExUnit.Case
 
-  alias MCPChat.MCP.ServerManager.Core
-  alias MCPChat.MCP.ServerManager.Server
+  alias ServerManager.Core
+  alias ServerManager.Server
+
+  alias MCPChat.MCP.HealthMonitor
+  alias ServerManager.CoreHealthTest
+  alias ServerWrapper
 
   describe "Core health tracking functions" do
     setup do
@@ -137,16 +141,16 @@ defmodule MCPChat.MCP.ServerManager.CoreHealthTest do
       arguments = %{"param" => "value"}
 
       # Mock ServerWrapper.call_tool to return success
-      :meck.new(MCPChat.MCP.ServerWrapper, [:passthrough])
+      :meck.new(ServerWrapper, [:passthrough])
 
-      :meck.expect(MCPChat.MCP.ServerWrapper, :call_tool, fn ^pid, ^tool_name, ^arguments ->
+      :meck.expect(ServerWrapper, :call_tool, fn ^pid, ^tool_name, ^arguments ->
         {:ok, %{"result" => "success"}}
       end)
 
-      :meck.new(MCPChat.MCP.HealthMonitor, [:passthrough])
+      :meck.new(HealthMonitor, [:passthrough])
 
-      :meck.expect(MCPChat.MCP.HealthMonitor, :record_success, fn "test-server", response_time
-                                                                  when is_number(response_time) ->
+      :meck.expect(HealthMonitor, :record_success, fn "test-server", response_time
+                                                      when is_number(response_time) ->
         :ok
       end)
 
@@ -156,7 +160,7 @@ defmodule MCPChat.MCP.ServerManager.CoreHealthTest do
         assert {:ok, %{"result" => "success"}} = result
 
         # Verify that health monitoring was called (with any response time)
-        history = :meck.history(MCPChat.MCP.HealthMonitor)
+        history = :meck.history(HealthMonitor)
 
         success_calls =
           Enum.filter(history, fn {_pid, {_mod, :record_success, [server, _time]}, _result} ->
@@ -165,8 +169,8 @@ defmodule MCPChat.MCP.ServerManager.CoreHealthTest do
 
         assert length(success_calls) > 0
       after
-        :meck.unload(MCPChat.MCP.ServerWrapper)
-        :meck.unload(MCPChat.MCP.HealthMonitor)
+        :meck.unload(ServerWrapper)
+        :meck.unload(HealthMonitor)
       end
     end
 
@@ -175,11 +179,11 @@ defmodule MCPChat.MCP.ServerManager.CoreHealthTest do
       arguments = %{"param" => "value"}
 
       # Mock ServerWrapper.call_tool to return error
-      :meck.new(MCPChat.MCP.ServerWrapper, [:passthrough])
-      :meck.expect(MCPChat.MCP.ServerWrapper, :call_tool, fn ^pid, ^tool_name, ^arguments -> {:error, :timeout} end)
+      :meck.new(ServerWrapper, [:passthrough])
+      :meck.expect(ServerWrapper, :call_tool, fn ^pid, ^tool_name, ^arguments -> {:error, :timeout} end)
 
-      :meck.new(MCPChat.MCP.HealthMonitor, [:passthrough])
-      :meck.expect(MCPChat.MCP.HealthMonitor, :record_failure, fn "test-server" -> :ok end)
+      :meck.new(HealthMonitor, [:passthrough])
+      :meck.expect(HealthMonitor, :record_failure, fn "test-server" -> :ok end)
 
       try do
         result = Core.call_tool(state, "test-server", tool_name, arguments)
@@ -187,10 +191,10 @@ defmodule MCPChat.MCP.ServerManager.CoreHealthTest do
         assert {:error, :timeout} = result
 
         # Verify that health monitoring was called
-        assert :meck.num_calls(MCPChat.MCP.HealthMonitor, :record_failure, ["test-server"]) > 0
+        assert :meck.num_calls(HealthMonitor, :record_failure, ["test-server"]) > 0
       after
-        :meck.unload(MCPChat.MCP.ServerWrapper)
-        :meck.unload(MCPChat.MCP.HealthMonitor)
+        :meck.unload(ServerWrapper)
+        :meck.unload(HealthMonitor)
       end
     end
 
@@ -215,9 +219,9 @@ defmodule MCPChat.MCP.ServerManager.CoreHealthTest do
       arguments = %{}
 
       # Mock ServerWrapper.call_tool with a delay
-      :meck.new(MCPChat.MCP.ServerWrapper, [:passthrough])
+      :meck.new(ServerWrapper, [:passthrough])
 
-      :meck.expect(MCPChat.MCP.ServerWrapper, :call_tool, fn ^pid, ^tool_name, ^arguments ->
+      :meck.expect(ServerWrapper, :call_tool, fn ^pid, ^tool_name, ^arguments ->
         # Simulate 50ms delay
         Process.sleep(50)
         {:ok, %{"result" => "success"}}
@@ -225,9 +229,9 @@ defmodule MCPChat.MCP.ServerManager.CoreHealthTest do
 
       {:ok, captured_response_time} = Agent.start_link(fn -> nil end)
 
-      :meck.new(MCPChat.MCP.HealthMonitor, [:passthrough])
+      :meck.new(HealthMonitor, [:passthrough])
 
-      :meck.expect(MCPChat.MCP.HealthMonitor, :record_success, fn "test-server", response_time ->
+      :meck.expect(HealthMonitor, :record_success, fn "test-server", response_time ->
         Agent.update(captured_response_time, fn _ -> response_time end)
         :ok
       end)
@@ -243,8 +247,8 @@ defmodule MCPChat.MCP.ServerManager.CoreHealthTest do
         # Allow some tolerance for timing
         assert response_time >= 40
       after
-        :meck.unload(MCPChat.MCP.ServerWrapper)
-        :meck.unload(MCPChat.MCP.HealthMonitor)
+        :meck.unload(ServerWrapper)
+        :meck.unload(HealthMonitor)
         Agent.stop(captured_response_time)
       end
     end

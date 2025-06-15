@@ -4,12 +4,12 @@ defmodule MCPChat.Application do
   """
   use Application
 
-  alias MCPChat.{CircuitBreaker, Config, StartupProfiler}
   alias MCPChat.Alias.ExAliasAdapter
-  alias MCPChat.MCP.{HealthMonitor, NotificationRegistry, ProgressTracker}
   alias MCPChat.MCP.Handlers.{ProgressHandler, ToolChangeHandler}
+  alias MCPChat.MCP.{HealthMonitor, NotificationRegistry, ProgressTracker}
   alias MCPChat.Memory.StoreSupervisor
   alias MCPChat.Session.Autosave
+  alias MCPChat.{CircuitBreaker, Config, StartupProfiler}
 
   @impl true
   def start(_type, _args) do

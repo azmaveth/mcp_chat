@@ -4,6 +4,10 @@ defmodule MCPChat.ApplicationTest do
   @moduledoc """
   Tests for the MCPChat.Application supervisor.
   """
+  alias ExAliasAdapter
+  alias ServerManager
+  alias SSEServer
+  alias StdioServer
 
   describe "start/2" do
     setup do
@@ -28,8 +32,8 @@ defmodule MCPChat.ApplicationTest do
       # Verify core children are started
       assert Process.whereis(MCPChat.Config) != nil
       assert Process.whereis(MCPChat.Session) != nil
-      assert Process.whereis(MCPChat.Alias.ExAliasAdapter) != nil
-      assert Process.whereis(MCPChat.MCP.ServerManager) != nil
+      assert Process.whereis(ExAliasAdapter) != nil
+      assert Process.whereis(ServerManager) != nil
 
       # Clean up
       Supervisor.stop(pid)
@@ -73,7 +77,7 @@ defmodule MCPChat.ApplicationTest do
       # Get PIDs of multiple children
       config_pid = Process.whereis(MCPChat.Config)
       session_pid = Process.whereis(MCPChat.Session)
-      alias_pid = Process.whereis(MCPChat.Alias.ExAliasAdapter)
+      alias_pid = Process.whereis(ExAliasAdapter)
 
       assert config_pid != nil
       assert session_pid != nil
@@ -86,7 +90,7 @@ defmodule MCPChat.ApplicationTest do
       # Verify only the killed child was restarted
       assert Process.whereis(MCPChat.Config) == config_pid
       assert Process.whereis(MCPChat.Session) != session_pid
-      assert Process.whereis(MCPChat.Alias.ExAliasAdapter) == alias_pid
+      assert Process.whereis(ExAliasAdapter) == alias_pid
 
       # Clean up
       Supervisor.stop(sup_pid)
@@ -114,8 +118,8 @@ defmodule MCPChat.ApplicationTest do
       # Verify core children are present
       assert MCPChat.Config in child_ids
       assert MCPChat.Session in child_ids
-      assert MCPChat.Alias.ExAliasAdapter in child_ids
-      assert MCPChat.MCP.ServerManager in child_ids
+      assert ExAliasAdapter in child_ids
+      assert ServerManager in child_ids
 
       # Clean up
       Supervisor.stop(sup_pid)
@@ -179,12 +183,12 @@ defmodule MCPChat.ApplicationTest do
 
       # Kill it multiple times
       for _i <- 1..3 do
-        current_pid = Process.whereis(MCPChat.Alias.ExAliasAdapter)
+        current_pid = Process.whereis(ExAliasAdapter)
         Process.exit(current_pid, :kill)
         Process.sleep(100)
 
         # Verify it was restarted
-        new_pid = Process.whereis(MCPChat.Alias.ExAliasAdapter)
+        new_pid = Process.whereis(ExAliasAdapter)
         assert new_pid != nil
         assert new_pid != current_pid
       end
@@ -214,8 +218,8 @@ defmodule MCPChat.ApplicationTest do
       assert Process.alive?(sup_pid)
 
       # Check if any MCP servers are running (depends on config)
-      stdio_server = Process.whereis(MCPChat.MCPServer.StdioServer)
-      sse_server = Process.whereis(MCPChat.MCPServer.SSEServer)
+      stdio_server = Process.whereis(StdioServer)
+      sse_server = Process.whereis(SSEServer)
 
       # At least verify we can check for them without errors
       assert stdio_server == nil or Process.alive?(stdio_server)
@@ -269,10 +273,10 @@ defmodule MCPChat.ApplicationTest do
     processes = [
       MCPChat.Config,
       MCPChat.Session,
-      MCPChat.Alias.ExAliasAdapter,
-      MCPChat.MCP.ServerManager,
-      MCPChat.MCPServer.StdioServer,
-      MCPChat.MCPServer.SSEServer
+      ExAliasAdapter,
+      ServerManager,
+      StdioServer,
+      SSEServer
     ]
 
     Enum.each(processes, fn name ->

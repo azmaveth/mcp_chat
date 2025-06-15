@@ -1,8 +1,11 @@
-defmodule MCPChat.CLI.Commands.MCPCommandsTest do
+defmodule Commands.MCPCommandsTest do
   use ExUnit.Case
-  alias MCPChat.CLI.Commands
+  alias Commands
 
   import ExUnit.CaptureIO
+
+  alias ExAliasAdapter
+  alias ServerManager
 
   setup do
     # Start required services
@@ -306,14 +309,14 @@ defmodule MCPChat.CLI.Commands.MCPCommandsTest do
   end
 
   defp start_server_manager do
-    case Process.whereis(MCPChat.MCP.ServerManager) do
-      nil -> {:ok, _} = MCPChat.MCP.ServerManager.start_link()
+    case Process.whereis(ServerManager) do
+      nil -> {:ok, _} = ServerManager.start_link()
       _ -> :ok
     end
   end
 
   defp start_alias do
-    case Process.whereis(MCPChat.Alias.ExAliasAdapter) do
+    case Process.whereis(ExAliasAdapter) do
       nil -> start_ex_alias_and_adapter()
       _ -> :ok
     end
@@ -325,6 +328,6 @@ defmodule MCPChat.CLI.Commands.MCPCommandsTest do
       _ -> :ok
     end
 
-    {:ok, _} = MCPChat.Alias.ExAliasAdapter.start_link()
+    {:ok, _} = ExAliasAdapter.start_link()
   end
 end

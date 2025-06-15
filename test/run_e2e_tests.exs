@@ -20,6 +20,9 @@
 #   --setup            Install requirements and pull Ollama model
 
 defmodule E2ETestRunner do
+  alias ExLLMAdapter
+  alias ServerManager
+
   @ollama_url "http://localhost:11_434"
   @required_model "nomic-embed-text:latest"
   @demo_servers_path Path.expand("../examples/demo_servers", __DIR__)
@@ -266,7 +269,7 @@ defmodule E2ETestRunner do
       "model" => @required_model
     }
 
-    case MCPChat.LLM.ExLLMAdapter.init(config) do
+    case ExLLMAdapter.init(config) do
       {:ok, client} ->
         IO.puts("✅ Ollama client initialized")
         test_ollama_response(client)
@@ -279,7 +282,7 @@ defmodule E2ETestRunner do
   defp test_ollama_response(client) do
     messages = [%{role: "user", content: "Say 'test passed' if you can read this"}]
 
-    case MCPChat.LLM.ExLLMAdapter.complete(client, messages, %{}) do
+    case ExLLMAdapter.complete(client, messages, %{}) do
       {:ok, response} ->
         verify_ollama_response(response)
 
@@ -306,12 +309,12 @@ defmodule E2ETestRunner do
       "args" => [Path.join(@demo_servers_path, "time_server.py")]
     }
 
-    case MCPChat.MCP.ServerManager.start_server(config) do
+    case ServerManager.start_server(config) do
       {:ok, _} ->
         IO.puts("✅ MCP server started")
         Process.sleep(1_000)
 
-        case MCPChat.MCP.ServerManager.list_tools("test_time") do
+        case ServerManager.list_tools("test_time") do
           {:ok, tools} when length(tools) > 0 ->
             IO.puts("✅ MCP tools available: #{length(tools)} tools")
 
@@ -319,7 +322,7 @@ defmodule E2ETestRunner do
             IO.puts("⚠️  No tools found")
         end
 
-        MCPChat.MCP.ServerManager.stop_server("test_time")
+        ServerManager.stop_server("test_time")
 
       {:error, reason} ->
         IO.puts("⚠️  Failed to start MCP server: #{inspect(reason)}")

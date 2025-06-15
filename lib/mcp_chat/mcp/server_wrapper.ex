@@ -277,13 +277,11 @@ defmodule MCPChat.MCP.ServerWrapper do
   end
 
   defp forward_to_client(state, fun) do
-    try do
-      result = fun.(state.client)
-      {:reply, result, state}
-    rescue
-      e ->
-        {:reply, {:error, e}, state}
-    end
+    result = fun.(state.client)
+    {:reply, result, state}
+  rescue
+    e ->
+      {:reply, {:error, e}, state}
   end
 
   defp determine_transport(config) do

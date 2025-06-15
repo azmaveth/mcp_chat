@@ -1,7 +1,9 @@
-defmodule MCPChat.MCP.ProgressTrackerTest do
+defmodule ProgressTrackerTest do
   use ExUnit.Case, async: true
 
-  alias MCPChat.MCP.ProgressTracker
+  alias ProgressTracker
+
+  alias ProgressTrackerTest
 
   setup do
     {:ok, tracker} = ProgressTracker.start_link()

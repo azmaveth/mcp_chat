@@ -1,11 +1,14 @@
-defmodule MCPChat.Context.AsyncFileLoaderTest do
+defmodule AsyncFileLoaderTest do
   use ExUnit.Case, async: true
   import ExUnit.CaptureLog
 
-  alias MCPChat.Context.AsyncFileLoader
+  alias AsyncFileLoader
 
   @test_file_content "This is a test file for async loading.\nIt has multiple lines.\n"
   @large_file_content String.duplicate("This is a large file content.\n", 1_000)
+
+  alias AsyncFileLoaderTest
+  alias ProgressTracker
 
   setup do
     # Create temporary test files
@@ -44,10 +47,10 @@ defmodule MCPChat.Context.AsyncFileLoaderTest do
       :meck.expect(MCPChat.Session, :update_session, fn _ -> :ok end)
 
       # Mock ProgressTracker
-      :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _name, _params -> "progress_token" end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _token -> :ok end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _token, _reason -> :ok end)
+      :meck.new(ProgressTracker, [:non_strict])
+      :meck.expect(ProgressTracker, :start_operation, fn _name, _params -> "progress_token" end)
+      :meck.expect(ProgressTracker, :complete_operation, fn _token -> :ok end)
+      :meck.expect(ProgressTracker, :fail_operation, fn _token, _reason -> :ok end)
 
       try do
         # Test with callback
@@ -79,15 +82,15 @@ defmodule MCPChat.Context.AsyncFileLoaderTest do
         end
       after
         :meck.unload(MCPChat.Session)
-        :meck.unload(MCPChat.MCP.ProgressTracker)
+        :meck.unload(ProgressTracker)
       end
     end
 
     test "handles missing files gracefully", %{missing_file: missing_file} do
-      :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> "token" end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _ -> :ok end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _, _ -> :ok end)
+      :meck.new(ProgressTracker, [:non_strict])
+      :meck.expect(ProgressTracker, :start_operation, fn _, _ -> "token" end)
+      :meck.expect(ProgressTracker, :complete_operation, fn _ -> :ok end)
+      :meck.expect(ProgressTracker, :fail_operation, fn _, _ -> :ok end)
 
       try do
         test_pid = self()
@@ -110,15 +113,15 @@ defmodule MCPChat.Context.AsyncFileLoaderTest do
           5_000 -> flunk("Error callback not received")
         end
       after
-        :meck.unload(MCPChat.MCP.ProgressTracker)
+        :meck.unload(ProgressTracker)
       end
     end
 
     test "validates file size limits", %{large_file: large_file} do
-      :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> "token" end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _ -> :ok end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _, _ -> :ok end)
+      :meck.new(ProgressTracker, [:non_strict])
+      :meck.expect(ProgressTracker, :start_operation, fn _, _ -> "token" end)
+      :meck.expect(ProgressTracker, :complete_operation, fn _ -> :ok end)
+      :meck.expect(ProgressTracker, :fail_operation, fn _, _ -> :ok end)
 
       try do
         # Set a very small max file size to trigger the limit
@@ -144,7 +147,7 @@ defmodule MCPChat.Context.AsyncFileLoaderTest do
           5_000 -> flunk("Size limit error not received")
         end
       after
-        :meck.unload(MCPChat.MCP.ProgressTracker)
+        :meck.unload(ProgressTracker)
       end
     end
   end
@@ -158,10 +161,10 @@ defmodule MCPChat.Context.AsyncFileLoaderTest do
       File.write!(test_file2, "Content of file 2")
       File.write!(test_file3, "Content of file 3")
 
-      :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> "token" end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _ -> :ok end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _, _ -> :ok end)
+      :meck.new(ProgressTracker, [:non_strict])
+      :meck.expect(ProgressTracker, :start_operation, fn _, _ -> "token" end)
+      :meck.expect(ProgressTracker, :complete_operation, fn _ -> :ok end)
+      :meck.expect(ProgressTracker, :fail_operation, fn _, _ -> :ok end)
 
       try do
         files = [test_file, test_file2, test_file3]
@@ -216,15 +219,15 @@ defmodule MCPChat.Context.AsyncFileLoaderTest do
         File.rm(test_file2)
         File.rm(test_file3)
       after
-        :meck.unload(MCPChat.MCP.ProgressTracker)
+        :meck.unload(ProgressTracker)
       end
     end
 
     test "handles mixed success and failure", %{test_file: test_file, missing_file: missing_file} do
-      :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> "token" end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _ -> :ok end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _, _ -> :ok end)
+      :meck.new(ProgressTracker, [:non_strict])
+      :meck.expect(ProgressTracker, :start_operation, fn _, _ -> "token" end)
+      :meck.expect(ProgressTracker, :complete_operation, fn _ -> :ok end)
+      :meck.expect(ProgressTracker, :fail_operation, fn _, _ -> :ok end)
 
       try do
         files = [test_file, missing_file]
@@ -258,7 +261,7 @@ defmodule MCPChat.Context.AsyncFileLoaderTest do
           5_000 -> flunk("Partial result callback not received")
         end
       after
-        :meck.unload(MCPChat.MCP.ProgressTracker)
+        :meck.unload(ProgressTracker)
       end
     end
   end
@@ -280,10 +283,10 @@ defmodule MCPChat.Context.AsyncFileLoaderTest do
         :ok
       end)
 
-      :meck.new(MCPChat.MCP.ProgressTracker, [:non_strict])
-      :meck.expect(MCPChat.MCP.ProgressTracker, :start_operation, fn _, _ -> "token" end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :complete_operation, fn _ -> :ok end)
-      :meck.expect(MCPChat.MCP.ProgressTracker, :fail_operation, fn _, _ -> :ok end)
+      :meck.new(ProgressTracker, [:non_strict])
+      :meck.expect(ProgressTracker, :start_operation, fn _, _ -> "token" end)
+      :meck.expect(ProgressTracker, :complete_operation, fn _ -> :ok end)
+      :meck.expect(ProgressTracker, :fail_operation, fn _, _ -> :ok end)
 
       try do
         success_callback = fn result ->
@@ -319,7 +322,7 @@ defmodule MCPChat.Context.AsyncFileLoaderTest do
         end
       after
         :meck.unload(MCPChat.Session)
-        :meck.unload(MCPChat.MCP.ProgressTracker)
+        :meck.unload(ProgressTracker)
       end
     end
   end

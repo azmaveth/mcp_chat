@@ -4,6 +4,8 @@ defmodule MCPChat.MCP.NotificationIntegrationTest do
   alias MCPChat.MCP.Handlers.ProgressHandler
   alias MCPChat.MCP.{NotificationRegistry, ProgressTracker}
 
+  alias MCPChat.MCP.NotificationIntegrationTest
+
   describe "notification system integration" do
     test "progress notifications update tracker" do
       # Ensure services are started

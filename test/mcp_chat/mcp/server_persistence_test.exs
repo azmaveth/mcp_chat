@@ -2,6 +2,8 @@ defmodule MCPChat.MCP.ServerPersistenceTest do
   use ExUnit.Case
   alias MCPChat.MCP.ServerPersistence
 
+  alias MCPChat.MCP.ServerPersistenceTest
+
   describe "ServerPersistence functionality" do
     @tag :integration
     test "save and load servers integration test" do

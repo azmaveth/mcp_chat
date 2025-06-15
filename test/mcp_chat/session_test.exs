@@ -1,7 +1,7 @@
 defmodule MCPChat.SessionTest do
   use ExUnit.Case
   alias MCPChat.Session
-  alias MCPChat.Types.Session, as: SessionStruct
+  alias Session, as: SessionStruct
 
   setup do
     # Start Config GenServer first

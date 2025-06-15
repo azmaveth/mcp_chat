@@ -6,9 +6,9 @@ defmodule MCPChat.AtSymbolE2ETest do
   Tests file, URL, and MCP resource/tool/prompt inclusion.
   """
 
-  alias MCPChat.Context.AtSymbolResolver
-  alias MCPChat.MCP.ServerManager
+  alias AtSymbolResolver
   alias MCPChat.Session
+  alias ServerManager
 
   @test_timeout 30_000
   @demo_servers_path Path.expand("../support", __DIR__)

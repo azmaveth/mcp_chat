@@ -7,8 +7,8 @@ defmodule MCPChat.Session do
   """
   use GenServer
 
-  alias MCPChat.Session.ExLLMSessionAdapter, as: SessionCore
   alias MCPChat.Session.Autosave
+  alias MCPChat.Session.ExLLMSessionAdapter, as: SessionCore
 
   # Client API
 

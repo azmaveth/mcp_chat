@@ -2,6 +2,8 @@ defmodule MCPChat.MCP.Handlers.ComprehensiveNotificationHandlerTest do
   use ExUnit.Case
   alias MCPChat.MCP.Handlers.ComprehensiveNotificationHandler
 
+  alias MCPChat.MCP.Handlers.ComprehensiveNotificationHandlerTest
+
   setup do
     {:ok, handler} = ComprehensiveNotificationHandler.start_link(name: :test_handler)
 

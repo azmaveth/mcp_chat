@@ -2,9 +2,11 @@ defmodule MCPChat.CLI.ResumeCommandTest do
   use ExUnit.Case, async: false
   import ExUnit.CaptureIO
 
-  alias MCPChat.CLI.Commands.Utility
-  alias MCPChat.LLM.ExLLMAdapter
+  alias Commands.Utility
+  alias ExLLMAdapter
   alias MCPChat.Session
+
+  alias MCPChat.CLI.ResumeCommandTest
 
   setup do
     # Start session if not already started

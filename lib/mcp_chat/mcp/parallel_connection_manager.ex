@@ -13,7 +13,6 @@ defmodule MCPChat.MCP.ParallelConnectionManager do
   require Logger
   alias MCPChat.MCP.{LazyServerManager, ServerManager}
 
-
   defmodule ConnectionResult do
     @moduledoc false
     defstruct [:server_name, :config, :status, :pid, :error, :duration_ms]

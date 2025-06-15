@@ -1,6 +1,8 @@
-defmodule MCPChat.Streaming.StreamBufferTest do
+defmodule StreamBufferTest do
   use ExUnit.Case
-  alias MCPChat.Streaming.StreamBuffer
+  alias StreamBuffer
+
+  alias StreamBufferTest
 
   describe "new/1" do
     test "creates a buffer with specified capacity" do

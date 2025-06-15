@@ -9,8 +9,8 @@ defmodule MCPChat.SessionManager do
   """
 
   require Logger
-  alias MCPChat.{Persistence, Session}
   alias MCPChat.Session.Autosave
+  alias MCPChat.{Persistence, Session}
 
   @doc """
   Start a new chat session with automatic saving.
