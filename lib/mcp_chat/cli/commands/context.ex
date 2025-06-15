@@ -11,8 +11,9 @@ defmodule MCPChat.CLI.Commands.Context do
 
   use MCPChat.CLI.Commands.Base
 
-  alias MCPChat.Context.AsyncFileLoader
   alias MCPChat.{Context, Session}
+  alias MCPChat.CLI.Renderer
+  alias MCPChat.Context.AsyncFileLoader
 
   @impl true
   def commands do
@@ -106,7 +107,7 @@ defmodule MCPChat.CLI.Commands.Context do
     session = Session.get_current_session()
     stats = Context.get_context_stats(session.messages, session.context[:max_tokens] || 4_096)
 
-    MCPChat.CLI.Renderer.show_text("## Context Statistics\n")
+    Renderer.show_text("## Context Statistics\n")
 
     IO.puts("Messages: #{stats.message_count}")
     IO.puts("Estimated tokens: #{stats.estimated_tokens}")
