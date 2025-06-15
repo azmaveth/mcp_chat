@@ -8,6 +8,8 @@ defmodule MCPChat.MCPTestHelpers do
 
   require Logger
 
+  alias MCPChat.MCP.ServerManager
+
   @doc """
   Starts an MCP server as an external process and connects a client to it.
 
@@ -29,7 +31,7 @@ defmodule MCPChat.MCPTestHelpers do
       }
 
       MCPTestHelpers.with_mcp_server("test-server", config, fn client_name ->
-        {:ok, tools} = MCPChat.MCP.ServerManager.get_tools(client_name)
+        {:ok, tools} = ServerManager.get_tools(client_name)
         assert length(tools) > 0
       end)
   """
@@ -50,7 +52,7 @@ defmodule MCPChat.MCPTestHelpers do
           })
 
         # Start client connection through ServerManager
-        {:ok, _client} = MCPChat.MCP.ServerManager.start_server(client_config)
+        {:ok, _client} = ServerManager.start_server(client_config)
 
         # Wait for client to connect and initialize
         timeout = Keyword.get(opts, :timeout, 5_000)
@@ -101,7 +103,7 @@ defmodule MCPChat.MCPTestHelpers do
   Stops an MCP server by name through the ServerManager.
   """
   def stop_mcp_server(name) do
-    MCPChat.MCP.ServerManager.stop_server(name)
+    ServerManager.stop_server(name)
   end
 
   @doc """
@@ -114,7 +116,7 @@ defmodule MCPChat.MCPTestHelpers do
   end
 
   defp wait_until_ready(name, deadline) do
-    case MCPChat.MCP.ServerManager.get_tools(name) do
+    case ServerManager.get_tools(name) do
       {:ok, _tools} ->
         :ok
 
@@ -137,7 +139,7 @@ defmodule MCPChat.MCPTestHelpers do
   ## Example
 
       MCPTestHelpers.with_beam_mcp_server("test-server", TestHandler, fn client_name ->
-        {:ok, result} = MCPChat.MCP.ServerManager.call_tool(
+        {:ok, result} = ServerManager.call_tool(
           client_name,
           "test_tool",
           %{}
@@ -160,7 +162,7 @@ defmodule MCPChat.MCPTestHelpers do
       "server_name" => :"#{name}_server"
     }
 
-    {:ok, _client} = MCPChat.MCP.ServerManager.start_server(client_config)
+    {:ok, _client} = ServerManager.start_server(client_config)
 
     # Wait for initialization
     wait_for_client_ready(name)
@@ -168,7 +170,7 @@ defmodule MCPChat.MCPTestHelpers do
     try do
       fun.(name)
     after
-      MCPChat.MCP.ServerManager.stop_server(name)
+      ServerManager.stop_server(name)
       GenServer.stop(server)
     end
   end
