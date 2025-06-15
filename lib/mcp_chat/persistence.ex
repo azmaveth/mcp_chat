@@ -3,6 +3,7 @@ defmodule MCPChat.Persistence do
   Handles saving and loading chat sessions to/from disk.
   """
 
+  alias MCPChat.PathProvider
   alias MCPChat.Types.Session
 
   @extension ".json"
@@ -24,7 +25,7 @@ defmodule MCPChat.Persistence do
   Save a specific session to disk.
   """
   def save_session(session, name \\ nil, opts \\ []) do
-    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    path_provider = Keyword.get(opts, :path_provider, PathProvider.Default)
     sessions_dir = get_sessions_dir(path_provider)
 
     ensure_sessions_dir(sessions_dir)
@@ -44,7 +45,7 @@ defmodule MCPChat.Persistence do
   Load a session from disk by name or ID.
   """
   def load_session(identifier, opts \\ []) do
-    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    path_provider = Keyword.get(opts, :path_provider, PathProvider.Default)
     path = find_session_file(identifier, path_provider)
 
     with {:ok, data} <- File.read(path),
@@ -60,7 +61,7 @@ defmodule MCPChat.Persistence do
   List all saved sessions.
   """
   def list_sessions(opts \\ []) do
-    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    path_provider = Keyword.get(opts, :path_provider, PathProvider.Default)
     sessions_dir = get_sessions_dir(path_provider)
 
     ensure_sessions_dir(sessions_dir)
@@ -85,7 +86,7 @@ defmodule MCPChat.Persistence do
   Delete a saved session.
   """
   def delete_session(identifier, opts \\ []) do
-    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    path_provider = Keyword.get(opts, :path_provider, PathProvider.Default)
     path = find_session_file(identifier, path_provider)
     File.rm(path)
   end
@@ -131,7 +132,7 @@ defmodule MCPChat.Persistence do
 
   defp do_get_sessions_dir(path_provider) do
     case path_provider do
-      MCPChat.PathProvider.Default ->
+      PathProvider.Default ->
         get_default_sessions_dir()
 
       provider when is_pid(provider) ->
@@ -143,14 +144,14 @@ defmodule MCPChat.Persistence do
   end
 
   defp get_default_sessions_dir do
-    case MCPChat.PathProvider.Default.get_path(:sessions_dir) do
+    case PathProvider.Default.get_path(:sessions_dir) do
       {:ok, path} -> path
       {:error, _} -> Path.expand("~/.config/mcp_chat/sessions")
     end
   end
 
   defp get_static_sessions_dir(provider) do
-    case MCPChat.PathProvider.Static.get_path(provider, :sessions_dir) do
+    case PathProvider.Static.get_path(provider, :sessions_dir) do
       {:ok, path} -> path
       {:error, _} -> "/tmp/mcp_chat_test/sessions"
     end

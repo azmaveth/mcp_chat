@@ -14,6 +14,8 @@ defmodule MCPChat.CLI.Commands.LLM do
 
   require Logger
 
+  alias MCPChat.Session
+
   @impl true
   def commands do
     %{
@@ -98,7 +100,7 @@ defmodule MCPChat.CLI.Commands.LLM do
   end
 
   defp complete_backend_switch(backend, adapter) do
-    MCPChat.Session.update_session(%{llm_backend: backend})
+    Session.update_session(%{llm_backend: backend})
     show_success("Switched to #{backend} backend")
     show_available_models(adapter, backend)
   end
@@ -136,7 +138,7 @@ defmodule MCPChat.CLI.Commands.LLM do
       _ ->
         # Switch to specified model
         model = parse_args(args)
-        MCPChat.Session.update_session(%{model: model})
+        Session.update_session(%{model: model})
         {backend, _} = get_current_model()
         show_success("Switched to model: #{model} (#{backend})")
         :ok

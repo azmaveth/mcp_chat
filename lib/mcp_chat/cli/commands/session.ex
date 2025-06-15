@@ -12,6 +12,7 @@ defmodule MCPChat.CLI.Commands.Session do
   use MCPChat.CLI.Commands.Base
 
   alias MCPChat.{Persistence, Session}
+  alias MCPChat.CLI.Renderer
 
   @impl true
   def commands do
@@ -164,7 +165,7 @@ defmodule MCPChat.CLI.Commands.Session do
     if Enum.empty?(session.messages) do
       show_info("No messages in history")
     else
-      MCPChat.CLI.Renderer.show_text("## Conversation History\n")
+      Renderer.show_text("## Conversation History\n")
       Enum.each(session.messages, &show_message/1)
     end
 
@@ -177,7 +178,7 @@ defmodule MCPChat.CLI.Commands.Session do
     content = msg[:content] || msg["content"]
     formatted_role = format_role(role)
 
-    MCPChat.CLI.Renderer.show_text("**#{formatted_role}:** #{content}\n")
+    Renderer.show_text("**#{formatted_role}:** #{content}\n")
   end
 
   defp format_role(nil), do: "Unknown"

@@ -10,6 +10,8 @@ defmodule MCPChat.LLM.ExLLMAdapter do
 
   require Logger
 
+  alias MCPChat.CircuitBreaker
+
   @doc """
   Initialize the adapter with configuration from mcp_chat's config system.
   """
@@ -40,7 +42,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Call ExLLM through circuit breaker
     breaker = get_circuit_breaker()
 
-    case MCPChat.CircuitBreaker.call(breaker, fn ->
+    case CircuitBreaker.call(breaker, fn ->
            ExLLM.chat(provider, ex_llm_messages, ex_llm_options)
          end) do
       {:ok, {:ok, response}} ->
@@ -74,7 +76,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Call ExLLM streaming through circuit breaker
     breaker = get_circuit_breaker()
 
-    case MCPChat.CircuitBreaker.call(breaker, fn ->
+    case CircuitBreaker.call(breaker, fn ->
            ExLLM.stream_chat(provider, ex_llm_messages, ex_llm_options)
          end) do
       {:ok, {:ok, stream}} ->
@@ -345,7 +347,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
 
   defp get_circuit_breaker do
     # Get the circuit breaker for LLM calls
-    case Process.whereis(MCPChat.CircuitBreaker.LLM) do
+    case Process.whereis(CircuitBreaker.LLM) do
       nil ->
         # If circuit breaker not available, create a dummy one
         # This allows the system to work even if supervision isn't set up
