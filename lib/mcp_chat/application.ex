@@ -4,18 +4,25 @@ defmodule MCPChat.Application do
   """
   use Application
 
+  alias MCPChat.{CircuitBreaker, Config, StartupProfiler}
+  alias MCPChat.Alias.ExAliasAdapter
+  alias MCPChat.MCP.{HealthMonitor, NotificationRegistry, ProgressTracker}
+  alias MCPChat.MCP.Handlers.{ProgressHandler, ToolChangeHandler}
+  alias MCPChat.Memory.StoreSupervisor
+  alias MCPChat.Session.Autosave
+
   @impl true
   def start(_type, _args) do
     # Start profiling if enabled
-    MCPChat.StartupProfiler.start_profiling()
-    MCPChat.StartupProfiler.start_phase(:total)
+    StartupProfiler.start_profiling()
+    StartupProfiler.start_phase(:total)
 
     # Load configuration first
-    MCPChat.StartupProfiler.start_phase(:config_loading)
+    StartupProfiler.start_phase(:config_loading)
     config_mode = get_startup_mode()
-    MCPChat.StartupProfiler.end_phase(:config_loading)
+    StartupProfiler.end_phase(:config_loading)
 
-    MCPChat.StartupProfiler.start_phase(:supervision_tree)
+    StartupProfiler.start_phase(:supervision_tree)
 
     children =
       [
@@ -24,21 +31,21 @@ defmodule MCPChat.Application do
         # Session manager
         MCPChat.Session,
         # Session autosave
-        {MCPChat.Session.Autosave, autosave_config()},
+        {Autosave, autosave_config()},
         # MCP Health monitoring
-        MCPChat.MCP.HealthMonitor,
+        HealthMonitor,
         # Circuit breakers for external services
-        {MCPChat.CircuitBreaker, name: MCPChat.CircuitBreaker.LLM, failure_threshold: 3, reset_timeout: 60_000},
+        {CircuitBreaker, name: CircuitBreaker.LLM, failure_threshold: 3, reset_timeout: 60_000},
         # Connection pool supervisor
         {DynamicSupervisor, strategy: :one_for_one, name: MCPChat.ConnectionPoolSupervisor},
         # Memory store supervisor for message pagination
-        MCPChat.Memory.StoreSupervisor,
+        StoreSupervisor,
         # Chat session supervisor
         MCPChat.ChatSupervisor,
         # ExAlias server (must be started before the adapter)
         ExAlias,
         # Alias manager adapter
-        MCPChat.Alias.ExAliasAdapter,
+        ExAliasAdapter,
         # Line editor for CLI input
         MCPChat.CLI.ExReadlineAdapter,
         # Lazy server manager (new)
@@ -60,7 +67,7 @@ defmodule MCPChat.Application do
 
     case Supervisor.start_link(children, opts) do
       {:ok, _sup} = result ->
-        MCPChat.StartupProfiler.end_phase(:supervision_tree)
+        StartupProfiler.end_phase(:supervision_tree)
 
         # Register core processes for health monitoring
         register_health_monitors()
@@ -211,20 +218,20 @@ defmodule MCPChat.Application do
     Process.sleep(200)
 
     # Register default notification handlers
-    MCPChat.MCP.NotificationRegistry.register_handler(
+    NotificationRegistry.register_handler(
       MCPChat.MCP.Handlers.ResourceChangeHandler,
       [:resources_list_changed, :resources_updated]
     )
 
-    MCPChat.MCP.NotificationRegistry.register_handler(
-      MCPChat.MCP.Handlers.ToolChangeHandler,
+    NotificationRegistry.register_handler(
+      ToolChangeHandler,
       [:tools_list_changed]
     )
 
-    MCPChat.MCP.NotificationRegistry.register_handler(
-      MCPChat.MCP.Handlers.ProgressHandler,
+    NotificationRegistry.register_handler(
+      ProgressHandler,
       [:progress],
-      progress_tracker_pid: Process.whereis(MCPChat.MCP.ProgressTracker)
+      progress_tracker_pid: Process.whereis(ProgressTracker)
     )
 
     # Save preference
