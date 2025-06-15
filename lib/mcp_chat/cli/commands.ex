@@ -9,15 +9,15 @@ defmodule MCPChat.CLI.Commands do
   require Logger
 
   alias MCPChat.CLI.Commands.{
-    Session,
-    Utility,
+    Alias,
+    ConcurrentTools,
+    Context,
     LLM,
     MCP,
-    Context,
-    Alias,
     Notification,
+    Session,
     TUI,
-    ConcurrentTools
+    Utility
   }
 
   # Map of command to handler module
