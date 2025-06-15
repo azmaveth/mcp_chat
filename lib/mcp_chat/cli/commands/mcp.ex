@@ -14,7 +14,7 @@ defmodule MCPChat.CLI.Commands.MCP do
   alias MCPChat.MCP.{ServerManager, Discovery, ServerPersistence}
 
   @impl true
-  def commands() do
+  def commands do
     %{
       # Main MCP command with subcommands
       "mcp" => "MCP server management (usage: /mcp <subcommand>)"
@@ -24,7 +24,7 @@ defmodule MCPChat.CLI.Commands.MCP do
   @doc """
   Returns the list of MCP subcommands for help display.
   """
-  def subcommands() do
+  def subcommands do
     %{
       "servers" => "List connected MCP servers",
       "saved" => "List saved MCP server connections",

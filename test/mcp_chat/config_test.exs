@@ -234,7 +234,7 @@ defmodule MCPChat.ConfigTest do
     end
   end
 
-  defp ensure_config_started() do
+  defp ensure_config_started do
     case Process.whereis(Config) do
       nil ->
         {:ok, _} = Config.start_link()
@@ -260,7 +260,7 @@ defmodule MCPChat.ConfigTest do
     wait_until(fn -> Config.get([]) != nil end, 500)
   end
 
-  defp get_config_path() do
+  defp get_config_path do
     case Process.whereis(Config) do
       nil ->
         nil

@@ -251,7 +251,7 @@ defmodule MCPChat.ApplicationTest do
 
   # Helper functions
 
-  defp stop_supervised_processes() do
+  defp stop_supervised_processes do
     # Stop application supervisor if running
     case Process.whereis(MCPChat.Supervisor) do
       nil ->

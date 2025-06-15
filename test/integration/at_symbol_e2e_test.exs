@@ -192,12 +192,12 @@ defmodule MCPChat.AtSymbolE2ETest do
 
   # Helper functions
 
-  defp create_test_files() do
+  defp create_test_files do
     File.write!("test_file1.txt", "Test content 1")
     File.write!("test_file2.txt", "Test content 2")
   end
 
-  defp clean_test_files() do
+  defp clean_test_files do
     File.rm("test_file1.txt")
     File.rm("test_file2.txt")
   rescue

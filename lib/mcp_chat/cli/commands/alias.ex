@@ -14,7 +14,7 @@ defmodule MCPChat.CLI.Commands.Alias do
   alias MCPChat.Alias.ExAliasAdapter, as: Alias
 
   @impl true
-  def commands() do
+  def commands do
     %{
       "alias" => "Manage command aliases (usage: /alias [add|remove|list] ...)"
     }
@@ -56,7 +56,7 @@ defmodule MCPChat.CLI.Commands.Alias do
     end
   end
 
-  defp list_aliases() do
+  defp list_aliases do
     aliases = Alias.list_aliases()
 
     if Enum.empty?(aliases) do

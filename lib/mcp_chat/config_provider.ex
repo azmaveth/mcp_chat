@@ -30,7 +30,7 @@ defmodule MCPChat.ConfigProvider do
     end
 
     @impl true
-    def get_all() do
+    def get_all do
       MCPChat.Config.get_all()
     end
   end

@@ -15,7 +15,7 @@ defmodule MCPChat.CLI.Commands.LLM do
   require Logger
 
   @impl true
-  def commands() do
+  def commands do
     %{
       "backend" => "Switch LLM backend (usage: /backend <name>)",
       "model" => "Switch model (usage: /model <name>)",

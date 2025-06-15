@@ -25,7 +25,7 @@ defmodule MCPChat.CLI.Chat do
     chat_loop()
   end
 
-  defp chat_loop() do
+  defp chat_loop do
     # Print newline before prompt for spacing
     IO.write("\n")
     prompt = Renderer.format_prompt()

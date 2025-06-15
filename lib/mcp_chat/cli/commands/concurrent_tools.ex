@@ -37,7 +37,7 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
     end
   end
 
-  defp show_help() do
+  defp show_help do
     show_info("""
     Concurrent Tool Execution Commands:
 
@@ -56,7 +56,7 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
     """)
   end
 
-  defp test_concurrent_execution() do
+  defp test_concurrent_execution do
     show_info("Running concurrent tool execution test...")
 
     # Get available servers

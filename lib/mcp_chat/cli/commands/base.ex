@@ -82,7 +82,7 @@ defmodule MCPChat.CLI.Commands.Base do
   @doc """
   Gets the current backend name with proper error handling.
   """
-  def get_current_backend() do
+  def get_current_backend do
     MCPChat.Session.get_current_session()
     |> Map.get(:llm_backend, MCPChat.Config.get([:llm, :default]) || "anthropic")
   end
@@ -90,7 +90,7 @@ defmodule MCPChat.CLI.Commands.Base do
   @doc """
   Gets the current model with proper error handling.
   """
-  def get_current_model() do
+  def get_current_model do
     session = MCPChat.Session.get_current_session()
     backend = get_current_backend()
 

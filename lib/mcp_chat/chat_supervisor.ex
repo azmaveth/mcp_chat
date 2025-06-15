@@ -30,14 +30,14 @@ defmodule MCPChat.ChatSupervisor do
   @doc """
   Stops the current chat session gracefully.
   """
-  def stop_chat() do
+  def stop_chat do
     GenServer.call(__MODULE__, :stop_chat)
   end
 
   @doc """
   Gets the current chat status.
   """
-  def get_status() do
+  def get_status do
     GenServer.call(__MODULE__, :get_status)
   end
 
@@ -158,7 +158,7 @@ defmodule MCPChat.ChatSupervisor do
 
   # Private Functions
 
-  defp backup_session() do
+  defp backup_session do
     try do
       session = MCPChat.Session.get_current_session()
 
@@ -245,7 +245,7 @@ defmodule MCPChat.ChatSupervisor do
     %{state | chat_task: nil}
   end
 
-  defp notify_user_of_restart() do
+  defp notify_user_of_restart do
     IO.puts("""
 
     ⚠️  The chat session crashed but has been automatically restarted.
@@ -253,7 +253,7 @@ defmodule MCPChat.ChatSupervisor do
     """)
   end
 
-  defp notify_user_of_failure() do
+  defp notify_user_of_failure do
     IO.puts("""
 
     ❌ The chat session crashed and could not be restarted.

@@ -14,7 +14,7 @@ defmodule MCPChat.CLI.Commands.Session do
   alias MCPChat.{Session, Persistence}
 
   @impl true
-  def commands() do
+  def commands do
     %{
       "new" => "Start a new conversation",
       "save" => "Save current session (usage: /save [name])",
