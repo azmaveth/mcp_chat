@@ -6,6 +6,7 @@ defmodule MCPChat.Session.ExLLMSessionAdapter do
 
   alias ExLLM.Session, as: ExLLMSession
   alias ExLLM.Session.Types.Session, as: ExLLMSessionType
+  alias MCPChat.{Config, ConfigProvider, Context, Cost}
   alias MCPChat.Types.Session, as: MCPChatSessionType
 
   @doc """
@@ -14,7 +15,7 @@ defmodule MCPChat.Session.ExLLMSessionAdapter do
   Maintains backward compatibility with MCPChat's config provider system.
   """
   def new_session(backend \\ nil, opts \\ []) do
-    config_provider = Keyword.get(opts, :config_provider, MCPChat.ConfigProvider.Default)
+    config_provider = Keyword.get(opts, :config_provider, ConfigProvider.Default)
     backend = backend || get_default_backend(config_provider)
 
     # Create ExLLM session
@@ -178,7 +179,7 @@ defmodule MCPChat.Session.ExLLMSessionAdapter do
   def get_context_stats(session) do
     ex_llm_session = to_ex_llm_session(session)
     message_count = length(ex_llm_session.messages)
-    estimated_tokens = MCPChat.Context.estimate_tokens(ex_llm_session.messages)
+    estimated_tokens = Context.estimate_tokens(ex_llm_session.messages)
     max_tokens = Map.get(ex_llm_session.context, :max_tokens, 4_096)
 
     %{
@@ -201,7 +202,7 @@ defmodule MCPChat.Session.ExLLMSessionAdapter do
     if ex_llm_session.token_usage do
       # Convert to MCPChat session for cost calculation
       mcp_chat_session = to_mcp_chat_session(ex_llm_session)
-      MCPChat.Cost.calculate_session_cost(mcp_chat_session, ex_llm_session.token_usage, opts)
+      Cost.calculate_session_cost(mcp_chat_session, ex_llm_session.token_usage, opts)
     else
       {:error, :no_token_usage}
     end
@@ -285,12 +286,12 @@ defmodule MCPChat.Session.ExLLMSessionAdapter do
   # Helper to get default backend
   defp get_default_backend(config_provider) do
     case config_provider do
-      MCPChat.ConfigProvider.Default ->
-        MCPChat.Config.get([:llm, :default]) || "anthropic"
+      ConfigProvider.Default ->
+        Config.get([:llm, :default]) || "anthropic"
 
       provider when is_pid(provider) ->
         # Static provider (Agent pid)
-        MCPChat.ConfigProvider.Static.get(provider, [:llm, :default]) || "anthropic"
+        ConfigProvider.Static.get(provider, [:llm, :default]) || "anthropic"
 
       provider ->
         # Custom provider module

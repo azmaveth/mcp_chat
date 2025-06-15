@@ -7,7 +7,7 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
   - /mcp capabilities - Detailed server capabilities
   """
 
-  alias MCPChat.MCP.{NotificationRegistry, ProgressTracker, ServerManager}
+  alias MCPChat.MCP.{NotificationClient, NotificationRegistry, ProgressTracker, ServerManager}
   alias MCPChat.{CLI.Renderer, Config}
 
   @doc """
@@ -202,7 +202,7 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
   end
 
   defp check_sampling_capability(client) do
-    case MCPChat.MCP.NotificationClient.server_capabilities(client) do
+    case NotificationClient.server_capabilities(client) do
       {:ok, %{"sampling" => _}} -> :ok
       _ -> {:error, "Server does not support sampling/createMessage"}
     end
@@ -211,7 +211,7 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
   defp execute_sampling(client, server_name, params) do
     Renderer.show_info("🤖 Requesting generation from #{server_name}...")
 
-    case MCPChat.MCP.NotificationClient.create_message(client, params) do
+    case NotificationClient.create_message(client, params) do
       {:ok, result} ->
         show_sampling_result(result, server_name)
 
@@ -344,7 +344,7 @@ defmodule MCPChat.CLI.Commands.MCPExtended do
   end
 
   defp fetch_and_display_capabilities(client, server_name) do
-    case MCPChat.MCP.NotificationClient.server_capabilities(client) do
+    case NotificationClient.server_capabilities(client) do
       {:ok, capabilities} ->
         display_server_capabilities(server_name, capabilities)
 
