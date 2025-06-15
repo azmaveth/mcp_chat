@@ -5,6 +5,8 @@ defmodule MCPChat.Config do
   """
   use GenServer
 
+  alias MCPChat.PathProvider
+
   # Default config path (kept for reference but not used directly)
   # @default_config_path "~/.config/mcp_chat/config.toml"
 
@@ -45,11 +47,11 @@ defmodule MCPChat.Config do
     path_provider = get_path_provider()
 
     case path_provider do
-      MCPChat.PathProvider.Default ->
-        MCPChat.PathProvider.Default.config_dir()
+      PathProvider.Default ->
+        PathProvider.Default.config_dir()
 
       provider when is_pid(provider) ->
-        MCPChat.PathProvider.Static.config_dir(provider)
+        PathProvider.Static.config_dir(provider)
 
       provider ->
         provider.config_dir()
@@ -58,7 +60,7 @@ defmodule MCPChat.Config do
 
   defp get_path_provider do
     # For now, always use default. Later this can be configurable.
-    MCPChat.PathProvider.Default
+    PathProvider.Default
   end
 
   def get_all do
@@ -83,7 +85,7 @@ defmodule MCPChat.Config do
 
   @impl true
   def init(opts) do
-    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    path_provider = Keyword.get(opts, :path_provider, PathProvider.Default)
     config_path = determine_config_path(opts, path_provider)
 
     state = %{
@@ -104,7 +106,7 @@ defmodule MCPChat.Config do
 
   defp get_default_config_path(path_provider) do
     case path_provider do
-      MCPChat.PathProvider.Default ->
+      PathProvider.Default ->
         get_default_provider_config_path()
 
       provider when is_pid(provider) ->
@@ -116,14 +118,14 @@ defmodule MCPChat.Config do
   end
 
   defp get_default_provider_config_path do
-    case MCPChat.PathProvider.Default.get_path(:config_file) do
+    case PathProvider.Default.get_path(:config_file) do
       {:ok, path} -> path
       {:error, _} -> Path.expand("~/.config/mcp_chat/config.toml")
     end
   end
 
   defp get_static_provider_config_path(provider) do
-    case MCPChat.PathProvider.Static.get_path(provider, :config_file) do
+    case PathProvider.Static.get_path(provider, :config_file) do
       {:ok, path} -> path
       {:error, _} -> "/tmp/mcp_chat_test/config.toml"
     end

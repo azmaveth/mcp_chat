@@ -13,6 +13,8 @@ defmodule MCPChat.Cost do
       MCPChat.Cost.calculate_session_cost(session, token_usage, config_provider: my_config)
   """
 
+  alias MCPChat.{Config, ConfigProvider, Context}
+
   # Pricing per 1M tokens (as of January 2_025)
   # credo:disable-for-next-line Credo.Check.Readability.LargeNumbers
   @pricing %{
@@ -75,7 +77,7 @@ defmodule MCPChat.Cost do
   Returns a map with detailed cost breakdown.
   """
   def calculate_session_cost(session, token_usage, opts \\ []) do
-    config_provider = Keyword.get(opts, :config_provider, MCPChat.ConfigProvider.Default)
+    config_provider = Keyword.get(opts, :config_provider, ConfigProvider.Default)
     backend = session.llm_backend
     model = get_model_for_session(session, config_provider)
 
@@ -113,8 +115,8 @@ defmodule MCPChat.Cost do
   Estimates tokens for input and output messages.
   """
   def track_token_usage(input_messages, response_content) do
-    input_tokens = MCPChat.Context.estimate_tokens(input_messages)
-    output_tokens = MCPChat.Context.estimate_tokens(response_content)
+    input_tokens = Context.estimate_tokens(input_messages)
+    output_tokens = Context.estimate_tokens(response_content)
 
     %{
       input_tokens: input_tokens,
@@ -198,12 +200,12 @@ defmodule MCPChat.Cost do
 
   defp get_config_value(config_provider, path) do
     case config_provider do
-      MCPChat.ConfigProvider.Default ->
-        MCPChat.Config.get(path)
+      ConfigProvider.Default ->
+        Config.get(path)
 
       provider when is_pid(provider) ->
         # Static provider (Agent pid)
-        MCPChat.ConfigProvider.Static.get(provider, path)
+        ConfigProvider.Static.get(provider, path)
 
       provider ->
         # Custom provider module

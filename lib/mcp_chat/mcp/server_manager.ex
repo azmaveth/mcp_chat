@@ -5,7 +5,8 @@ defmodule MCPChat.MCP.ServerManager do
   """
   use GenServer
 
-  alias MCPChat.MCP.{BuiltinResources, ExMCPAdapter}
+  alias MCPChat.{StartupProfiler}
+  alias MCPChat.MCP.{BuiltinResources, ExMCPAdapter, ServerSupervisor, ServerWrapper}
   alias MCPChat.MCP.ServerManager.Core
 
   require Logger
@@ -115,7 +116,7 @@ defmodule MCPChat.MCP.ServerManager do
     supervisor =
       case DynamicSupervisor.start_link(
              strategy: :one_for_one,
-             name: MCPChat.MCP.ServerSupervisor
+             name: ServerSupervisor
            ) do
         {:ok, pid} -> pid
         {:error, {:already_started, pid}} -> pid
@@ -258,7 +259,7 @@ defmodule MCPChat.MCP.ServerManager do
   @impl true
   def handle_info(:start_configured_servers, state) do
     # Start profiling MCP servers phase
-    MCPChat.StartupProfiler.start_phase(:mcp_servers)
+    StartupProfiler.start_phase(:mcp_servers)
 
     # Start servers from config file
     config_state =
@@ -269,7 +270,7 @@ defmodule MCPChat.MCP.ServerManager do
     final_state = Core.start_auto_connect_servers(config_state)
 
     # End profiling MCP servers phase
-    MCPChat.StartupProfiler.end_phase(:mcp_servers)
+    StartupProfiler.end_phase(:mcp_servers)
 
     {:noreply, final_state}
   end
@@ -336,12 +337,12 @@ defmodule MCPChat.MCP.ServerManager do
 
   defp handle_server_start(server_manager_pid, server, server_config) do
     child_spec = %{
-      id: {MCPChat.MCP.ServerWrapper, server.name},
-      start: {MCPChat.MCP.ServerWrapper, :start_link, [server_config, []]},
+      id: {ServerWrapper, server.name},
+      start: {ServerWrapper, :start_link, [server_config, []]},
       restart: :temporary
     }
 
-    case DynamicSupervisor.start_child(MCPChat.MCP.ServerSupervisor, child_spec) do
+    case DynamicSupervisor.start_child(ServerSupervisor, child_spec) do
       {:ok, pid} ->
         handle_server_capabilities(server_manager_pid, server, pid)
 
@@ -356,7 +357,7 @@ defmodule MCPChat.MCP.ServerManager do
         send(server_manager_pid, {:server_connected, server.name, pid, capabilities})
 
       {:error, reason} ->
-        DynamicSupervisor.terminate_child(MCPChat.MCP.ServerSupervisor, pid)
+        DynamicSupervisor.terminate_child(ServerSupervisor, pid)
         send(server_manager_pid, {:server_failed, server.name, reason})
     end
   end
@@ -365,9 +366,9 @@ defmodule MCPChat.MCP.ServerManager do
     # Give server time to initialize
     Process.sleep(500)
 
-    with {:ok, tools} <- MCPChat.MCP.ServerWrapper.get_tools(pid),
-         {:ok, resources} <- MCPChat.MCP.ServerWrapper.get_resources(pid),
-         {:ok, prompts} <- MCPChat.MCP.ServerWrapper.get_prompts(pid) do
+    with {:ok, tools} <- ServerWrapper.get_tools(pid),
+         {:ok, resources} <- ServerWrapper.get_resources(pid),
+         {:ok, prompts} <- ServerWrapper.get_prompts(pid) do
       {:ok, %{tools: tools, resources: resources, prompts: prompts}}
     else
       error -> error

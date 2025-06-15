@@ -8,7 +8,9 @@ defmodule MCPChat.CLI.Commands do
 
   require Logger
 
-  alias MCPChat.CLI.Commands.{
+  alias MCPChat.Alias.ExAliasAdapter
+  alias MCPChat.CLI.{Commands, Renderer}
+  alias Commands.{
     Alias,
     ConcurrentTools,
     Context,
@@ -76,7 +78,7 @@ defmodule MCPChat.CLI.Commands do
       @command_handlers
       |> Map.keys()
       |> Kernel.++(["exit", "quit"])
-      |> Kernel.++(Map.keys(MCPChat.Alias.ExAliasAdapter.list_aliases()))
+      |> Kernel.++(Map.keys(ExAliasAdapter.list_aliases()))
 
     # Filter by prefix
     all_commands
@@ -91,7 +93,7 @@ defmodule MCPChat.CLI.Commands do
   def handle_command(command) do
     {cmd, args} = parse_command(command)
 
-    if MCPChat.Alias.ExAliasAdapter.is_alias?(cmd) do
+    if ExAliasAdapter.is_alias?(cmd) do
       handle_alias_command(cmd, args)
     else
       route_to_handler(cmd, args)
@@ -138,7 +140,7 @@ defmodule MCPChat.CLI.Commands do
   end
 
   defp handle_error_response(message) do
-    MCPChat.CLI.Renderer.show_error(message)
+    Renderer.show_error(message)
     :continue
   end
 
@@ -155,8 +157,8 @@ defmodule MCPChat.CLI.Commands do
   defp handle_special_command("quit", _args), do: :exit
 
   defp handle_special_command(cmd, _args) do
-    MCPChat.CLI.Renderer.show_error("Unknown command: /#{cmd}")
-    MCPChat.CLI.Renderer.show_info("Type /help for available commands")
+    Renderer.show_error("Unknown command: /#{cmd}")
+    Renderer.show_info("Type /help for available commands")
     :continue
   end
 end
