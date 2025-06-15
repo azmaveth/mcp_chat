@@ -73,6 +73,10 @@ max_tokens = 4096
 [ui]
 theme = "dark"
 history_size = 1000
+
+[context]
+strategy = "smart"    # Context truncation strategy: "smart" or "sliding_window"
+max_tokens = 2048     # Tokens to reserve for model response
 ```
 
 ### Environment Variables
@@ -141,11 +145,38 @@ MCP Chat supports various slash commands for control and configuration:
 
 ### Context Management
 
+MCP Chat now includes automatic context window management powered by ExLLM:
+
 - `/context` - Show context statistics and settings
 - `/system <prompt>` - Set or update system prompt
 - `/tokens [max]` - Set maximum token limit
 - `/strategy <name>` - Set truncation strategy (sliding_window, smart)
 - `/cost` - Display current session cost
+- `/stats` - Show detailed session statistics including:
+  - Token usage and context window utilization
+  - Model-specific context window size
+  - Token allocation (system/conversation/response)
+  - Remaining tokens available
+
+#### Automatic Context Truncation
+
+MCP Chat automatically manages conversation context to prevent overflow:
+
+- **Smart Strategy** (default): Preserves system messages and recent context while intelligently removing middle messages
+- **Sliding Window Strategy**: Keeps only the most recent messages that fit in the context window
+
+Configure in `config.toml`:
+```toml
+[context]
+strategy = "smart"  # or "sliding_window"
+max_tokens = 2048   # Reserve tokens for response
+```
+
+The system automatically:
+- Detects the context window size for your chosen model
+- Tracks token usage across the conversation
+- Truncates messages intelligently when approaching limits
+- Ensures responses always have sufficient token space
 
 ### MCP Server Commands
 

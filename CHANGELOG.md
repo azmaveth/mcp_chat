@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **ExLLM Context Truncation Integration**: Smart context window management
+  - Automatic truncation using ExLLM's strategies (smart, sliding_window)
+  - Model-specific context window detection
+  - Enhanced `/stats` command shows:
+    - Context window size for current model
+    - Token usage percentage and remaining tokens
+    - Token allocation breakdown (system/conversation/response)
+  - Configurable via `[context]` section in config.toml
+  - Prevents context overflow errors automatically
+  - Default "smart" strategy preserves system messages and recent context
+
 ## [0.2.3] - 2024-06-14
 
 ### Added

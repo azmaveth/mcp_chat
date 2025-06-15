@@ -13,6 +13,7 @@ defmodule MCPChat.CLI.Commands.Utility do
   use MCPChat.CLI.Commands.Base
 
   alias MCPChat.CLI.Renderer
+  alias MCPChat.LLM.ExLLMAdapter
   alias MCPChat.MCP.ServerManager
   alias MCPChat.{Cost, Persistence, Session}
 
@@ -197,7 +198,7 @@ defmodule MCPChat.CLI.Commands.Utility do
 
       try do
         stats =
-          MCPChat.LLM.ExLLMAdapter.get_context_stats(
+          ExLLMAdapter.get_context_stats(
             session.messages,
             provider,
             model
