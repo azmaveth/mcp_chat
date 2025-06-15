@@ -12,6 +12,8 @@ defmodule MCPChat.MCP.StdioProcessSupervisor do
   use GenServer
   require Logger
 
+  alias MCPChat.MCP.StdioProcessManager
+
   @default_max_restarts 3
   @default_max_seconds 60
   @default_restart_delay 1_000
@@ -68,7 +70,7 @@ defmodule MCPChat.MCP.StdioProcessSupervisor do
     # Prepare manager options
     manager_opts = Keyword.drop(opts, [:max_restarts, :max_seconds, :restart_delay])
 
-    case MCPChat.MCP.StdioProcessManager.start_link(config, manager_opts) do
+    case StdioProcessManager.start_link(config, manager_opts) do
       {:ok, pid} ->
         # Monitor the process
         Process.monitor(pid)
@@ -153,7 +155,7 @@ defmodule MCPChat.MCP.StdioProcessSupervisor do
     Logger.info("Restarting stdio process after delay")
 
     # Start new process
-    case MCPChat.MCP.StdioProcessManager.start_link(process_info.config, process_info.manager_opts) do
+    case StdioProcessManager.start_link(process_info.config, process_info.manager_opts) do
       {:ok, new_pid} ->
         # Monitor the new process
         Process.monitor(new_pid)

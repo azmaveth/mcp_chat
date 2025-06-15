@@ -12,6 +12,9 @@ defmodule MCPChat.MCP.Discovery do
 
   require Logger
 
+  alias MCPChat.MCP.DiscoveryConfig
+  alias MCPChat.PathProvider
+
   @doc """
   Discover all available MCP servers.
 
@@ -60,11 +63,11 @@ defmodule MCPChat.MCP.Discovery do
   Get quick setup servers with availability check.
   """
   def quick_setup_servers do
-    MCPChat.MCP.DiscoveryConfig.known_servers()
+    DiscoveryConfig.known_servers()
     |> Enum.map(fn server ->
-      case MCPChat.MCP.DiscoveryConfig.check_requirements(server) do
+      case DiscoveryConfig.check_requirements(server) do
         :ok ->
-          config = MCPChat.MCP.DiscoveryConfig.build_config(server)
+          config = DiscoveryConfig.build_config(server)
           Map.put(config, :status, :available)
 
         {:error, {:missing_env_vars, vars}} ->
@@ -104,7 +107,7 @@ defmodule MCPChat.MCP.Discovery do
   Discover servers in well-known locations.
   """
   def discover_known_locations(opts \\ []) do
-    path_provider = Keyword.get(opts, :path_provider, MCPChat.PathProvider.Default)
+    path_provider = Keyword.get(opts, :path_provider, PathProvider.Default)
 
     get_discovery_locations(path_provider)
     |> Enum.filter(&File.dir?/1)
@@ -113,7 +116,7 @@ defmodule MCPChat.MCP.Discovery do
 
   defp get_discovery_locations(path_provider) do
     case path_provider do
-      MCPChat.PathProvider.Default ->
+      PathProvider.Default ->
         get_default_provider_paths()
 
       provider when is_pid(provider) ->
@@ -125,14 +128,14 @@ defmodule MCPChat.MCP.Discovery do
   end
 
   defp get_default_provider_paths do
-    case MCPChat.PathProvider.Default.get_path(:mcp_discovery_dirs) do
+    case PathProvider.Default.get_path(:mcp_discovery_dirs) do
       {:ok, dirs} -> dirs
       {:error, _} -> [Path.expand("~/.mcp/servers")]
     end
   end
 
   defp get_static_provider_paths(provider) do
-    case MCPChat.PathProvider.Static.get_path(provider, :mcp_discovery_dirs) do
+    case PathProvider.Static.get_path(provider, :mcp_discovery_dirs) do
       {:ok, dirs} -> dirs
       {:error, _} -> ["/tmp/mcp_chat_test/mcp_servers"]
     end

@@ -10,6 +10,8 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
 
   require Logger
 
+  alias MCPChat.MCP.StdioProcessManager
+
   # The transport state no longer needs a buffer; it's managed in the receiver process.
   defstruct [:process_manager, :receiver_pid]
 
@@ -22,7 +24,7 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
     receiver_pid = spawn_link(__MODULE__, :receiver_server_loop, [process_manager])
 
     # Register the receiver to get {:stdio_data, ...} messages.
-    :ok = MCPChat.MCP.StdioProcessManager.set_client(process_manager, receiver_pid)
+    :ok = StdioProcessManager.set_client(process_manager, receiver_pid)
 
     state = %__MODULE__{
       process_manager: process_manager,
@@ -36,7 +38,7 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
   def send_message(message, state) do
     data = message <> "\n"
 
-    case MCPChat.MCP.StdioProcessManager.send_data(state.process_manager, data) do
+    case StdioProcessManager.send_data(state.process_manager, data) do
       :ok ->
         {:ok, state}
 
@@ -73,13 +75,13 @@ defmodule MCPChat.MCP.Transport.ManagedStdio do
       Process.exit(state.receiver_pid, :shutdown)
     end
 
-    MCPChat.MCP.StdioProcessManager.stop_process(state.process_manager)
+    StdioProcessManager.stop_process(state.process_manager)
     :ok
   end
 
   @impl ExMCP.Transport
   def connected?(state) do
-    case MCPChat.MCP.StdioProcessManager.get_status(state.process_manager) do
+    case StdioProcessManager.get_status(state.process_manager) do
       {:ok, %{running: true}} -> true
       _ -> false
     end

@@ -7,7 +7,8 @@ defmodule MCPChat.MCP.HealthMonitor do
   """
 
   use GenServer
-  alias MCPChat.MCP.ServerManager
+  alias MCPChat.MCP.{ServerManager, ServerWrapper}
+  alias MCPChat.MCP.ServerManager.Server
   require Logger
 
   # 30 seconds
@@ -113,7 +114,7 @@ defmodule MCPChat.MCP.HealthMonitor do
       start_time = System.monotonic_time(:millisecond)
 
       # Simple ping by listing tools (lightweight operation)
-      case MCPChat.MCP.ServerWrapper.get_tools(server.pid) do
+      case ServerWrapper.get_tools(server.pid) do
         {:ok, _tools} ->
           response_time = System.monotonic_time(:millisecond) - start_time
           record_success(name, response_time)
@@ -128,7 +129,7 @@ defmodule MCPChat.MCP.HealthMonitor do
   defp check_server_health(server_name) do
     case ServerManager.get_server_info(server_name) do
       {:ok, server} ->
-        case MCPChat.MCP.ServerManager.Server.health_status(server) do
+        case Server.health_status(server) do
           :unhealthy ->
             Logger.warning("Server '#{server_name}' marked as unhealthy, auto-disabling")
             ServerManager.disable_unhealthy_server(server_name)
@@ -149,9 +150,9 @@ defmodule MCPChat.MCP.HealthMonitor do
           %{
             name: name,
             status: server.status,
-            health_status: MCPChat.MCP.ServerManager.Server.health_status(server),
-            uptime_seconds: MCPChat.MCP.ServerManager.Server.uptime_seconds(server),
-            success_rate: MCPChat.MCP.ServerManager.Server.success_rate(server),
+            health_status: Server.health_status(server),
+            uptime_seconds: Server.uptime_seconds(server),
+            success_rate: Server.success_rate(server),
             avg_response_time: server.health.avg_response_time,
             total_requests: server.health.total_requests,
             consecutive_failures: server.health.consecutive_failures,
