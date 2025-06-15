@@ -27,11 +27,11 @@ defmodule MCPChat.Session do
     GenServer.call(__MODULE__, {:get_messages, limit})
   end
 
-  def get_current_session() do
+  def get_current_session do
     GenServer.call(__MODULE__, :get_current_session)
   end
 
-  def clear_session() do
+  def clear_session do
     GenServer.cast(__MODULE__, :clear_session)
   end
 
@@ -51,15 +51,15 @@ defmodule MCPChat.Session do
     GenServer.cast(__MODULE__, {:set_last_recovery_id, recovery_id})
   end
 
-  def get_last_recovery_id() do
+  def get_last_recovery_id do
     GenServer.call(__MODULE__, :get_last_recovery_id)
   end
 
-  def clear_last_recovery_id() do
+  def clear_last_recovery_id do
     GenServer.cast(__MODULE__, :clear_last_recovery_id)
   end
 
-  def list_saved_sessions() do
+  def list_saved_sessions do
     GenServer.call(__MODULE__, :list_saved_sessions)
   end
 
@@ -91,7 +91,7 @@ defmodule MCPChat.Session do
   @doc """
   Get context statistics.
   """
-  def get_context_stats() do
+  def get_context_stats do
     GenServer.call(__MODULE__, :get_context_stats)
   end
 
@@ -114,7 +114,7 @@ defmodule MCPChat.Session do
   @doc """
   Get session cost information.
   """
-  def get_session_cost() do
+  def get_session_cost do
     GenServer.call(__MODULE__, :get_session_cost)
   end
 

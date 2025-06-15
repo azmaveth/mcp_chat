@@ -15,7 +15,7 @@ defmodule MCPChat.CLI.Commands.Utility do
   alias MCPChat.{Session, Cost, Persistence}
 
   @impl true
-  def commands() do
+  def commands do
     %{
       "help" => "Show available commands",
       "clear" => "Clear the screen",
@@ -62,7 +62,7 @@ defmodule MCPChat.CLI.Commands.Utility do
 
   # Command implementations
 
-  defp show_help() do
+  defp show_help do
     # Collect commands from all modules
     all_commands = collect_all_commands()
 
@@ -83,13 +83,13 @@ defmodule MCPChat.CLI.Commands.Utility do
     :ok
   end
 
-  defp clear_screen() do
+  defp clear_screen do
     IO.write(IO.ANSI.clear())
     IO.write(IO.ANSI.cursor(0, 0))
     :ok
   end
 
-  defp show_config() do
+  defp show_config do
     session = Session.get_current_session()
 
     MCPChat.CLI.Renderer.show_text("## Current Configuration\n")
@@ -112,7 +112,7 @@ defmodule MCPChat.CLI.Commands.Utility do
     :ok
   end
 
-  defp show_cost() do
+  defp show_cost do
     session = Session.get_current_session()
     cost_info = Cost.calculate_session_cost(session, session.token_usage || %{input_tokens: 0, output_tokens: 0})
 
@@ -144,7 +144,7 @@ defmodule MCPChat.CLI.Commands.Utility do
     :ok
   end
 
-  defp show_stats() do
+  defp show_stats do
     session = Session.get_current_session()
 
     IO.puts("## Session Statistics")
@@ -221,7 +221,7 @@ defmodule MCPChat.CLI.Commands.Utility do
 
   # Helper functions
 
-  defp collect_all_commands() do
+  defp collect_all_commands do
     # Import commands from all command modules
     modules = [
       MCPChat.CLI.Commands.Session,

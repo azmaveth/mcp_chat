@@ -37,11 +37,11 @@ defmodule MCPChat.Config do
     GenServer.call(__MODULE__, {:put, path, value})
   end
 
-  def reload() do
+  def reload do
     GenServer.cast(__MODULE__, :reload)
   end
 
-  def config_dir() do
+  def config_dir do
     path_provider = get_path_provider()
 
     case path_provider do
@@ -56,12 +56,12 @@ defmodule MCPChat.Config do
     end
   end
 
-  defp get_path_provider() do
+  defp get_path_provider do
     # For now, always use default. Later this can be configurable.
     MCPChat.PathProvider.Default
   end
 
-  def get_all() do
+  def get_all do
     GenServer.call(__MODULE__, :get_all)
   end
 
@@ -115,7 +115,7 @@ defmodule MCPChat.Config do
     end
   end
 
-  defp get_default_provider_config_path() do
+  defp get_default_provider_config_path do
     case MCPChat.PathProvider.Default.get_path(:config_file) do
       {:ok, path} -> path
       {:error, _} -> Path.expand("~/.config/mcp_chat/config.toml")
@@ -235,7 +235,7 @@ defmodule MCPChat.Config do
     File.write!(path, content)
   end
 
-  defp default_config() do
+  defp default_config do
     %{
       llm: %{
         default: "anthropic",

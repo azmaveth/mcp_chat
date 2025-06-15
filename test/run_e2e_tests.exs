@@ -47,7 +47,7 @@ defmodule E2ETestRunner do
   defp parse_args(["--help"]), do: {:help}
   defp parse_args(_), do: {:help}
 
-  defp print_help() do
+  defp print_help do
     IO.puts("""
     MCP Chat E2E Test Runner
 
@@ -69,7 +69,7 @@ defmodule E2ETestRunner do
     """)
   end
 
-  defp setup_environment() do
+  defp setup_environment do
     IO.puts("🔧 Setting up E2E test environment...\n")
 
     # Check and install Python requirements
@@ -105,7 +105,7 @@ defmodule E2ETestRunner do
     IO.puts("\n✨ Setup complete!")
   end
 
-  defp check_prerequisites() do
+  defp check_prerequisites do
     IO.puts("🔍 Checking prerequisites...\n")
 
     errors = []
@@ -164,7 +164,7 @@ defmodule E2ETestRunner do
     end
   end
 
-  defp check_ollama() do
+  defp check_ollama do
     case HTTPoison.get("#{@ollama_url}/api/tags") do
       {:ok, %{status_code: 200}} ->
         :ok
@@ -177,7 +177,7 @@ defmodule E2ETestRunner do
     end
   end
 
-  defp check_ollama_model() do
+  defp check_ollama_model do
     case HTTPoison.get("#{@ollama_url}/api/tags") do
       {:ok, %{status_code: 200, body: body}} ->
         check_model_in_response(body)
@@ -248,7 +248,7 @@ defmodule E2ETestRunner do
     System.halt(1)
   end
 
-  defp run_smoke_test() do
+  defp run_smoke_test do
     # Quick test to verify basic functionality
     IO.puts("1. Testing Ollama connection...")
 
@@ -259,7 +259,7 @@ defmodule E2ETestRunner do
     test_mcp_server_startup()
   end
 
-  defp test_ollama_connection() do
+  defp test_ollama_connection do
     config = %{
       "provider" => "ollama",
       "base_url" => @ollama_url,

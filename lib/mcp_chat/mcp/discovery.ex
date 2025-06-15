@@ -59,7 +59,7 @@ defmodule MCPChat.MCP.Discovery do
   @doc """
   Get quick setup servers with availability check.
   """
-  def quick_setup_servers() do
+  def quick_setup_servers do
     MCPChat.MCP.DiscoveryConfig.known_servers()
     |> Enum.map(fn server ->
       case MCPChat.MCP.DiscoveryConfig.check_requirements(server) do
@@ -86,7 +86,7 @@ defmodule MCPChat.MCP.Discovery do
   Delegates to ExMCP.Discovery.discover_npm_packages/0
   """
   @deprecated "Use ExMCP.Discovery.discover_npm_packages/0 directly"
-  def discover_npm_servers() do
+  def discover_npm_servers do
     ExMCP.Discovery.discover_npm_packages()
   end
 
@@ -96,7 +96,7 @@ defmodule MCPChat.MCP.Discovery do
   Delegates to ExMCP.Discovery.discover_from_env/0
   """
   @deprecated "Use ExMCP.Discovery.discover_from_env/0 directly"
-  def discover_env_servers() do
+  def discover_env_servers do
     ExMCP.Discovery.discover_from_env()
   end
 
@@ -124,7 +124,7 @@ defmodule MCPChat.MCP.Discovery do
     end
   end
 
-  defp get_default_provider_paths() do
+  defp get_default_provider_paths do
     case MCPChat.PathProvider.Default.get_path(:mcp_discovery_dirs) do
       {:ok, dirs} -> dirs
       {:error, _} -> [Path.expand("~/.mcp/servers")]

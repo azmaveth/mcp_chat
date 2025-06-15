@@ -142,7 +142,7 @@ defmodule MCPChat.Persistence do
     end
   end
 
-  defp get_default_sessions_dir() do
+  defp get_default_sessions_dir do
     case MCPChat.PathProvider.Default.get_path(:sessions_dir) do
       {:ok, path} -> path
       {:error, _} -> Path.expand("~/.config/mcp_chat/sessions")

@@ -24,14 +24,14 @@ defmodule MCPChat.MCP.HealthMonitor do
   @doc """
   Gets health metrics for all servers.
   """
-  def get_health_metrics() do
+  def get_health_metrics do
     GenServer.call(__MODULE__, :get_health_metrics)
   end
 
   @doc """
   Forces a health check for all connected servers.
   """
-  def force_health_check() do
+  def force_health_check do
     GenServer.cast(__MODULE__, :force_health_check)
   end
 
@@ -92,11 +92,11 @@ defmodule MCPChat.MCP.HealthMonitor do
 
   # Private functions
 
-  defp schedule_health_check() do
+  defp schedule_health_check do
     Process.send_after(self(), :health_check, @ping_interval)
   end
 
-  defp perform_health_checks() do
+  defp perform_health_checks do
     case ServerManager.list_servers_with_status() do
       servers when is_list(servers) ->
         servers
@@ -142,7 +142,7 @@ defmodule MCPChat.MCP.HealthMonitor do
     end
   end
 
-  defp collect_health_metrics() do
+  defp collect_health_metrics do
     case ServerManager.list_servers_with_status() do
       servers when is_list(servers) ->
         Enum.map(servers, fn %{name: name, server: server} ->

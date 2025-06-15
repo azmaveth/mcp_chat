@@ -51,7 +51,7 @@ defmodule MCPChat.CLI.Commands.Session do
 
   # Command implementations
 
-  defp new_conversation() do
+  defp new_conversation do
     Session.clear_session()
     show_success("Started new conversation")
   end
@@ -139,7 +139,7 @@ defmodule MCPChat.CLI.Commands.Session do
     show_info("Last #{role}: #{preview}#{suffix}")
   end
 
-  defp list_sessions() do
+  defp list_sessions do
     case Persistence.list_sessions() do
       {:ok, sessions} when sessions == [] ->
         show_info("No saved sessions")
@@ -158,7 +158,7 @@ defmodule MCPChat.CLI.Commands.Session do
     :ok
   end
 
-  defp show_history() do
+  defp show_history do
     session = Session.get_current_session()
 
     if Enum.empty?(session.messages) do

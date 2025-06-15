@@ -15,7 +15,7 @@ defmodule MCPChat.CLI.Commands.Context do
   alias MCPChat.Context.AsyncFileLoader
 
   @impl true
-  def commands() do
+  def commands do
     %{
       "context" => "Context management (usage: /context [subcommand])",
       "system" => "Set system prompt (usage: /system <prompt>)",
@@ -27,7 +27,7 @@ defmodule MCPChat.CLI.Commands.Context do
   @doc """
   Returns the list of context subcommands for help display.
   """
-  def subcommands() do
+  def subcommands do
     %{
       "stats" => "Show context statistics (default)",
       "add" => "Add a file to context (usage: add <file_path>)",
@@ -102,7 +102,7 @@ defmodule MCPChat.CLI.Commands.Context do
 
   # Command implementations
 
-  defp show_context_stats() do
+  defp show_context_stats do
     session = Session.get_current_session()
     stats = Context.get_context_stats(session.messages, session.context[:max_tokens] || 4_096)
 
@@ -338,7 +338,7 @@ defmodule MCPChat.CLI.Commands.Context do
     end
   end
 
-  defp list_context_files() do
+  defp list_context_files do
     session = Session.get_current_session()
     context_files = session.context[:files] || %{}
 
@@ -365,7 +365,7 @@ defmodule MCPChat.CLI.Commands.Context do
     end
   end
 
-  defp clear_context_files() do
+  defp clear_context_files do
     session = Session.get_current_session()
     context_files = session.context[:files] || %{}
 
@@ -407,7 +407,7 @@ defmodule MCPChat.CLI.Commands.Context do
     end
   end
 
-  defp build_async_load_callbacks() do
+  defp build_async_load_callbacks do
     [
       success_callback: &handle_async_load_success/1,
       error_callback: &handle_async_load_error/1,
@@ -466,7 +466,7 @@ defmodule MCPChat.CLI.Commands.Context do
     end
   end
 
-  defp build_batch_callbacks() do
+  defp build_batch_callbacks do
     [
       batch_callback: &handle_batch_completion/1,
       error_callback: &handle_batch_error/1,
