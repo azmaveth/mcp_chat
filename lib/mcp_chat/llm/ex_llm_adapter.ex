@@ -100,7 +100,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   end
 
   @impl MCPChat.LLM.Adapter
-  def configured?() do
+  def configured? do
     # Check if at least one provider is configured
     options = [{:config_provider, ExLLM.ConfigProvider.Env}]
     ExLLM.configured?(:anthropic, options) or ExLLM.configured?(:openai, options) or ExLLM.configured?(:ollama, options)
@@ -289,7 +289,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     end
   end
 
-  defp model_loader_available?() do
+  defp model_loader_available? do
     case Process.whereis(ExLLM.Local.ModelLoader) do
       nil -> false
       _pid -> true

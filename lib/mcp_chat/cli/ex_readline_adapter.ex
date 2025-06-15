@@ -126,7 +126,7 @@ defmodule MCPChat.CLI.ExReadlineAdapter do
     end
   end
 
-  defp iex_running?() do
+  defp iex_running? do
     Code.ensure_loaded?(IEx) and IEx.started?()
   end
 

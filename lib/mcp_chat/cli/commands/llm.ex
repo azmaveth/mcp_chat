@@ -463,7 +463,7 @@ defmodule MCPChat.CLI.Commands.LLM do
     end)
   end
 
-  defp local_model_support_available?() do
+  defp local_model_support_available? do
     Code.ensure_loaded?(ExLLM.Local.ModelLoader) and
       Process.whereis(ExLLM.Local.ModelLoader) != nil
   end
