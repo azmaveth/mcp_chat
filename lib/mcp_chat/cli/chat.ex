@@ -276,7 +276,7 @@ defmodule MCPChat.CLI.Chat do
 
           {:error, reason} = error ->
             # Check if error is recoverable
-            if is_recoverable_error?(reason) do
+            if recoverable_error?(reason) do
               Logger.info("Recoverable error occurred, recovery ID preserved: #{recovery_id}")
               show_resume_hint()
             else
@@ -307,7 +307,7 @@ defmodule MCPChat.CLI.Chat do
     Renderer.show_info("\n💡 Use /resume to continue the interrupted response")
   end
 
-  defp is_recoverable_error?(reason) do
+  defp recoverable_error?(reason) do
     case reason do
       :timeout -> true
       :disconnected -> true

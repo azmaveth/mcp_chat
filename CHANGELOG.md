@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2025-06-16
+
+### Added
+- **CLI Command Helper Modules**: Extracted common patterns to reduce code duplication
+  - Display helper for formatting utilities (time, bytes, numbers, tables, progress bars)
+  - Session helper for consistent session access patterns
+  - Arguments helper for parsing subcommands, key-value pairs, and tool specs
+  - Usage helper for standardized help/error display
+  - All helpers automatically imported via Base module macro
+  - Comprehensive test coverage (157 tests) for all helper modules
+
+### Changed
+- **ExLLM Circuit Breaker Migration**: Replaced local circuit breaker with ExLLM's implementation
+  - Removed local CircuitBreaker module in favor of ExLLM's more robust implementation
+  - Migrated to ExLLM.CircuitBreaker.call/3 with equivalent configuration
+  - Maintained same failure thresholds (3) and reset timeout (60 seconds)
+  - Gained access to advanced features: telemetry, metrics, bulkhead pattern
+  - No breaking changes to existing functionality
+
 ### Added
 - **ExLLM Context Truncation Integration**: Smart context window management
   - Automatic truncation using ExLLM's strategies (smart, sliding_window)

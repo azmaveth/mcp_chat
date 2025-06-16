@@ -9,7 +9,7 @@ defmodule MCPChat.Application do
   alias MCPChat.MCP.{HealthMonitor, NotificationRegistry, ProgressTracker}
   alias MCPChat.Memory.StoreSupervisor
   alias MCPChat.Session.Autosave
-  alias MCPChat.{CircuitBreaker, Config, StartupProfiler}
+  alias MCPChat.{Config, StartupProfiler}
 
   @impl true
   def start(_type, _args) do
@@ -20,6 +20,9 @@ defmodule MCPChat.Application do
     # Load configuration first
     StartupProfiler.start_phase(:config_loading)
     config_mode = get_startup_mode()
+
+    # ExLLM circuit breaker is automatically initialized by ExLLM.Application
+
     StartupProfiler.end_phase(:config_loading)
 
     StartupProfiler.start_phase(:supervision_tree)
@@ -34,8 +37,7 @@ defmodule MCPChat.Application do
         {Autosave, autosave_config()},
         # MCP Health monitoring
         HealthMonitor,
-        # Circuit breakers for external services
-        {CircuitBreaker, name: CircuitBreaker.LLM, failure_threshold: 3, reset_timeout: 60_000},
+        # ExLLM circuit breaker is auto-initialized
         # Connection pool supervisor
         {DynamicSupervisor, strategy: :one_for_one, name: MCPChat.ConnectionPoolSupervisor},
         # Memory store supervisor for message pagination

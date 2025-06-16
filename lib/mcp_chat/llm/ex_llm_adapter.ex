@@ -10,7 +10,6 @@ defmodule MCPChat.LLM.ExLLMAdapter do
 
   require Logger
 
-  alias MCPChat.CircuitBreaker
   alias ExLLM.{ConfigProvider, StreamRecovery}
   alias ExLLM.Local.{EXLAConfig, ModelLoader}
 
@@ -47,17 +46,24 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Apply context truncation if enabled
     ex_llm_messages = maybe_truncate_messages(ex_llm_messages, provider, ex_llm_options, options)
 
-    # Call ExLLM through circuit breaker
-    breaker = get_circuit_breaker()
+    # Call ExLLM through ExLLM's circuit breaker
+    circuit_name = "llm_#{provider}"
 
-    case CircuitBreaker.call(breaker, fn ->
-           ExLLM.chat(provider, ex_llm_messages, ex_llm_options)
-         end) do
-      {:ok, {:ok, response}} ->
+    circuit_opts = [
+      failure_threshold: 3,
+      reset_timeout: 60_000,
+      timeout: 30_000
+    ]
+
+    case ExLLM.CircuitBreaker.call(
+           circuit_name,
+           fn ->
+             ExLLM.chat(provider, ex_llm_messages, ex_llm_options)
+           end,
+           circuit_opts
+         ) do
+      {:ok, response} ->
         {:ok, convert_response(response)}
-
-      {:ok, {:error, reason}} ->
-        {:error, reason}
 
       {:error, :circuit_open} ->
         {:error, "LLM service temporarily unavailable (circuit breaker open)"}
@@ -87,12 +93,22 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Add recovery options if requested
     ex_llm_options = maybe_add_recovery_options(ex_llm_options, options)
 
-    # Call ExLLM streaming through circuit breaker
-    breaker = get_circuit_breaker()
+    # Call ExLLM streaming through ExLLM's circuit breaker
+    circuit_name = "llm_#{provider}"
 
-    case CircuitBreaker.call(breaker, fn ->
-           ExLLM.stream_chat(provider, ex_llm_messages, ex_llm_options)
-         end) do
+    circuit_opts = [
+      failure_threshold: 3,
+      reset_timeout: 60_000,
+      timeout: 30_000
+    ]
+
+    case ExLLM.CircuitBreaker.call(
+           circuit_name,
+           fn ->
+             ExLLM.stream_chat(provider, ex_llm_messages, ex_llm_options)
+           end,
+           circuit_opts
+         ) do
       {:ok, {:ok, stream}} ->
         # Use ExLLM's enhanced streaming infrastructure
         enhanced_stream = create_enhanced_stream(stream, ex_llm_options, options)
@@ -467,21 +483,21 @@ defmodule MCPChat.LLM.ExLLMAdapter do
       # Explicitly enabled by request
       Keyword.get(mcp_options, :cache) == true -> true
       # Check global configuration
-      true -> is_caching_enabled_globally?()
+      true -> caching_enabled_globally?()
     end
   end
 
   @doc """
   Check if caching is enabled globally via configuration.
   """
-  defp is_caching_enabled_globally? do
+  defp caching_enabled_globally? do
     caching_config = MCPChat.Config.get([:caching], %{})
 
     cond do
       # Explicitly enabled in config
       Map.get(caching_config, :enabled) == true -> true
       # Auto-enable in development if configured
-      Map.get(caching_config, :auto_enable_dev) == true and is_development_mode?() -> true
+      Map.get(caching_config, :auto_enable_dev) == true and development_mode?() -> true
       # Default to disabled
       true -> false
     end
@@ -490,7 +506,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   @doc """
   Check if we're running in development mode.
   """
-  defp is_development_mode? do
+  defp development_mode? do
     # Check various indicators of development mode
     cond do
       # Mix environment
@@ -596,19 +612,6 @@ defmodule MCPChat.LLM.ExLLMAdapter do
 
       path ->
         Path.expand(path)
-    end
-  end
-
-  defp get_circuit_breaker do
-    # Get the circuit breaker for LLM calls
-    case Process.whereis(CircuitBreaker.LLM) do
-      nil ->
-        # If circuit breaker not available, create a dummy one
-        # This allows the system to work even if supervision isn't set up
-        self()
-
-      pid ->
-        pid
     end
   end
 

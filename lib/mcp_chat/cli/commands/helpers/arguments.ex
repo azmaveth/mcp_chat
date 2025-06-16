@@ -39,16 +39,14 @@ defmodule MCPChat.CLI.Commands.Helpers.Arguments do
       {:error, "Invalid key=value format: 'invalid'"}
   """
   def parse_key_value_pairs(args) when is_list(args) do
-    try do
-      pairs =
-        args
-        |> Enum.map(&parse_single_key_value/1)
-        |> Map.new()
+    pairs =
+      args
+      |> Enum.map(&parse_single_key_value/1)
+      |> Map.new()
 
-      {:ok, pairs}
-    rescue
-      error -> {:error, error.message}
-    end
+    {:ok, pairs}
+  rescue
+    error -> {:error, error.message}
   end
 
   @doc """
@@ -64,24 +62,22 @@ defmodule MCPChat.CLI.Commands.Helpers.Arguments do
       {:ok, %{verbose: true, count: 5}, []}
   """
   def parse_flags(args, flag_definitions) when is_list(args) and is_map(flag_definitions) do
-    try do
-      {flags, remaining} = do_parse_flags(args, flag_definitions, %{}, [])
+    {flags, remaining} = do_parse_flags(args, flag_definitions, %{}, [])
 
-      # Apply defaults for missing flags
-      final_flags =
-        flag_definitions
-        |> Enum.reduce(flags, fn {name, def}, acc ->
-          if Map.has_key?(acc, name) do
-            acc
-          else
-            Map.put(acc, name, Map.get(def, :default))
-          end
-        end)
+    # Apply defaults for missing flags
+    final_flags =
+      flag_definitions
+      |> Enum.reduce(flags, fn {name, def}, acc ->
+        if Map.has_key?(acc, name) do
+          acc
+        else
+          Map.put(acc, name, Map.get(def, :default))
+        end
+      end)
 
-      {:ok, final_flags, Enum.reverse(remaining)}
-    rescue
-      error -> {:error, error.message}
-    end
+    {:ok, final_flags, Enum.reverse(remaining)}
+  rescue
+    error -> {:error, error.message}
   end
 
   @doc """
