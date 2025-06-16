@@ -397,14 +397,15 @@ defmodule MCPChat.LLM.ExLLMAdapter do
         streaming_opts
       end
 
-    # Configure flow control
+    # Configure flow control with ExLLM 0.8.0 StreamBuffer
     flow_control_opts = [
       buffer_capacity: get_streaming_config(:buffer_capacity, 100),
       backpressure_threshold: get_streaming_config(:backpressure_threshold, 0.8),
-      rate_limit_ms: get_streaming_config(:rate_limit_ms, 0)
+      rate_limit_ms: get_streaming_config(:rate_limit_ms, 1),
+      overflow_strategy: get_streaming_config(:overflow_strategy, :drop)
     ]
 
-    # Configure chunk batching
+    # Configure chunk batching with ExLLM 0.8.0 ChunkBatcher
     batch_opts = [
       batch_size: get_streaming_config(:batch_size, 5),
       batch_timeout_ms: get_streaming_config(:batch_timeout_ms, 25),
@@ -413,11 +414,12 @@ defmodule MCPChat.LLM.ExLLMAdapter do
       max_batch_size: get_streaming_config(:max_batch_size, 10)
     ]
 
-    # Add streaming configuration
+    # Enable ExLLM 0.8.0 advanced streaming infrastructure
     streaming_opts = [
+      {:use_advanced_streaming, true},
       {:flow_control, flow_control_opts},
       {:batch_config, batch_opts},
-      {:consumer_type, :managed} | streaming_opts
+      {:consumer_type, get_streaming_config(:consumer_type, :managed)} | streaming_opts
     ]
 
     ex_llm_options ++ streaming_opts
@@ -427,13 +429,38 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   Create an enhanced stream using ExLLM's streaming infrastructure with MCP Chat compatibility.
   """
   defp create_enhanced_stream(stream, ex_llm_options, mcp_options) do
-    # Check if we should use ExLLM's enhanced streaming
-    if get_streaming_config(:use_ex_llm_streaming, true) do
-      # Use ExLLM's stream directly with conversion wrapper
-      Stream.map(stream, &convert_stream_chunk/1)
+    # Check if advanced streaming is enabled
+    if Keyword.get(ex_llm_options, :use_advanced_streaming, true) do
+      # ExLLM 0.8.0 already provides enhanced streaming with FlowController, StreamBuffer, and ChunkBatcher
+      # The stream is already optimized, just convert chunk format for MCP Chat compatibility
+      stream
+      |> Stream.map(&convert_stream_chunk/1)
+      |> maybe_add_streaming_telemetry(ex_llm_options)
     else
       # Fallback to basic conversion for compatibility
       Stream.map(stream, &convert_stream_chunk/1)
+    end
+  end
+
+  @doc """
+  Add streaming telemetry if enabled in options.
+  """
+  defp maybe_add_streaming_telemetry(stream, ex_llm_options) do
+    if Keyword.get(ex_llm_options, :track_metrics, false) do
+      stream
+      |> Stream.with_index()
+      |> Stream.map(fn {chunk, index} ->
+        # Emit telemetry for chunk processing
+        :telemetry.execute(
+          [:mcp_chat, :streaming, :chunk_processed],
+          %{chunk_index: index, chunk_size: byte_size(chunk.delta || "")},
+          %{provider: :ex_llm}
+        )
+
+        chunk
+      end)
+    else
+      stream
     end
   end
 

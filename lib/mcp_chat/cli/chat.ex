@@ -20,11 +20,23 @@ defmodule MCPChat.CLI.Chat do
     Renderer.clear_screen()
     Renderer.show_welcome()
 
+    # Emit telemetry event for session start
+    session_id = generate_session_id()
+    MCPChat.Telemetry.emit_session_started(session_id, %{startup_time: System.system_time(:millisecond)})
+
     # Set up command completion
     ExReadlineAdapter.set_completion_fn(&Commands.get_completions/1)
 
     # Start the chat loop
-    chat_loop()
+    start_time = System.monotonic_time(:millisecond)
+    result = chat_loop()
+
+    # Emit telemetry event for session end
+    end_time = System.monotonic_time(:millisecond)
+    duration = end_time - start_time
+    MCPChat.Telemetry.emit_session_ended(session_id, duration, %{end_time: System.system_time(:millisecond)})
+
+    result
   end
 
   defp chat_loop do
@@ -609,5 +621,12 @@ defmodule MCPChat.CLI.Chat do
         # No user message found, return as-is
         other
     end
+  end
+
+  defp generate_session_id do
+    # Generate a unique session ID using timestamp and random bytes
+    timestamp = System.system_time(:millisecond)
+    random = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
+    "session_#{timestamp}_#{random}"
   end
 end

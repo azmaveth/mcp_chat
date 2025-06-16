@@ -277,7 +277,7 @@ auto_connect = true
 # }
 
 # ==============================================================================
-# Streaming Configuration
+# Streaming Configuration (Enhanced with ExLLM 0.8.0)
 # ==============================================================================
 
 [streaming]
@@ -287,17 +287,25 @@ enhanced = true
 # Use ExLLM's enhanced streaming infrastructure (recommended)
 use_ex_llm_streaming = true
 
-# ExLLM Flow Control Configuration
+# ExLLM 0.8.0 Flow Control Configuration (StreamBuffer + FlowController)
 buffer_capacity = 100
 backpressure_threshold = 0.8
-rate_limit_ms = 0
+rate_limit_ms = 1
+overflow_strategy = "drop"  # Options: "drop", "overwrite", "block"
 
-# ExLLM Chunk Batching Configuration
+# ExLLM 0.8.0 Chunk Batching Configuration (ChunkBatcher)
 batch_size = 5
 batch_timeout_ms = 25
 adaptive_batching = true
 min_batch_size = 1
 max_batch_size = 10
+
+# Consumer type for advanced streaming infrastructure
+# Options: "direct", "buffered", "managed" (recommended)
+consumer_type = "managed"
+
+# Enable telemetry tracking for streaming performance
+track_metrics = true
 
 # Legacy MCP Chat streaming options (used when use_ex_llm_streaming = false)
 write_interval = 25
@@ -405,6 +413,29 @@ export_format = "markdown"
 # status = ["/context", "/cost"]
 # setup = ["/system You are a helpful assistant", "/tokens 8192"]
 # morning = ["/clear", "Good morning! How can I help you today?"]
+
+# ==============================================================================
+# Telemetry and Observability (ExLLM 0.8.0)
+# ==============================================================================
+
+[telemetry]
+# Enable telemetry for monitoring and debugging
+enabled = true
+
+# Log level for telemetry events (debug, info, warn, error)
+log_level = "info"
+
+# Enable ExLLM telemetry integration
+ex_llm_integration = true
+
+# Track streaming performance metrics
+streaming_metrics = true
+
+# Track LLM cost and usage metrics
+cost_metrics = true
+
+# Track MCP server performance
+mcp_metrics = true
 
 # ==============================================================================
 # Logging and Debugging

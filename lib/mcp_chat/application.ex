@@ -23,6 +23,9 @@ defmodule MCPChat.Application do
 
     # ExLLM circuit breaker is automatically initialized by ExLLM.Application
 
+    # Initialize telemetry for comprehensive monitoring
+    MCPChat.Telemetry.attach_default_handlers()
+
     StartupProfiler.end_phase(:config_loading)
 
     StartupProfiler.start_phase(:supervision_tree)
