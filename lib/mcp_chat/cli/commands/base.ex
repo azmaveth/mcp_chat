@@ -23,12 +23,9 @@ defmodule MCPChat.CLI.Commands.Base do
       @behaviour MCPChat.CLI.Commands.Base
 
       import MCPChat.CLI.Commands.Base
-
       import MCPChat.CLI.Commands.Helpers.Arguments,
         only: [parse_subcommand: 2, parse_key_value_pairs: 1, validate_required_args: 3]
-
       import MCPChat.CLI.Commands.Helpers.Display
-
       import MCPChat.CLI.Commands.Helpers.Session,
         only: [
           get_session_property: 2,
