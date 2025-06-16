@@ -129,6 +129,8 @@ MCP Chat supports various slash commands for control and configuration:
 - `/clear` - Clear the chat display
 - `/new` - Start a new chat session
 - `/history [n]` - Show last n messages (default: 10)
+- `/resume` - Resume the last interrupted streaming response
+- `/recovery` - Manage recoverable streams (list, info, resume, clean)
 
 ### Session Management
 
@@ -141,7 +143,11 @@ MCP Chat supports various slash commands for control and configuration:
 
 - `/config` - Show current configuration
 - `/backend <name>` - Switch LLM backend (anthropic, openai)
-- `/model <name>` - Switch to a different model
+- `/model <subcommand>` - Model management (see Model Management section)
+- `/models` - List available models for current backend
+- `/loadmodel <model-id>` - Load a local model for inference
+- `/unloadmodel <model-id>` - Unload a local model
+- `/acceleration` - Show hardware acceleration information
 
 ### Context Management
 
@@ -563,6 +569,170 @@ log_level = "debug"
 - Check configuration with `/config`
 - View server logs for MCP connection issues
 
+### Streaming Recovery
+
+MCP Chat includes comprehensive streaming recovery powered by ExLLM's StreamRecovery module:
+
+#### Automatic Recovery
+- Streams are automatically saved with recovery checkpoints during generation
+- Recovery IDs are preserved when interruptions occur (Ctrl+C, network issues, etc.)
+- Smart error detection determines if streams are recoverable
+- Automatic resume hints guide users to continue interrupted responses
+
+#### Recovery Commands
+- `/resume` - Resume the last interrupted response in current session
+- `/recovery list` - Show all recoverable streams with detailed metadata
+- `/recovery info <id>` - View detailed information about a specific recovery
+- `/recovery resume <id>` - Resume any recoverable stream by its ID
+- `/recovery clean` - Clean up expired recovery data
+
+#### Recovery Strategies
+Configure how resumed content is reconstructed in `config.toml`:
+
+- **`exact`** - Continue from the exact interruption point
+- **`paragraph`** - Find the last complete paragraph and continue from there
+- **`summarize`** - Add a resumption marker and continue
+
+#### Configuration
+```toml
+[streaming]
+# Enable automatic recovery (default: true)
+enable_recovery = true
+
+# Recovery strategy (exact, paragraph, summarize)
+recovery_strategy = "paragraph"
+
+# Storage backend for recovery data
+recovery_storage = "memory"  # or "disk"
+
+# How long to keep recovery data (seconds)
+recovery_ttl = 3600  # 1 hour
+
+# Save recovery checkpoints every N chunks
+recovery_checkpoint_interval = 10
+```
+
+#### Features
+- Works with both enhanced and simple streaming modes
+- Persistent recovery across application restarts (with disk storage)
+- Detailed recovery metadata (provider, model, chunks, tokens, age)
+- Content preview for recovery decisions
+- Automatic cleanup of expired recovery data
+
+### Response Caching
+
+MCP Chat includes intelligent response caching powered by ExLLM's Cache system to speed up development and testing:
+
+#### Overview
+- Runtime response caching with configurable TTL (default: 15 minutes)
+- Optional disk persistence for testing and debugging scenarios
+- Auto-enable in development mode for faster iteration cycles
+- Smart cache key generation based on provider, model, messages, and options
+
+#### Commands
+- `/cache stats` - Show cache statistics and configuration
+- `/cache clear` - Clear all cached responses
+- `/cache enable` - Enable caching for current session
+- `/cache disable` - Disable caching for current session
+- `/cache persist enable` - Enable disk persistence
+- `/cache persist disable` - Disable disk persistence
+
+#### Configuration
+
+```toml
+[caching]
+# Enable response caching (default: false)
+enabled = false
+
+# Cache TTL in minutes (default: 15)
+ttl_minutes = 15
+
+# Enable disk persistence for testing/debugging (default: false)
+persist_disk = false
+
+# Directory for cache storage (optional)
+# cache_dir = "~/.config/mcp_chat/cache"
+
+# Automatically enable caching in development mode (default: true)
+auto_enable_dev = true
+```
+
+#### Features
+- **ETS Backend**: High-performance in-memory caching with TTL support
+- **Development Mode**: Automatically enables in development for faster iteration
+- **Cache Statistics**: Hit rate, miss rate, and performance metrics tracking
+- **Disk Persistence**: Optional disk storage for testing scenarios and debugging
+- **Smart Exclusions**: Streaming requests and function calls are not cached
+- **Zero Configuration**: Works out of the box with sensible defaults
+
+### Model Management
+
+MCP Chat provides comprehensive model management through the `/model` command with various subcommands:
+
+#### Basic Model Operations
+- `/model <name>` - Switch to a specific model (backward compatible)
+- `/model switch <name>` - Switch to a specific model
+- `/model list` - List available models for current backend
+- `/model info` - Show current model information
+- `/model help` - Show all model subcommands
+
+#### Model Capabilities and Discovery
+MCP Chat integrates ExLLM's ModelCapabilities system for intelligent model discovery and selection:
+
+- `/model capabilities [model]` - Show model capabilities and features
+- `/model features` - List all available model features
+- `/model recommend [features]` - Get model recommendations based on requirements
+- `/model compare <model1> <model2> [...]` - Compare multiple models side by side
+
+#### Features Tracked
+- **Core Features**: Streaming, function calling, vision, audio
+- **Input/Output**: System messages, multi-turn, structured output, JSON mode
+- **Advanced**: Context caching, embeddings, token counting, reasoning
+- **Controls**: Temperature, top-p, presence/frequency penalties, stop sequences
+
+#### Model Comparison
+- Feature support matrix with visual indicators (✓/✗)
+- Context window and output token comparisons
+- Release date and capability details
+
+#### Smart Recommendations
+- `/model recommend` - Get general model recommendations
+- `/model recommend streaming vision` - Find models with specific features
+- Scored recommendations based on:
+  - Required feature support
+  - Context window size
+  - Model recency and deprecation status
+  - Performance characteristics
+
+#### Example Usage
+```
+# Switch to a model (backward compatible)
+/model gpt-4
+
+# Show current model information
+/model info
+
+# Show capabilities for current model
+/model capabilities
+
+# Show capabilities for specific model
+/model capabilities claude-3-opus-20240229
+
+# Compare OpenAI models
+/model compare gpt-4 gpt-4-turbo gpt-3.5-turbo
+
+# Find models with vision and function calling
+/model recommend streaming vision function_calling
+
+# List all available features
+/model features
+
+# Get help
+/model help
+```
+
+The system uses ExLLM's comprehensive model database with up-to-date capability information from multiple providers (Anthropic, OpenAI, Gemini, Groq, and more).
+
 ## Tips and Best Practices
 
 1. **Organize Sessions**: Use meaningful names when saving sessions
@@ -571,6 +741,10 @@ log_level = "debug"
 4. **Export Important Chats**: Regularly export important conversations
 5. **Optimize Costs**: Use `/cost` to monitor API usage
 6. **Leverage MCP**: Connect relevant MCP servers for enhanced functionality
+7. **Use Recovery**: If responses get interrupted, use `/resume` or `/recovery list` to continue
+8. **Choose the Right Model**: Use `/model capabilities` and `/model compare` to select models with the features you need
+9. **Explore Features**: Use `/model features` to discover new model capabilities
+10. **Get Recommendations**: Use `/model recommend` with specific features to find optimal models for your task
 
 ## Keyboard Shortcuts
 

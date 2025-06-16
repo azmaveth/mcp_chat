@@ -89,6 +89,38 @@ defmodule MCPChat.ConnectionPool do
     GenServer.call(pool, :get_stats)
   end
 
+  @doc """
+  Makes an HTTP request using a pooled connection.
+  Automatically handles connection checkout/checkin.
+  """
+  def request(pool, method, url, opts \\ []) do
+    with_connection(pool, fn conn ->
+      case method do
+        :get -> Req.get(conn, [url: url] ++ opts)
+        :post -> Req.post(conn, [url: url] ++ opts)
+        :put -> Req.put(conn, [url: url] ++ opts)
+        :patch -> Req.patch(conn, [url: url] ++ opts)
+        :delete -> Req.delete(conn, [url: url] ++ opts)
+        :head -> Req.head(conn, [url: url] ++ opts)
+        _ -> {:error, {:unsupported_method, method}}
+      end
+    end)
+  end
+
+  @doc """
+  Makes a GET request using a pooled connection.
+  """
+  def get(pool, url, opts \\ []) do
+    request(pool, :get, url, opts)
+  end
+
+  @doc """
+  Makes a POST request using a pooled connection.
+  """
+  def post(pool, url, opts \\ []) do
+    request(pool, :post, url, opts)
+  end
+
   # Server Callbacks
 
   @impl true
@@ -261,9 +293,42 @@ defmodule MCPChat.ConnectionPool do
   # Private Functions
 
   defp create_connection do
-    # This is a placeholder - actual implementation would create
-    # HTTP client connections (e.g., Mint, Finch, etc.)
-    {:ok, make_ref()}
+    # Create a new Req client with connection pooling
+    # Each connection is a pre-configured Req client
+    try do
+      client =
+        Req.new(
+          # Enable HTTP/2 and connection reuse
+          connect_options: [
+            protocols: [:http2, :http1],
+            transport_opts: [
+              # Keep connections alive
+              keepalive: true,
+              # Connection timeout
+              timeout: 30_000
+            ]
+          ],
+          # Default request timeout
+          receive_timeout: 60_000,
+          # Retry configuration
+          retry: :transient,
+          max_retries: 3,
+          # Pool connections
+          pool_timeout: 5_000,
+          # Common headers
+          headers: [
+            {"user-agent", "MCP-Chat/#{Application.spec(:mcp_chat, :vsn)}"},
+            {"accept", "application/json"},
+            {"content-type", "application/json"}
+          ]
+        )
+
+      {:ok, client}
+    rescue
+      error ->
+        Logger.error("Failed to create HTTP connection: #{inspect(error)}")
+        {:error, error}
+    end
   end
 
   defp add_connection(state, conn) do
@@ -361,9 +426,33 @@ defmodule MCPChat.ConnectionPool do
     end)
   end
 
-  defp check_connection_health(_conn) do
-    # Placeholder - actual implementation would ping the connection
-    true
+  defp check_connection_health(conn) do
+    # Perform a lightweight health check using HEAD request
+    # This tests if the connection is still alive and responsive
+    try do
+      # Use a reliable, fast endpoint for health checks
+      # We'll use httpbin.org which is commonly used for testing HTTP clients
+      case Req.head(conn, url: "https://httpbin.org/status/200", receive_timeout: 5_000) do
+        {:ok, %Req.Response{status: 200}} ->
+          true
+
+        {:ok, %Req.Response{status: status}} ->
+          Logger.debug("Health check failed with status: #{status}")
+          false
+
+        {:error, %Req.TransportError{}} ->
+          # Connection-level errors (timeouts, connection refused, etc.)
+          false
+
+        {:error, reason} ->
+          Logger.debug("Health check failed: #{inspect(reason)}")
+          false
+      end
+    rescue
+      error ->
+        Logger.debug("Health check exception: #{inspect(error)}")
+        false
+    end
   end
 
   defp count_healthy_connections(state) do

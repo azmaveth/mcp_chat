@@ -275,6 +275,12 @@ defmodule MCPChat.Config do
           keep_count: 10,
           compress_large: true
         }
+      },
+      caching: %{
+        enabled: false,
+        ttl_minutes: 15,
+        persist_disk: false,
+        auto_enable_dev: true
       }
     }
   end

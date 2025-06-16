@@ -284,17 +284,23 @@ auto_connect = true
 # Use enhanced streaming with buffering and backpressure (default: true)
 enhanced = true
 
-# Buffer capacity - maximum chunks to buffer before applying backpressure
+# Use ExLLM's enhanced streaming infrastructure (recommended)
+use_ex_llm_streaming = true
+
+# ExLLM Flow Control Configuration
 buffer_capacity = 100
+backpressure_threshold = 0.8
+rate_limit_ms = 0
 
-# Write interval in milliseconds - how often to flush buffered chunks
-write_interval = 25
-
-# Minimum chunks to batch together before writing
-min_batch_size = 3
-
-# Maximum chunks per write operation
+# ExLLM Chunk Batching Configuration
+batch_size = 5
+batch_timeout_ms = 25
+adaptive_batching = true
+min_batch_size = 1
 max_batch_size = 10
+
+# Legacy MCP Chat streaming options (used when use_ex_llm_streaming = false)
+write_interval = 25
 
 # Stream recovery - automatically save partial responses for resumption
 enable_recovery = true
@@ -303,6 +309,16 @@ enable_recovery = true
 # Options: "exact" (continue from exact cutoff), "paragraph" (from last complete paragraph), 
 #          "summarize" (summarize partial content then continue)
 recovery_strategy = "paragraph"
+
+# Recovery storage backend - where to store recovery data
+# Options: "memory" (in-memory only), "disk" (persistent storage)
+recovery_storage = "memory"
+
+# Time-to-live for recovery data in seconds (default: 1 hour)
+recovery_ttl = 3600
+
+# How often to checkpoint during streaming (every N chunks)
+recovery_checkpoint_interval = 10
 
 # MCP Server Mode Configuration
 # ==============================================================================
@@ -428,6 +444,27 @@ connection_timeout = 10000
 
 # Enable progress reporting during parallel connections
 show_progress = true
+
+# ==============================================================================
+# Response Caching Settings
+# ==============================================================================
+
+[caching]
+# Enable LLM response caching for faster development/testing
+enabled = false
+
+# Cache TTL in minutes (default: 15 minutes)
+ttl_minutes = 15
+
+# Enable disk persistence for cached responses
+# When enabled, responses are saved to disk and can be used for testing
+persist_disk = false
+
+# Directory for cache storage (defaults to system temp dir)
+# cache_dir = "~/.config/mcp_chat/cache"
+
+# Automatically enable caching in development mode
+auto_enable_dev = true
 
 # ==============================================================================
 # Memory Management Settings

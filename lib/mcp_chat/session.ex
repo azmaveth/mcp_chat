@@ -113,6 +113,13 @@ defmodule MCPChat.Session do
   end
 
   @doc """
+  Track cost from ExLLM response.
+  """
+  def track_cost(response_or_cost) do
+    GenServer.cast(__MODULE__, {:track_cost, response_or_cost})
+  end
+
+  @doc """
   Get session cost information.
   """
   def get_session_cost do
@@ -274,6 +281,10 @@ defmodule MCPChat.Session do
   def handle_cast(:clear_session, state) do
     updated_session = SessionCore.clear_messages(state.current_session)
     updated_session = SessionCore.set_context(updated_session, %{})
+
+    # Reset cost tracking when clearing session
+    updated_session = %{updated_session | accumulated_cost: nil, cost_session: nil}
+
     new_state = %{state | current_session: updated_session}
     {:noreply, new_state}
   end
@@ -293,6 +304,12 @@ defmodule MCPChat.Session do
   def handle_cast({:track_token_usage, input_messages, response_content}, state) do
     usage = MCPChat.Cost.track_token_usage(input_messages, response_content)
     updated_session = SessionCore.track_token_usage(state.current_session, usage)
+    new_state = %{state | current_session: updated_session}
+    {:noreply, new_state}
+  end
+
+  def handle_cast({:track_cost, response_or_cost}, state) do
+    updated_session = SessionCore.track_cost(state.current_session, response_or_cost)
     new_state = %{state | current_session: updated_session}
     {:noreply, new_state}
   end

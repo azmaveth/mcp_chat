@@ -108,9 +108,15 @@ defmodule MCPChat.CLI.Chat do
 
     # Get LLM response using processed message
     case get_llm_response(processed_message) do
-      {:ok, response} ->
-        Session.add_message("assistant", response)
-        Renderer.show_assistant_message(response)
+      {:ok, response_data} ->
+        # response_data is now the full response map with content, usage, cost, etc.
+        content = get_response_content(response_data)
+        Session.add_message("assistant", content)
+
+        # Track cost using full response for comprehensive tracking
+        Session.track_cost(response_data)
+
+        Renderer.show_assistant_message(content)
 
       {:error, reason} ->
         Renderer.show_error("Failed to get response: #{inspect(reason)}")
@@ -195,14 +201,28 @@ defmodule MCPChat.CLI.Chat do
 
   defp handle_llm_response(response, messages) do
     case response do
-      {:ok, content} ->
+      {:ok, response_data} ->
+        # response_data is the full response map from ExLLM adapter
+        content = get_response_content(response_data)
         Session.track_token_usage(messages, content)
-        {:ok, content}
+        # Return full response data instead of just content
+        {:ok, response_data}
 
       error ->
         error
     end
   end
+
+  # Helper function to extract content from response data
+  defp get_response_content(response_data) when is_map(response_data) do
+    Map.get(response_data, :content, "")
+  end
+
+  defp get_response_content(content) when is_binary(content) do
+    content
+  end
+
+  defp get_response_content(_), do: ""
 
   defp build_configuration_error(backend_name) do
     env_var = get_env_var_for_backend(backend_name)
@@ -230,6 +250,7 @@ defmodule MCPChat.CLI.Chat do
       {:ok, stream, recovery_id} ->
         # Store recovery ID in session for potential resume
         Session.set_last_recovery_id(recovery_id)
+        Logger.debug("Stream started with recovery ID: #{recovery_id}")
 
         # Use enhanced streaming if enabled
         result =
@@ -240,18 +261,36 @@ defmodule MCPChat.CLI.Chat do
             stream_simple(stream)
           end
 
-        # Clear recovery ID on successful completion
+        # Handle result based on completion status
         case result do
-          {:ok, _response} ->
+          {:ok, response} ->
             Session.clear_last_recovery_id()
+            Logger.debug("Stream completed successfully, cleared recovery ID")
+            {:ok, response}
+
+          {:error, :interrupted} ->
+            # Keep recovery ID for resume
+            Logger.info("Stream interrupted, recovery ID preserved: #{recovery_id}")
+            show_resume_hint()
             result
 
-          error ->
+          {:error, reason} = error ->
+            # Check if error is recoverable
+            if is_recoverable_error?(reason) do
+              Logger.info("Recoverable error occurred, recovery ID preserved: #{recovery_id}")
+              show_resume_hint()
+            else
+              Session.clear_last_recovery_id()
+              Logger.error("Non-recoverable error: #{inspect(reason)}")
+            end
+
             error
         end
 
       {:ok, stream} ->
         # No recovery ID - proceed normally
+        Logger.debug("Stream started without recovery support")
+
         if Config.get(:streaming, :enhanced, true) do
           stream_with_enhanced_consumer(stream, options)
         else
@@ -264,43 +303,86 @@ defmodule MCPChat.CLI.Chat do
     end
   end
 
+  defp show_resume_hint do
+    Renderer.show_info("\n💡 Use /resume to continue the interrupted response")
+  end
+
+  defp is_recoverable_error?(reason) do
+    case reason do
+      :timeout -> true
+      :disconnected -> true
+      {:network_error, _} -> true
+      {:stream_error, _} -> true
+      _ -> false
+    end
+  end
+
   defp maybe_add_recovery_options(options) do
     if Config.get([:streaming, :enable_recovery], true) do
-      Keyword.merge(options,
+      recovery_opts = [
         enable_recovery: true,
-        recovery_strategy: Config.get([:streaming, :recovery_strategy], :paragraph)
-      )
+        recovery_strategy: Config.get([:streaming, :recovery_strategy], :paragraph),
+        recovery_storage: Config.get([:streaming, :recovery_storage], :memory),
+        # 1 hour default
+        recovery_ttl: Config.get([:streaming, :recovery_ttl], 3_600),
+        # Save every 10 chunks
+        recovery_checkpoint_interval: Config.get([:streaming, :recovery_checkpoint_interval], 10)
+      ]
+
+      # Generate a unique recovery ID if not provided
+      recovery_opts =
+        if Keyword.has_key?(options, :recovery_id) do
+          recovery_opts
+        else
+          [{:recovery_id, generate_recovery_id()} | recovery_opts]
+        end
+
+      # Add streaming metrics callback if enabled
+      recovery_opts =
+        if Config.get([:streaming, :track_metrics], false) do
+          metrics_callback = fn metrics ->
+            if Config.get([:debug, :log_streaming_metrics], false) do
+              Logger.debug("ExLLM Streaming metrics: #{inspect(metrics)}")
+            end
+          end
+
+          [{:track_metrics, true}, {:on_metrics, metrics_callback} | recovery_opts]
+        else
+          recovery_opts
+        end
+
+      Keyword.merge(options, recovery_opts)
     else
       options
     end
   end
 
-  defp stream_with_enhanced_consumer(stream, _options) do
-    alias MCPChat.Streaming.EnhancedConsumer
+  defp generate_recovery_id do
+    timestamp = :os.system_time(:millisecond)
+    random = :rand.uniform(9_999)
+    "mcp_chat_#{timestamp}_#{random}"
+  end
 
-    # Get streaming configuration
-    config = [
-      buffer_capacity: Config.get(:streaming, :buffer_capacity, 100),
-      write_interval: Config.get(:streaming, :write_interval, 25),
-      min_batch_size: Config.get(:streaming, :min_batch_size, 3),
-      max_batch_size: Config.get(:streaming, :max_batch_size, 10)
-    ]
+  defp stream_with_enhanced_consumer(stream, options) do
+    # Use ExLLM's enhanced streaming infrastructure directly
+    # Since ExLLM.stream_chat now returns an enhanced stream with built-in
+    # flow control, batching, and backpressure handling, we can consume it directly
 
-    # Process with enhanced consumer
-    case EnhancedConsumer.process_with_manager(stream, config) do
-      {:ok, response, metrics} ->
-        # Log metrics if debug mode
-        if Config.get(:debug, :log_streaming_metrics, false) do
-          Logger.debug("Streaming metrics: #{inspect(metrics)}")
-        end
+    response =
+      stream
+      |> Enum.reduce("", fn chunk, acc ->
+        # Display chunk immediately with ExLLM's optimized batching
+        Renderer.show_stream_chunk(chunk.delta)
+        acc <> chunk.delta
+      end)
 
-        {:ok, response}
-
-      {:error, reason} ->
-        Logger.error("Enhanced streaming failed: #{inspect(reason)}")
-        # Fallback to simple streaming
-        stream_simple(stream)
-    end
+    Renderer.end_stream()
+    {:ok, response}
+  rescue
+    e ->
+      Logger.error("ExLLM enhanced streaming failed: #{Exception.message(e)}")
+      # Fallback to simple streaming
+      stream_simple(stream)
   end
 
   defp stream_simple(stream) do
@@ -318,8 +400,15 @@ defmodule MCPChat.CLI.Chat do
   end
 
   defp handle_resumed_stream(stream) do
-    # Process the resumed stream
-    case stream_simple(stream) do
+    # Process the resumed stream with recovery support
+    result =
+      if Config.get(:streaming, :enhanced, true) do
+        stream_with_enhanced_consumer(stream, [])
+      else
+        stream_simple(stream)
+      end
+
+    case result do
       {:ok, continuation} ->
         handle_continuation_success(continuation)
 
@@ -333,6 +422,7 @@ defmodule MCPChat.CLI.Chat do
       nil ->
         # Just add the continuation as a new message
         Session.add_message("assistant", continuation)
+        Renderer.show_assistant_message(continuation)
 
       recovery_id ->
         handle_recovery_continuation(recovery_id, continuation)
@@ -342,13 +432,51 @@ defmodule MCPChat.CLI.Chat do
   defp handle_recovery_continuation(recovery_id, continuation) do
     case ExLLMAdapter.get_partial_response(recovery_id) do
       {:ok, chunks} ->
-        partial = chunks |> Enum.map_join(& &1.content, "")
-        full_response = partial <> continuation
-        Session.add_message("assistant", full_response)
+        partial_content = Enum.map_join(chunks, "", & &1.content)
+        recovery_strategy = Config.get([:streaming, :recovery_strategy], :paragraph)
 
-      _ ->
+        full_response =
+          case recovery_strategy do
+            :exact ->
+              # Continue from exact cutoff
+              partial_content <> continuation
+
+            :paragraph ->
+              # Find last complete paragraph and continue from there
+              last_paragraph_end = find_last_paragraph_end(partial_content)
+              String.slice(partial_content, 0, last_paragraph_end) <> "\n\n" <> continuation
+
+            :summarize ->
+              # Include a summary marker
+              partial_content <> "\n\n[Response resumed after interruption]\n\n" <> continuation
+
+            _ ->
+              partial_content <> continuation
+          end
+
+        Session.add_message("assistant", full_response)
+        Renderer.show_assistant_message(full_response)
+        Session.clear_last_recovery_id()
+        Logger.info("Successfully resumed response with #{recovery_strategy} strategy")
+
+      {:error, reason} ->
         # Fallback to just the continuation
+        Logger.warn("Could not retrieve partial response: #{inspect(reason)}")
         Session.add_message("assistant", continuation)
+        Renderer.show_assistant_message(continuation)
+        Session.clear_last_recovery_id()
+    end
+  end
+
+  defp find_last_paragraph_end(text) do
+    # Find the last double newline or end of a sentence before that
+    case Regex.scan(~r/\n\n|[.!?]\s*$/m, text, return: :index) do
+      [] ->
+        String.length(text)
+
+      matches ->
+        {last_pos, last_len} = List.last(matches) |> List.first()
+        last_pos + last_len
     end
   end
 

@@ -246,6 +246,7 @@ defmodule MCPChat.Persistence do
       created_at: DateTime.to_iso8601(session.created_at),
       updated_at: DateTime.to_iso8601(session.updated_at),
       token_usage: session.token_usage,
+      accumulated_cost: session.accumulated_cost,
       metadata: session.metadata
     }
 
@@ -271,6 +272,7 @@ defmodule MCPChat.Persistence do
           created_at: parse_datetime(json["created_at"]),
           updated_at: parse_datetime(json["updated_at"]),
           token_usage: json["token_usage"] || %{input_tokens: 0, output_tokens: 0},
+          accumulated_cost: json["accumulated_cost"],
           metadata: json["metadata"]
         }
 

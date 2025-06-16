@@ -212,24 +212,7 @@ defmodule MCPChat.CLI.Commands.Session do
     IO.puts("")
   end
 
-  # Helper functions
-
-  defp format_time_ago(datetime) do
-    now = DateTime.utc_now()
-    diff = DateTime.diff(now, datetime, :second)
-
-    cond do
-      diff < 60 -> "just now"
-      diff < 3_600 -> "#{div(diff, 60)} minutes ago"
-      diff < 86_400 -> "#{div(diff, 3_600)} hours ago"
-      diff < 604_800 -> "#{div(diff, 86_400)} days ago"
-      true -> "#{div(diff, 604_800)} weeks ago"
-    end
-  end
-
-  defp format_bytes(bytes) when bytes < 1_024, do: "#{bytes} B"
-  defp format_bytes(bytes) when bytes < 1_048_576, do: "#{Float.round(bytes / 1_024, 1)} KB"
-  defp format_bytes(bytes), do: "#{Float.round(bytes / 1_048_576, 1)} MB"
+  # Helper functions - Note: format_time_ago and format_bytes now come from Display helper
 
   defp extract_session_name(filename) do
     # Extract custom name from filename like "my-session_id.json"

@@ -308,22 +308,94 @@ defmodule CommandsTest do
   end
 
   describe "model command" do
-    test "shows current model when no args" do
+    test "shows help when no args" do
       output =
         capture_io(fn ->
           Commands.handle_command("model")
         end)
 
-      assert output =~ "Current backend:" or output =~ "Current model:"
+      assert output =~ "Model management commands:" or output =~ "Usage:" or output =~ "/model"
     end
 
-    test "switches to specified model" do
+    test "switches to specified model (backward compatibility)" do
       output =
         capture_io(fn ->
           Commands.handle_command("model gpt-4")
         end)
 
       assert output =~ "Switched to" or output =~ "gpt-4" or output =~ "model"
+    end
+
+    test "model info subcommand" do
+      output =
+        capture_io(fn ->
+          Commands.handle_command("model info")
+        end)
+
+      assert output =~ "Current backend:" or output =~ "Current model:"
+    end
+
+    test "model list subcommand" do
+      output =
+        capture_io(fn ->
+          Commands.handle_command("model list")
+        end)
+
+      assert output =~ "Available models" or output =~ "Current backend"
+    end
+
+    test "model help subcommand" do
+      output =
+        capture_io(fn ->
+          Commands.handle_command("model help")
+        end)
+
+      assert output =~ "Model management commands:" and output =~ "Examples:"
+    end
+
+    test "model capabilities subcommand" do
+      output =
+        capture_io(fn ->
+          Commands.handle_command("model capabilities")
+        end)
+
+      assert output =~ "Model:" or output =~ "not found" or output =~ "Failed to get capabilities"
+    end
+
+    test "model features subcommand" do
+      output =
+        capture_io(fn ->
+          Commands.handle_command("model features")
+        end)
+
+      assert output =~ "Available model features:" or output =~ "Failed to list features"
+    end
+
+    test "model recommend subcommand" do
+      output =
+        capture_io(fn ->
+          Commands.handle_command("model recommend")
+        end)
+
+      assert output =~ "Recommended models" or output =~ "No models found" or output =~ "Failed to get recommendations"
+    end
+
+    test "model compare subcommand with insufficient args" do
+      output =
+        capture_io(fn ->
+          Commands.handle_command("model compare gpt-4")
+        end)
+
+      assert output =~ "At least 2 models are required" or output =~ "Usage:"
+    end
+
+    test "model compare subcommand with valid args" do
+      output =
+        capture_io(fn ->
+          Commands.handle_command("model compare gpt-4 gpt-3.5-turbo")
+        end)
+
+      assert output =~ "Model Comparison:" or output =~ "Comparison failed" or output =~ "Failed to compare models"
     end
   end
 

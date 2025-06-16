@@ -19,6 +19,8 @@ defmodule MCPChat.Types do
       :created_at,
       :updated_at,
       :token_usage,
+      :accumulated_cost,
+      :cost_session,
       :metadata
     ]
 
@@ -30,6 +32,8 @@ defmodule MCPChat.Types do
             created_at: DateTime.t(),
             updated_at: DateTime.t(),
             token_usage: token_usage(),
+            accumulated_cost: float() | nil,
+            cost_session: any() | nil,
             metadata: map() | nil
           }
 

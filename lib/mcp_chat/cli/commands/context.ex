@@ -96,77 +96,81 @@ defmodule MCPChat.CLI.Commands.Context do
   end
 
   defp handle_context_subcommand([subcmd | _]) do
-    show_error("Unknown context subcommand: #{subcmd}")
-    show_info("Type /context for available subcommands")
+    available_commands = Map.keys(subcommands())
+    Usage.show_command_not_found(subcmd, available_commands)
+    show_info("Use '/context help' for more information")
     :ok
   end
 
   # Command implementations
 
   defp show_context_stats do
-    session = Session.get_current_session()
-    stats = Context.get_context_stats(session.messages, session.context[:max_tokens] || 4_096)
+    with_session(fn session ->
+      max_tokens = get_session_context(:max_tokens, 4_096)
+      stats = Context.get_context_stats(session.messages, max_tokens)
 
-    Renderer.show_text("## Context Statistics\n")
+      Renderer.show_text("## Context Statistics\n")
 
-    IO.puts("Messages: #{stats.message_count}")
-    IO.puts("Estimated tokens: #{stats.estimated_tokens}")
+      # Basic stats
+      basic_stats = %{
+        "Messages" => stats.message_count,
+        "Estimated tokens" => format_number(stats.estimated_tokens),
+        "Context window" => "#{format_number(stats.max_tokens)} tokens",
+        "Available tokens" => format_number(stats.tokens_remaining),
+        "Usage" => format_number(stats.tokens_used_percentage, :percentage)
+      }
 
-    # Show context files info
-    context_files = session.context[:files] || %{}
+      show_key_value_table(basic_stats, separator: ": ")
 
-    if map_size(context_files) > 0 do
-      file_count = map_size(context_files)
+      # Show context files info
+      context_files = get_session_context(:files, %{})
+      show_context_files_info(context_files)
 
-      total_size =
-        context_files
-        |> Enum.map(fn {_, file_info} -> file_info.size end)
-        |> Enum.sum()
+      IO.puts("")
+      IO.puts("Truncation strategy: #{get_session_context(:truncation_strategy, "sliding_window")}")
 
-      # Estimate tokens for files (rough estimate)
-      file_tokens =
-        context_files
-        |> Enum.map(fn {_, file_info} -> Context.estimate_tokens(file_info.content) end)
-        |> Enum.sum()
-
-      IO.puts("Context files: #{file_count} (#{format_bytes(total_size)}, ~#{file_tokens} tokens)")
-    end
-
-    IO.puts("")
-
-    IO.puts("Context window: #{stats.max_tokens} tokens")
-    IO.puts("Available tokens: #{stats.tokens_remaining}")
-    IO.puts("Usage: #{stats.tokens_used_percentage}%")
-    IO.puts("")
-
-    IO.puts("Truncation strategy: #{session.context[:truncation_strategy] || "sliding_window"}")
-
-    if stats.tokens_used_percentage > 80 do
-      show_warning(
-        "Context is #{stats.tokens_used_percentage}% full. " <>
-          "Older messages may be truncated soon."
-      )
-    end
-
-    :ok
+      if stats.tokens_used_percentage > 80 do
+        show_warning(
+          "Context is #{format_number(stats.tokens_used_percentage, :percentage)} full. " <>
+            "Older messages may be truncated soon."
+        )
+      end
+    end)
   end
+
+  defp show_context_files_info(context_files) when map_size(context_files) > 0 do
+    file_count = map_size(context_files)
+
+    total_size =
+      context_files
+      |> Enum.map(fn {_, file_info} -> file_info.size end)
+      |> Enum.sum()
+
+    # Estimate tokens for files (rough estimate)
+    file_tokens =
+      context_files
+      |> Enum.map(fn {_, file_info} -> Context.estimate_tokens(file_info.content) end)
+      |> Enum.sum()
+
+    IO.puts("\nContext files: #{file_count} (#{format_bytes(total_size)}, ~#{format_number(file_tokens)} tokens)")
+  end
+
+  defp show_context_files_info(_context_files), do: :ok
 
   defp set_system_prompt(args) do
     case args do
       [] ->
         # Show current system prompt
-        session = Session.get_current_session()
+        with_session(fn session ->
+          case Enum.find(session.messages, &(&1["role"] == "system")) do
+            nil ->
+              show_info("No system prompt set")
 
-        case Enum.find(session.messages, &(&1["role"] == "system")) do
-          nil ->
-            show_info("No system prompt set")
-
-          %{"content" => content} ->
-            show_info("Current system prompt:")
-            IO.puts(content)
-        end
-
-        :ok
+            %{"content" => content} ->
+              show_info("Current system prompt:")
+              IO.puts(content)
+          end
+        end)
 
       _ ->
         prompt = parse_args(args)
@@ -174,8 +178,7 @@ defmodule MCPChat.CLI.Commands.Context do
 
         # Calculate token count
         tokens = Context.estimate_tokens(prompt)
-        show_success("System prompt updated (#{tokens} tokens)")
-        :ok
+        show_operation_success("System prompt updated", "(#{format_number(tokens)} tokens)")
     end
   end
 
@@ -519,21 +522,5 @@ defmodule MCPChat.CLI.Commands.Context do
     end
   end
 
-  # Helper functions
-
-  defp format_bytes(bytes) when bytes < 1_024, do: "#{bytes} B"
-  defp format_bytes(bytes) when bytes < 1_048_576, do: "#{Float.round(bytes / 1_024, 1)} KB"
-  defp format_bytes(bytes), do: "#{Float.round(bytes / 1_048_576, 1)} MB"
-
-  defp format_time_ago(datetime) do
-    now = DateTime.utc_now()
-    diff = DateTime.diff(now, datetime, :second)
-
-    cond do
-      diff < 60 -> "just now"
-      diff < 3_600 -> "#{div(diff, 60)} minutes ago"
-      diff < 86_400 -> "#{div(diff, 3_600)} hours ago"
-      true -> "#{div(diff, 86_400)} days ago"
-    end
-  end
+  # Helper functions - Note: format_bytes and format_time_ago now come from Display helper
 end

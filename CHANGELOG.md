@@ -19,7 +19,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Prevents context overflow errors automatically
   - Default "smart" strategy preserves system messages and recent context
 
-## [0.2.3] - 2024-06-14
+- **ExLLM StreamRecovery Integration**: Comprehensive streaming interruption recovery
+  - Full integration with ExLLM's StreamRecovery module for robust resumption
+  - Multiple recovery strategies: `exact`, `paragraph`, `summarize`
+  - Automatic recovery ID generation and session tracking
+  - Enhanced `/resume` command with intelligent content reconstruction
+  - New `/recovery` command suite for advanced recovery management:
+    - `/recovery list` - Show all recoverable streams with metadata
+    - `/recovery info <id>` - Detailed recovery information and content preview
+    - `/recovery resume <id>` - Resume specific stream by ID
+    - `/recovery clean` - Clean expired recovery data
+  - Smart error detection distinguishes recoverable vs non-recoverable failures
+  - Configurable recovery storage backend (memory/disk) and TTL
+  - Recovery checkpoint intervals for efficient partial content saving
+  - Automatic resume hints shown when streams are interrupted
+  - Works with both enhanced and simple streaming modes
+
+- **ExLLM Response Caching Integration**: Fast development with intelligent caching
+  - Runtime response caching with configurable TTL (default: 15 minutes)
+  - Optional disk persistence for testing and debugging scenarios
+  - Auto-enable in development mode for faster iteration cycles
+  - Smart cache key generation based on provider, model, messages, and options
+  - Cache management commands:
+    - `/cache stats` - Show cache statistics and configuration
+    - `/cache clear` - Clear all cached responses
+    - `/cache enable/disable` - Runtime cache control
+    - `/cache persist enable/disable` - Disk persistence control
+  - Built on ExLLM.Cache with ETS backend for high-performance runtime caching
+  - Configurable via `[caching]` section in config.toml
+  - Prevents redundant API calls during development and testing
+
+- **ExLLM ModelCapabilities Integration**: Advanced model selection and capability discovery
+  - Enhanced `/model` command with intelligent subcommands:
+    - `/model capabilities [model]` - Show detailed model capabilities and features
+    - `/model recommend [features]` - Get model recommendations based on requirements
+    - `/model features` - List all available model features across providers
+    - `/model compare <model1> <model2> [...]` - Compare capabilities across multiple models
+    - `/model list` - List available models with enhanced information
+    - `/model info` - Show current model details
+    - `/model help` - Show all model management options
+  - Backward compatibility: `/model <name>` still works for switching models
+  - Smart model selection with capability-based filtering
+  - Comprehensive feature support detection (streaming, vision, function calling, etc.)
+  - Model comparison tables with feature support indicators
+  - Integration with ExLLM's ModelCapabilities system for up-to-date model metadata
+  - Context window size and token limit information
+  - Release date and deprecation tracking for models
+
+## [0.2.3] - 2024-06-15
 
 ### Added
 - **MCP Server Health Monitoring**: Comprehensive health tracking and monitoring for MCP servers

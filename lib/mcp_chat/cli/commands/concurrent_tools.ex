@@ -10,8 +10,25 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
   alias MCPChat.MCP.{ConcurrentToolExecutor, ServerManager}
 
   @doc """
-  Handle concurrent tool commands.
+  Get the list of commands provided by this module.
   """
+  def commands do
+    [
+      %{
+        name: "concurrent",
+        description: "Execute tools concurrently with safety checks",
+        usage: "/concurrent <subcommand> [args...]",
+        subcommands: [
+          %{name: "test", description: "Run concurrent execution test"},
+          %{name: "execute", description: "Execute multiple tools concurrently"},
+          %{name: "stats", description: "Show execution statistics"},
+          %{name: "safety", description: "Check if tool is safe for concurrency"},
+          %{name: "help", description: "Show this help"}
+        ]
+      }
+    ]
+  end
+
   def handle_command(["concurrent" | args]) do
     case args do
       [] ->
@@ -35,6 +52,14 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
       _ ->
         show_error("Unknown concurrent command. Use '/concurrent help' for usage.")
     end
+  end
+
+  @doc """
+  Handle commands that are not concurrent commands (required by Base behavior).
+  """
+  def handle_command(_command_args) do
+    # This module only handles concurrent commands, return not handled for all others
+    :not_handled
   end
 
   defp show_help do
@@ -254,43 +279,67 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
   end
 
   defp parse_tool_specifications(specs) do
-    tool_calls =
-      Enum.map(specs, fn spec ->
-        case String.split(spec, ":", parts: 3) do
-          [server, tool] ->
-            {server, tool, %{}}
+    # Use Enum.reduce_while to handle errors properly without throw/catch
+    result =
+      Enum.reduce_while(specs, {:ok, []}, fn spec, {:ok, acc} ->
+        case parse_single_tool_specification(spec) do
+          {:ok, tool_call} ->
+            {:cont, {:ok, [tool_call | acc]}}
 
-          [server, tool, args_str] ->
-            args = parse_arguments(args_str)
-            {server, tool, args}
-
-          _ ->
-            throw({:invalid_format, spec})
+          {:error, reason} ->
+            {:halt, {:error, reason}}
         end
       end)
 
-    {:ok, tool_calls}
-  catch
-    {:invalid_format, spec} ->
-      {:error, "Invalid format for '#{spec}'. Use server:tool:arg1=value1,arg2=value2"}
+    case result do
+      {:ok, tool_calls} ->
+        {:ok, Enum.reverse(tool_calls)}
 
-    error ->
-      {:error, "Parse error: #{inspect(error)}"}
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp parse_single_tool_specification(spec) do
+    case String.split(spec, ":", parts: 3) do
+      [server, tool] ->
+        {:ok, {server, tool, %{}}}
+
+      [server, tool, args_str] ->
+        case parse_arguments(args_str) do
+          {:ok, args} ->
+            {:ok, {server, tool, args}}
+
+          {:error, reason} ->
+            {:error, "Failed to parse arguments for '#{spec}': #{reason}"}
+        end
+
+      _ ->
+        {:error, "Invalid format for '#{spec}'. Use server:tool:arg1=value1,arg2=value2"}
+    end
   end
 
   defp parse_arguments(args_str) do
     if String.trim(args_str) == "" do
-      %{}
+      {:ok, %{}}
     else
       parse_non_empty_arguments(args_str)
     end
   end
 
   defp parse_non_empty_arguments(args_str) do
-    args_str
-    |> String.split(",")
-    |> Enum.map(&parse_key_value_pair/1)
-    |> Map.new()
+    try do
+      args =
+        args_str
+        |> String.split(",")
+        |> Enum.map(&parse_key_value_pair/1)
+        |> Map.new()
+
+      {:ok, args}
+    rescue
+      e ->
+        {:error, "Invalid argument format: #{inspect(e)}"}
+    end
   end
 
   defp parse_key_value_pair(pair) do
