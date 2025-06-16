@@ -66,17 +66,24 @@ defmodule MCPChat.CLI.Commands.LLM do
   end
 
   defp handle_model_subcommand([subcommand | args]) do
-    case subcommand do
-      "switch" -> switch_model(args)
-      "list" -> list_models()
-      "capabilities" -> show_capabilities(args)
-      "recommend" -> recommend_models(args)
-      "features" -> list_features()
-      "compare" -> compare_models(args)
-      "info" -> show_current_model_info()
-      "help" -> show_model_help()
-      # If no subcommand matches, treat as model name for backward compatibility
-      model_name -> switch_model([model_name | args])
+    subcommand_handlers = %{
+      "switch" => fn -> switch_model(args) end,
+      "list" => fn -> list_models() end,
+      "capabilities" => fn -> show_capabilities(args) end,
+      "recommend" => fn -> recommend_models(args) end,
+      "features" => fn -> list_features() end,
+      "compare" => fn -> compare_models(args) end,
+      "info" => fn -> show_current_model_info() end,
+      "help" => fn -> show_model_help() end
+    }
+
+    case Map.get(subcommand_handlers, subcommand) do
+      nil ->
+        # If no subcommand matches, treat as model name for backward compatibility
+        switch_model([subcommand | args])
+
+      handler ->
+        handler.()
     end
   end
 
@@ -537,46 +544,60 @@ defmodule MCPChat.CLI.Commands.LLM do
   defp show_model_capabilities(provider, model_id) do
     case ExLLMAdapter.get_model_capabilities(provider, model_id) do
       {:ok, capabilities} ->
-        show_info("Model: #{capabilities.display_name} (#{provider})")
-        show_info("Context Window: #{format_number(capabilities.context_window, :compact)} tokens")
-
-        if capabilities.max_output_tokens do
-          show_info("Max Output: #{format_number(capabilities.max_output_tokens, :compact)} tokens")
-        end
-
-        show_info("\nSupported Features:")
-
-        capabilities.capabilities
-        |> Enum.filter(fn {_feature, cap} -> cap.supported end)
-        |> Enum.sort_by(fn {feature, _cap} -> to_string(feature) end)
-        |> Enum.each(fn {feature, cap} ->
-          feature_name = format_feature_name(feature)
-
-          if cap.details && map_size(cap.details) > 0 do
-            show_info("  ✓ #{feature_name} #{format_capability_details(cap.details)}")
-          else
-            show_info("  ✓ #{feature_name}")
-          end
-        end)
-
-        unsupported =
-          capabilities.capabilities
-          |> Enum.filter(fn {_feature, cap} -> not cap.supported end)
-          |> length()
-
-        if unsupported > 0 do
-          show_info("\nUnsupported features: #{unsupported}")
-        end
-
-        :ok
+        display_model_capabilities(capabilities, provider)
 
       {:error, :not_found} ->
         show_error("Model #{model_id} not found for provider #{provider}")
-        :ok
 
       {:error, reason} ->
         show_error("Failed to get capabilities: #{inspect(reason)}")
-        :ok
+    end
+
+    :ok
+  end
+
+  defp display_model_capabilities(capabilities, provider) do
+    show_basic_model_info(capabilities, provider)
+    show_supported_features(capabilities.capabilities)
+    show_unsupported_count(capabilities.capabilities)
+  end
+
+  defp show_basic_model_info(capabilities, provider) do
+    show_info("Model: #{capabilities.display_name} (#{provider})")
+    show_info("Context Window: #{format_number(capabilities.context_window, :compact)} tokens")
+
+    if capabilities.max_output_tokens do
+      show_info("Max Output: #{format_number(capabilities.max_output_tokens, :compact)} tokens")
+    end
+  end
+
+  defp show_supported_features(capabilities) do
+    show_info("\nSupported Features:")
+
+    capabilities
+    |> Enum.filter(fn {_feature, cap} -> cap.supported end)
+    |> Enum.sort_by(fn {feature, _cap} -> to_string(feature) end)
+    |> Enum.each(&display_feature_capability/1)
+  end
+
+  defp display_feature_capability({feature, cap}) do
+    feature_name = format_feature_name(feature)
+
+    if cap.details && map_size(cap.details) > 0 do
+      show_info("  ✓ #{feature_name} #{format_capability_details(cap.details)}")
+    else
+      show_info("  ✓ #{feature_name}")
+    end
+  end
+
+  defp show_unsupported_count(capabilities) do
+    unsupported_count =
+      capabilities
+      |> Enum.filter(fn {_feature, cap} -> not cap.supported end)
+      |> length()
+
+    if unsupported_count > 0 do
+      show_info("\nUnsupported features: #{unsupported_count}")
     end
   end
 
@@ -585,41 +606,55 @@ defmodule MCPChat.CLI.Commands.LLM do
 
     case ExLLMAdapter.recommend_models(requirements) do
       recommendations when is_list(recommendations) and length(recommendations) > 0 ->
-        show_info("Recommended models based on your requirements:")
-        show_info("")
-
-        recommendations
-        |> Enum.with_index(1)
-        |> Enum.each(fn {{provider, model_id, %{score: score, info: info}}, index} ->
-          show_info("#{index}. #{info.display_name} (#{provider})")
-          show_info("   Model: #{model_id}")
-          show_info("   Context: #{format_number(info.context_window, :compact)} tokens")
-
-          if info.max_output_tokens do
-            show_info("   Max Output: #{format_number(info.max_output_tokens, :compact)} tokens")
-          end
-
-          show_info("   Score: #{Float.round(score, 1)}")
-
-          # Show key capabilities
-          key_caps = get_key_capabilities(info.capabilities)
-
-          if length(key_caps) > 0 do
-            show_info("   Features: #{Enum.join(key_caps, ", ")}")
-          end
-
-          show_info("")
-        end)
+        display_recommendations(recommendations)
 
       [] ->
-        show_info("No models found matching your requirements.")
-        show_info("Try relaxing your constraints or use /features to see available capabilities.")
+        show_no_recommendations()
 
       {:error, reason} ->
         show_error("Failed to get recommendations: #{inspect(reason)}")
     end
 
     :ok
+  end
+
+  defp display_recommendations(recommendations) do
+    show_info("Recommended models based on your requirements:")
+    show_info("")
+
+    recommendations
+    |> Enum.with_index(1)
+    |> Enum.each(&display_single_recommendation/1)
+  end
+
+  defp display_single_recommendation({{provider, model_id, %{score: score, info: info}}, index}) do
+    show_info("#{index}. #{info.display_name} (#{provider})")
+    show_info("   Model: #{model_id}")
+    show_info("   Context: #{format_number(info.context_window, :compact)} tokens")
+
+    display_max_output_if_available(info.max_output_tokens)
+    show_info("   Score: #{Float.round(score, 1)}")
+    display_key_capabilities(info.capabilities)
+    show_info("")
+  end
+
+  defp display_max_output_if_available(nil), do: :ok
+
+  defp display_max_output_if_available(max_output) do
+    show_info("   Max Output: #{format_number(max_output, :compact)} tokens")
+  end
+
+  defp display_key_capabilities(capabilities) do
+    key_caps = get_key_capabilities(capabilities)
+
+    if length(key_caps) > 0 do
+      show_info("   Features: #{Enum.join(key_caps, ", ")}")
+    end
+  end
+
+  defp show_no_recommendations do
+    show_info("No models found matching your requirements.")
+    show_info("Try relaxing your constraints or use /features to see available capabilities.")
   end
 
   defp list_features do

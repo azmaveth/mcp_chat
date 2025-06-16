@@ -248,58 +248,66 @@ defmodule MCPChat.CLI.Chat do
 
     case adapter.stream_chat(messages, options) do
       {:ok, stream, recovery_id} ->
-        # Store recovery ID in session for potential resume
-        Session.set_last_recovery_id(recovery_id)
-        Logger.debug("Stream started with recovery ID: #{recovery_id}")
-
-        # Use enhanced streaming if enabled
-        result =
-          if Config.get(:streaming, :enhanced, true) do
-            stream_with_enhanced_consumer(stream, options)
-          else
-            # Fallback to simple streaming
-            stream_simple(stream)
-          end
-
-        # Handle result based on completion status
-        case result do
-          {:ok, response} ->
-            Session.clear_last_recovery_id()
-            Logger.debug("Stream completed successfully, cleared recovery ID")
-            {:ok, response}
-
-          {:error, :interrupted} ->
-            # Keep recovery ID for resume
-            Logger.info("Stream interrupted, recovery ID preserved: #{recovery_id}")
-            show_resume_hint()
-            result
-
-          {:error, reason} = error ->
-            # Check if error is recoverable
-            if recoverable_error?(reason) do
-              Logger.info("Recoverable error occurred, recovery ID preserved: #{recovery_id}")
-              show_resume_hint()
-            else
-              Session.clear_last_recovery_id()
-              Logger.error("Non-recoverable error: #{inspect(reason)}")
-            end
-
-            error
-        end
+        handle_recoverable_stream(stream, recovery_id, options)
 
       {:ok, stream} ->
-        # No recovery ID - proceed normally
-        Logger.debug("Stream started without recovery support")
-
-        if Config.get(:streaming, :enhanced, true) do
-          stream_with_enhanced_consumer(stream, options)
-        else
-          # Fallback to simple streaming
-          stream_simple(stream)
-        end
+        handle_simple_stream(stream, options)
 
       error ->
         error
+    end
+  end
+
+  defp handle_recoverable_stream(stream, recovery_id, options) do
+    # Store recovery ID in session for potential resume
+    Session.set_last_recovery_id(recovery_id)
+    Logger.debug("Stream started with recovery ID: #{recovery_id}")
+
+    result = execute_stream(stream, options)
+    handle_stream_result(result, recovery_id)
+  end
+
+  defp handle_simple_stream(stream, options) do
+    # No recovery ID - proceed normally
+    Logger.debug("Stream started without recovery support")
+    execute_stream(stream, options)
+  end
+
+  defp execute_stream(stream, options) do
+    if Config.get(:streaming, :enhanced, true) do
+      stream_with_enhanced_consumer(stream, options)
+    else
+      # Fallback to simple streaming
+      stream_simple(stream)
+    end
+  end
+
+  defp handle_stream_result(result, recovery_id) do
+    case result do
+      {:ok, response} ->
+        Session.clear_last_recovery_id()
+        Logger.debug("Stream completed successfully, cleared recovery ID")
+        {:ok, response}
+
+      {:error, :interrupted} ->
+        # Keep recovery ID for resume
+        Logger.info("Stream interrupted, recovery ID preserved: #{recovery_id}")
+        show_resume_hint()
+        result
+
+      {:error, reason} = error ->
+        handle_stream_error(reason, recovery_id)
+        error
+    end
+  end
+
+  defp handle_stream_error(reason, recovery_id) do
+    if recoverable_error?(reason) do
+      Logger.info("Recoverable error occurred, recovery ID preserved: #{recovery_id}")
+      show_resume_hint()
+    else
+      Session.clear_last_recovery_id()
+      Logger.error("Non-recoverable error: #{inspect(reason)}")
     end
   end
 
@@ -319,41 +327,54 @@ defmodule MCPChat.CLI.Chat do
 
   defp maybe_add_recovery_options(options) do
     if Config.get([:streaming, :enable_recovery], true) do
-      recovery_opts = [
-        enable_recovery: true,
-        recovery_strategy: Config.get([:streaming, :recovery_strategy], :paragraph),
-        recovery_storage: Config.get([:streaming, :recovery_storage], :memory),
-        # 1 hour default
-        recovery_ttl: Config.get([:streaming, :recovery_ttl], 3_600),
-        # Save every 10 chunks
-        recovery_checkpoint_interval: Config.get([:streaming, :recovery_checkpoint_interval], 10)
-      ]
-
-      # Generate a unique recovery ID if not provided
-      recovery_opts =
-        if Keyword.has_key?(options, :recovery_id) do
-          recovery_opts
-        else
-          [{:recovery_id, generate_recovery_id()} | recovery_opts]
-        end
-
-      # Add streaming metrics callback if enabled
-      recovery_opts =
-        if Config.get([:streaming, :track_metrics], false) do
-          metrics_callback = fn metrics ->
-            if Config.get([:debug, :log_streaming_metrics], false) do
-              Logger.debug("ExLLM Streaming metrics: #{inspect(metrics)}")
-            end
-          end
-
-          [{:track_metrics, true}, {:on_metrics, metrics_callback} | recovery_opts]
-        else
-          recovery_opts
-        end
-
-      Keyword.merge(options, recovery_opts)
+      build_recovery_options(options)
     else
       options
+    end
+  end
+
+  defp build_recovery_options(options) do
+    recovery_opts = build_base_recovery_opts()
+    recovery_opts = maybe_add_recovery_id(recovery_opts, options)
+    recovery_opts = maybe_add_metrics_tracking(recovery_opts)
+
+    Keyword.merge(options, recovery_opts)
+  end
+
+  defp build_base_recovery_opts do
+    [
+      enable_recovery: true,
+      recovery_strategy: Config.get([:streaming, :recovery_strategy], :paragraph),
+      recovery_storage: Config.get([:streaming, :recovery_storage], :memory),
+      # 1 hour default
+      recovery_ttl: Config.get([:streaming, :recovery_ttl], 3_600),
+      # Save every 10 chunks
+      recovery_checkpoint_interval: Config.get([:streaming, :recovery_checkpoint_interval], 10)
+    ]
+  end
+
+  defp maybe_add_recovery_id(recovery_opts, options) do
+    if Keyword.has_key?(options, :recovery_id) do
+      recovery_opts
+    else
+      [{:recovery_id, generate_recovery_id()} | recovery_opts]
+    end
+  end
+
+  defp maybe_add_metrics_tracking(recovery_opts) do
+    if Config.get([:streaming, :track_metrics], false) do
+      metrics_callback = create_metrics_callback()
+      [{:track_metrics, true}, {:on_metrics, metrics_callback} | recovery_opts]
+    else
+      recovery_opts
+    end
+  end
+
+  defp create_metrics_callback do
+    fn metrics ->
+      if Config.get([:debug, :log_streaming_metrics], false) do
+        Logger.debug("ExLLM Streaming metrics: #{inspect(metrics)}")
+      end
     end
   end
 

@@ -1,7 +1,7 @@
 defmodule MCPChat.SessionTest do
   use ExUnit.Case
   alias MCPChat.Session
-  alias Session, as: SessionStruct
+  alias MCPChat.Types.Session, as: SessionStruct
 
   setup do
     # Start Config GenServer first
@@ -287,7 +287,7 @@ defmodule MCPChat.SessionTest do
       original_session = %SessionStruct{
         id: "test123",
         messages: [%{role: "user", content: "Restored"}],
-        context: %{max_tokens: 2_048},
+        context: %{max_tokens: 2048},
         created_at: DateTime.utc_now(),
         updated_at: DateTime.utc_now(),
         token_usage: %{input_tokens: 10, output_tokens: 20}

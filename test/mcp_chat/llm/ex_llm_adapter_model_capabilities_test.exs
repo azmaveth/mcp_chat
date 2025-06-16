@@ -362,12 +362,10 @@ defmodule MCPChat.LLM.ExLLMAdapterModelCapabilitiesTest do
 
   # Helper function to assert no exceptions are raised
   defp assert_no_exception(fun) do
-    try do
-      fun.()
-      assert true
-    rescue
-      e ->
-        flunk("Expected no exception, but got: #{inspect(e)}")
-    end
+    fun.()
+    assert true
+  rescue
+    e ->
+      flunk("Expected no exception, but got: #{inspect(e)}")
   end
 end

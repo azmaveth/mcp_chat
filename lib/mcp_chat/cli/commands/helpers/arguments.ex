@@ -259,20 +259,18 @@ defmodule MCPChat.CLI.Commands.Helpers.Arguments do
     if String.trim(args_str) == "" do
       {:ok, %{}}
     else
-      try do
-        args =
-          args_str
-          |> String.split(",")
-          |> Enum.map(&String.trim/1)
-          |> Enum.reject(&(&1 == ""))
-          |> Enum.map(&parse_single_key_value/1)
-          |> Map.new()
+      args =
+        args_str
+        |> String.split(",")
+        |> Enum.map(&String.trim/1)
+        |> Enum.reject(&(&1 == ""))
+        |> Enum.map(&parse_single_key_value/1)
+        |> Map.new()
 
-        {:ok, args}
-      rescue
-        ArgumentError -> {:error, "Invalid argument format in tool spec"}
-      end
+      {:ok, args}
     end
+  rescue
+    ArgumentError -> {:error, "Invalid argument format in tool spec"}
   end
 
   defp do_parse_flags([], _flag_defs, flags, remaining) do
@@ -282,28 +280,7 @@ defmodule MCPChat.CLI.Commands.Helpers.Arguments do
   defp do_parse_flags([arg | rest], flag_defs, flags, remaining) do
     cond do
       String.starts_with?(arg, "--") ->
-        flag_name = String.slice(arg, 2..-1//1) |> String.to_atom()
-
-        case Map.get(flag_defs, flag_name) do
-          nil ->
-            # Unknown flag, treat as remaining argument
-            do_parse_flags(rest, flag_defs, flags, [arg | remaining])
-
-          %{type: :boolean} ->
-            new_flags = Map.put(flags, flag_name, true)
-            do_parse_flags(rest, flag_defs, new_flags, remaining)
-
-          %{type: type} when type in [:string, :integer] ->
-            case rest do
-              [value | rest2] ->
-                parsed_value = parse_flag_value(value, type)
-                new_flags = Map.put(flags, flag_name, parsed_value)
-                do_parse_flags(rest2, flag_defs, new_flags, remaining)
-
-              [] ->
-                raise ArgumentError, "Flag --#{flag_name} requires a value"
-            end
-        end
+        handle_long_flag(arg, rest, flag_defs, flags, remaining)
 
       String.starts_with?(arg, "-") ->
         # Single character flags not implemented yet, treat as remaining
@@ -312,6 +289,35 @@ defmodule MCPChat.CLI.Commands.Helpers.Arguments do
       true ->
         # Regular argument
         do_parse_flags(rest, flag_defs, flags, [arg | remaining])
+    end
+  end
+
+  defp handle_long_flag(arg, rest, flag_defs, flags, remaining) do
+    flag_name = String.slice(arg, 2..-1//1) |> String.to_atom()
+
+    case Map.get(flag_defs, flag_name) do
+      nil ->
+        # Unknown flag, treat as remaining argument
+        do_parse_flags(rest, flag_defs, flags, [arg | remaining])
+
+      %{type: :boolean} ->
+        new_flags = Map.put(flags, flag_name, true)
+        do_parse_flags(rest, flag_defs, new_flags, remaining)
+
+      %{type: type} when type in [:string, :integer] ->
+        handle_value_flag(flag_name, type, rest, flag_defs, flags, remaining)
+    end
+  end
+
+  defp handle_value_flag(flag_name, type, rest, flag_defs, flags, remaining) do
+    case rest do
+      [value | rest2] ->
+        parsed_value = parse_flag_value(value, type)
+        new_flags = Map.put(flags, flag_name, parsed_value)
+        do_parse_flags(rest2, flag_defs, new_flags, remaining)
+
+      [] ->
+        raise ArgumentError, "Flag --#{flag_name} requires a value"
     end
   end
 

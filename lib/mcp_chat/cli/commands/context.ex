@@ -161,16 +161,7 @@ defmodule MCPChat.CLI.Commands.Context do
     case args do
       [] ->
         # Show current system prompt
-        with_session(fn session ->
-          case Enum.find(session.messages, &(&1["role"] == "system")) do
-            nil ->
-              show_info("No system prompt set")
-
-            %{"content" => content} ->
-              show_info("Current system prompt:")
-              IO.puts(content)
-          end
-        end)
+        with_session(&display_current_system_prompt/1)
 
       _ ->
         prompt = parse_args(args)
@@ -519,6 +510,17 @@ defmodule MCPChat.CLI.Commands.Context do
 
       :completed ->
         show_info("Batch load completed: #{update.successful} successful, #{update.failed} failed")
+    end
+  end
+
+  defp display_current_system_prompt(session) do
+    case Enum.find(session.messages, &(&1["role"] == "system")) do
+      nil ->
+        show_info("No system prompt set")
+
+      %{"content" => content} ->
+        show_info("Current system prompt:")
+        IO.puts(content)
     end
   end
 

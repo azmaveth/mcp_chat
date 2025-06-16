@@ -566,22 +566,18 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   Get cache statistics from ExLLM's cache system.
   """
   def get_cache_stats do
-    try do
-      ExLLM.Cache.stats()
-    rescue
-      _ -> %{hits: 0, misses: 0, evictions: 0, errors: 0}
-    end
+    ExLLM.Cache.stats()
+  rescue
+    _ -> %{hits: 0, misses: 0, evictions: 0, errors: 0}
   end
 
   @doc """
   Clear the ExLLM response cache.
   """
   def clear_cache do
-    try do
-      ExLLM.Cache.clear()
-    rescue
-      _ -> :ok
-    end
+    ExLLM.Cache.clear()
+  rescue
+    _ -> :ok
   end
 
   @doc """
@@ -591,11 +587,9 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Get cache directory from MCP Chat config if not provided
     cache_dir = cache_dir || get_cache_directory()
 
-    try do
-      ExLLM.Cache.configure_disk_persistence(enabled, cache_dir)
-    rescue
-      _ -> :ok
-    end
+    ExLLM.Cache.configure_disk_persistence(enabled, cache_dir)
+  rescue
+    _ -> :ok
   end
 
   @doc """
@@ -646,30 +640,30 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   def get_context_stats(messages, provider, model, options \\ []) do
     ex_llm_messages = convert_messages(messages)
 
-    try do
-      context_window = ExLLM.Context.get_context_window(provider, model)
-      token_allocation = ExLLM.Context.get_token_allocation(provider, model, options)
-      estimated_tokens = ExLLM.Cost.estimate_tokens(ex_llm_messages)
+    context_window = ExLLM.Context.get_context_window(provider, model)
+    token_allocation = ExLLM.Context.get_token_allocation(provider, model, options)
+    estimated_tokens = ExLLM.Cost.estimate_tokens(ex_llm_messages)
+
+    %{
+      message_count: length(messages),
+      estimated_tokens: estimated_tokens,
+      context_window: context_window,
+      token_allocation: token_allocation,
+      tokens_used_percentage: Float.round(estimated_tokens / context_window * 100, 1),
+      tokens_remaining: max(0, context_window - estimated_tokens - 500)
+    }
+  rescue
+    _ ->
+      # Fallback to basic stats if model info not available
+      fallback_ex_llm_messages = convert_messages(messages)
 
       %{
         message_count: length(messages),
-        estimated_tokens: estimated_tokens,
-        context_window: context_window,
-        token_allocation: token_allocation,
-        tokens_used_percentage: Float.round(estimated_tokens / context_window * 100, 1),
-        tokens_remaining: max(0, context_window - estimated_tokens - 500)
+        estimated_tokens: ExLLM.Cost.estimate_tokens(fallback_ex_llm_messages),
+        context_window: 4_096,
+        tokens_used_percentage: 0.0,
+        tokens_remaining: 3_596
       }
-    rescue
-      _ ->
-        # Fallback to basic stats if model info not available
-        %{
-          message_count: length(messages),
-          estimated_tokens: ExLLM.Cost.estimate_tokens(ex_llm_messages),
-          context_window: 4_096,
-          tokens_used_percentage: 0.0,
-          tokens_remaining: 3_596
-        }
-    end
   end
 
   # Helper functions for capabilities

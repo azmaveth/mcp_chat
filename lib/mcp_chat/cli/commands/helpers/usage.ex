@@ -58,22 +58,30 @@ defmodule MCPChat.CLI.Commands.Helpers.Usage do
     if Enum.empty?(subcommands) do
       Renderer.show_info("No subcommands available.")
     else
-      max_name_width =
-        subcommands
-        |> Enum.map(fn sub -> String.length(sub.name) end)
-        |> Enum.max()
-        |> max(10)
+      display_subcommands(subcommands)
+    end
+  end
 
-      Enum.each(subcommands, fn subcommand ->
-        name = String.pad_trailing(subcommand.name, max_name_width)
-        description = Map.get(subcommand, :description, "")
+  defp display_subcommands(subcommands) do
+    max_name_width = calculate_max_name_width(subcommands)
+    Enum.each(subcommands, &display_single_subcommand(&1, max_name_width))
+  end
 
-        IO.puts("  #{name} - #{description}")
+  defp calculate_max_name_width(subcommands) do
+    subcommands
+    |> Enum.map(fn sub -> String.length(sub.name) end)
+    |> Enum.max()
+    |> max(10)
+  end
 
-        if usage = Map.get(subcommand, :usage) do
-          IO.puts("#{String.duplicate(" ", max_name_width + 4)}Usage: #{usage}")
-        end
-      end)
+  defp display_single_subcommand(subcommand, max_name_width) do
+    name = String.pad_trailing(subcommand.name, max_name_width)
+    description = Map.get(subcommand, :description, "")
+
+    IO.puts("  #{name} - #{description}")
+
+    if usage = Map.get(subcommand, :usage) do
+      IO.puts("#{String.duplicate(" ", max_name_width + 4)}Usage: #{usage}")
     end
   end
 
@@ -105,34 +113,45 @@ defmodule MCPChat.CLI.Commands.Helpers.Usage do
     if Enum.empty?(flags) do
       :ok
     else
-      Renderer.show_info("Options:")
+      display_flag_help(flags)
+    end
+  end
 
-      max_flag_width =
-        flags
-        |> Enum.map(fn flag -> String.length(flag.name) end)
-        |> Enum.max()
-        |> max(15)
+  defp display_flag_help(flags) do
+    Renderer.show_info("Options:")
+    max_flag_width = calculate_max_flag_width(flags)
+    Enum.each(flags, &display_single_flag(&1, max_flag_width))
+  end
 
-      Enum.each(flags, fn flag ->
-        name = String.pad_trailing(flag.name, max_flag_width)
-        description = Map.get(flag, :description, "")
+  defp calculate_max_flag_width(flags) do
+    flags
+    |> Enum.map(fn flag -> String.length(flag.name) end)
+    |> Enum.max()
+    |> max(15)
+  end
 
-        line = "  #{name} #{description}"
+  defp display_single_flag(flag, max_flag_width) do
+    name = String.pad_trailing(flag.name, max_flag_width)
+    description = Map.get(flag, :description, "")
 
-        line =
-          case Map.get(flag, :type) do
-            :boolean -> line
-            type -> "#{line} (#{type})"
-          end
+    line = "  #{name} #{description}"
+    line = add_flag_type(line, flag)
+    line = add_flag_default(line, flag)
 
-        line =
-          case Map.get(flag, :default) do
-            nil -> line
-            default -> "#{line} [default: #{default}]"
-          end
+    IO.puts(line)
+  end
 
-        IO.puts(line)
-      end)
+  defp add_flag_type(line, flag) do
+    case Map.get(flag, :type) do
+      :boolean -> line
+      type -> "#{line} (#{type})"
+    end
+  end
+
+  defp add_flag_default(line, flag) do
+    case Map.get(flag, :default) do
+      nil -> line
+      default -> "#{line} [default: #{default}]"
     end
   end
 

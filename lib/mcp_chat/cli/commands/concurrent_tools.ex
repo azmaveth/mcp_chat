@@ -328,18 +328,16 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
   end
 
   defp parse_non_empty_arguments(args_str) do
-    try do
-      args =
-        args_str
-        |> String.split(",")
-        |> Enum.map(&parse_key_value_pair/1)
-        |> Map.new()
+    args =
+      args_str
+      |> String.split(",")
+      |> Enum.map(&parse_key_value_pair/1)
+      |> Map.new()
 
-      {:ok, args}
-    rescue
-      e ->
-        {:error, "Invalid argument format: #{inspect(e)}"}
-    end
+    {:ok, args}
+  rescue
+    e ->
+      {:error, "Invalid argument format: #{inspect(e)}"}
   end
 
   defp parse_key_value_pair(pair) do

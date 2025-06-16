@@ -43,7 +43,7 @@ defmodule MCPChat.Alias.ExAliasAdapter do
   end
 
   # Alias for backward compatibility
-  def is_alias?(name), do: alias?(name)
+  def alias_exists?(name), do: alias?(name)
 
   def save do
     GenServer.call(__MODULE__, :save)

@@ -210,48 +210,63 @@ defmodule MCPChat.CLI.Commands.Utility do
 
   defp show_cost_breakdown(session) do
     if session.cost_session do
-      IO.puts("💰 Session Cost Breakdown")
-      IO.puts("========================")
-      IO.puts("")
-
-      # Provider breakdown
-      provider_breakdown = ExLLM.Cost.Session.provider_breakdown(session.cost_session)
-
-      if Enum.any?(provider_breakdown) do
-        IO.puts("📊 By Provider:")
-
-        Enum.each(provider_breakdown, fn provider_stats ->
-          IO.puts(
-            "  #{String.capitalize(provider_stats.provider)}: #{ExLLM.Cost.format(provider_stats.total_cost)} " <>
-              "(#{provider_stats.message_count} msgs, #{format_number(provider_stats.total_tokens)} tokens)"
-          )
-        end)
-
-        IO.puts("")
-      end
-
-      # Model breakdown
-      model_breakdown = ExLLM.Cost.Session.model_breakdown(session.cost_session)
-
-      if Enum.any?(model_breakdown) do
-        IO.puts("🤖 By Model:")
-
-        model_breakdown
-        # Show top 10 models
-        |> Enum.take(10)
-        |> Enum.each(fn model_stats ->
-          IO.puts(
-            "  #{model_stats.model}: #{ExLLM.Cost.format(model_stats.total_cost)} " <>
-              "(#{model_stats.message_count} msgs, #{format_number(model_stats.total_tokens)} tokens)"
-          )
-        end)
-
-        if length(model_breakdown) > 10 do
-          IO.puts("  ... and #{length(model_breakdown) - 10} more models")
-        end
-      end
+      display_cost_breakdown(session.cost_session)
     else
       IO.puts("❌ Enhanced cost breakdown not available. Start a new session to enable detailed cost tracking.")
+    end
+  end
+
+  defp display_cost_breakdown(cost_session) do
+    IO.puts("💰 Session Cost Breakdown")
+    IO.puts("========================")
+    IO.puts("")
+
+    display_provider_breakdown(cost_session)
+    display_model_breakdown(cost_session)
+  end
+
+  defp display_provider_breakdown(cost_session) do
+    provider_breakdown = ExLLM.Cost.Session.provider_breakdown(cost_session)
+
+    if Enum.any?(provider_breakdown) do
+      IO.puts("📊 By Provider:")
+
+      Enum.each(provider_breakdown, fn provider_stats ->
+        IO.puts(
+          "  #{String.capitalize(provider_stats.provider)}: #{ExLLM.Cost.format(provider_stats.total_cost)} " <>
+            "(#{provider_stats.message_count} msgs, #{format_number(provider_stats.total_tokens)} tokens)"
+        )
+      end)
+
+      IO.puts("")
+    end
+  end
+
+  defp display_model_breakdown(cost_session) do
+    model_breakdown = ExLLM.Cost.Session.model_breakdown(cost_session)
+
+    if Enum.any?(model_breakdown) do
+      IO.puts("🤖 By Model:")
+
+      model_breakdown
+      # Show top 10 models
+      |> Enum.take(10)
+      |> Enum.each(&display_model_stats/1)
+
+      display_model_overflow_message(model_breakdown)
+    end
+  end
+
+  defp display_model_stats(model_stats) do
+    IO.puts(
+      "  #{model_stats.model}: #{ExLLM.Cost.format(model_stats.total_cost)} " <>
+        "(#{model_stats.message_count} msgs, #{format_number(model_stats.total_tokens)} tokens)"
+    )
+  end
+
+  defp display_model_overflow_message(model_breakdown) do
+    if length(model_breakdown) > 10 do
+      IO.puts("  ... and #{length(model_breakdown) - 10} more models")
     end
   end
 
@@ -583,26 +598,7 @@ defmodule MCPChat.CLI.Commands.Utility do
         Renderer.show_error("Recovery ID not found: #{recovery_id}")
 
       stream_info ->
-        Renderer.show_text("## Stream Recovery Information")
-        IO.puts("Recovery ID: #{stream_info.id}")
-        IO.puts("Provider: #{stream_info.provider}")
-        IO.puts("Model: #{stream_info.model}")
-        IO.puts("Chunks received: #{stream_info.chunks_received}")
-        IO.puts("Tokens processed: #{stream_info.token_count}")
-        IO.puts("Created: #{format_timestamp(stream_info.created_at)}")
-        IO.puts("Age: #{format_age(stream_info.created_at)}")
-
-        # Show partial content preview
-        case ExLLMAdapter.get_partial_response(recovery_id) do
-          {:ok, chunks} ->
-            partial_content = Enum.map_join(chunks, "", & &1.content)
-            preview = String.slice(partial_content, 0, 200)
-            IO.puts("\\nPartial content preview:")
-            IO.puts("#{preview}#{if String.length(partial_content) > 200, do: "...", else: ""}")
-
-          {:error, reason} ->
-            IO.puts("\\nError retrieving partial content: #{inspect(reason)}")
-        end
+        display_stream_recovery_info(stream_info, recovery_id)
     end
   end
 
@@ -846,6 +842,33 @@ defmodule MCPChat.CLI.Commands.Utility do
     ExLLMAdapter.configure_cache_persistence(false)
     IO.puts("✅ Disk persistence disabled")
     IO.puts("Note: This setting is for the current session only.")
+  end
+
+  defp display_stream_recovery_info(stream_info, recovery_id) do
+    alias MCPChat.CLI.Renderer
+    alias MCPChat.LLM.ExLLMAdapter
+
+    Renderer.show_text("## Stream Recovery Information")
+    IO.puts("Recovery ID: #{stream_info.id}")
+    IO.puts("Provider: #{stream_info.provider}")
+    IO.puts("Model: #{stream_info.model}")
+    IO.puts("Chunks received: #{stream_info.chunks_received}")
+    IO.puts("Tokens processed: #{stream_info.token_count}")
+    IO.puts("Created: #{format_timestamp(stream_info.created_at)}")
+    IO.puts("Age: #{format_age(stream_info.created_at)}")
+
+    display_partial_content_preview(ExLLMAdapter.get_partial_response(recovery_id))
+  end
+
+  defp display_partial_content_preview({:ok, chunks}) do
+    partial_content = Enum.map_join(chunks, "", & &1.content)
+    preview = String.slice(partial_content, 0, 200)
+    IO.puts("\nPartial content preview:")
+    IO.puts("#{preview}#{if String.length(partial_content) > 200, do: "...", else: ""}")
+  end
+
+  defp display_partial_content_preview({:error, reason}) do
+    IO.puts("\nError retrieving partial content: #{inspect(reason)}")
   end
 
   # Cost calculation is now handled by ExLLM with accurate pricing data

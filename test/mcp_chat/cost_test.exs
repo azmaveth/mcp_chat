@@ -1,7 +1,7 @@
 defmodule MCPChat.CostTest do
   use ExUnit.Case
   alias MCPChat.Cost
-  alias Session
+  alias MCPChat.Types.Session
 
   # NOTE: The Elixir formatter automatically adds underscores to numeric literals
   # for readability (e.g., 0.000_875 becomes 0.000_875). To avoid this breaking

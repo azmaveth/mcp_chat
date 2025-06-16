@@ -1,7 +1,7 @@
 defmodule MCPChat.PersistenceTest do
   use ExUnit.Case, async: true
   alias MCPChat.Persistence
-  alias Session
+  alias MCPChat.Types.Session
 
   @test_session %Session{
     id: "test123",
