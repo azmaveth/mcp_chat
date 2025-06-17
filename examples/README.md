@@ -1,6 +1,6 @@
 # MCP Chat Examples
 
-This directory contains example scripts and demos for MCP Chat functionality.
+This directory contains streamlined example scripts and demos for MCP Chat functionality.
 
 ## Running Examples
 
@@ -17,9 +17,6 @@ elixir examples/notifications_demo.exs
 
 # Multi-model comparison demo
 elixir examples/multi_model.exs
-
-# Direct stdio server example
-elixir examples/stdio_server_example.exs
 ```
 
 ### Non-Interactive Test Runners
@@ -31,7 +28,7 @@ For automated testing and CI/CD:
 make examples
 
 # Or directly:
-elixir examples/run_all_examples.exs
+elixir examples/run_examples_simple.exs
 
 # Run comprehensive user acceptance tests
 make acceptance
@@ -43,15 +40,16 @@ elixir examples/user_acceptance_tests.exs
 ## Example Descriptions
 
 ### `getting_started.exs`
-Basic introduction to MCP Chat features:
+Essential introduction to MCP Chat features:
 - Simple chat interactions
-- Command usage
-- Context management
-- Aliases
-- Cost tracking
+- Command usage (/model, /cost, /context)
+- Context management with files
+- Command aliases
+- Built-in MCP resources
+- Health monitoring
 
 ### `notifications_demo.exs`
-Interactive demo showcasing:
+Interactive demo showcasing MCP v0.2.0 features:
 - Progress tracking with visual bars
 - Change notifications (tools/resources/prompts)
 - Server-side LLM sampling
@@ -65,18 +63,12 @@ Demonstrates switching between LLM providers:
 - Cost comparison
 - Streaming responses
 
-### `stdio_server_example.exs`
-Low-level MCP server integration:
-- Direct StdioProcessManager usage
-- Server lifecycle management
-- Tool discovery
-
-### `run_all_examples.exs`
-Non-interactive test runner that:
-- Executes all example scenarios automatically
+### `run_examples_simple.exs`
+Streamlined non-interactive test runner:
+- Executes core example scenarios automatically
 - Uses mock providers for predictable output
 - Captures and validates results
-- Provides pass/fail summary
+- Provides pass/fail summary for CI/CD
 
 ### `user_acceptance_tests.exs`
 Comprehensive acceptance test suite:
@@ -90,10 +82,9 @@ Comprehensive acceptance test suite:
 The `demo_servers/` directory contains Python-based MCP servers for testing:
 
 - `calculator_server.py` - Basic arithmetic operations
-- `time_server.py` - Time and date utilities
-- `data_generator_server.py` - Sample data generation
-- `slow_server.py` - Server with delays for testing timeouts
-- `notification_server.py` - Server that sends various notifications
+- `time_server.py` - Time and date utilities  
+- `data_server.py` - Sample data generation and manipulation
+- `dynamic_server.py` - Dynamic server capabilities
 
 To use these servers, ensure Python is installed and run:
 
