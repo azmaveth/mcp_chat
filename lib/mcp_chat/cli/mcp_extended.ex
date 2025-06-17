@@ -1,4 +1,4 @@
-defmodule MCPChat.CLI.Commands.MCPExtended do
+defmodule MCPChat.CLI.MCPExtended do
   @moduledoc """
   Extended MCP commands that leverage new ex_mcp v0.2.0 features:
   - /mcp sample - Server-side LLM generation

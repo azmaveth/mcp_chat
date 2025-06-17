@@ -1,6 +1,6 @@
-defmodule MCPChat.CLI.Commands.UtilityTest do
+defmodule MCPChat.CLI.UtilityTest do
   use ExUnit.Case
-  alias MCPChat.CLI.Commands.Utility
+  alias MCPChat.CLI.Utility
   alias MCPChat.Session
   alias MCPChat.Types.Session, as: SessionType
   import ExUnit.CaptureIO

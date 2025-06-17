@@ -1,8 +1,8 @@
-defmodule MCPChat.CLI.Commands.ConcurrentToolsTest do
+defmodule MCPChat.CLI.ConcurrentToolsTest do
   use ExUnit.Case, async: false
   import ExUnit.CaptureIO
 
-  alias MCPChat.CLI.Commands.ConcurrentTools
+  alias MCPChat.CLI.ConcurrentTools
 
   @moduletag :unit
 

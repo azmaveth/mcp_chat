@@ -1,4 +1,4 @@
-defmodule MCPChat.CLI.Commands.NativeFilesystem do
+defmodule MCPChat.CLI.NativeFilesystem do
   @moduledoc """
   CLI commands for the native BEAM filesystem server.
 

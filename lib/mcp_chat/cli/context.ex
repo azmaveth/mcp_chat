@@ -1,4 +1,4 @@
-defmodule MCPChat.CLI.Commands.Context do
+defmodule MCPChat.CLI.Context do
   @moduledoc """
   Context management CLI commands.
 
@@ -9,7 +9,7 @@ defmodule MCPChat.CLI.Commands.Context do
   - Truncation strategies
   """
 
-  use MCPChat.CLI.Commands.Base
+  use MCPChat.CLI.Base
 
   alias MCPChat.CLI.Renderer
   alias MCPChat.Context.AsyncFileLoader
@@ -97,7 +97,8 @@ defmodule MCPChat.CLI.Commands.Context do
 
   defp handle_context_subcommand([subcmd | _]) do
     available_commands = Map.keys(subcommands())
-    Usage.show_command_not_found(subcmd, available_commands)
+    show_error("Unknown context command: #{subcmd}")
+    show_info("Available commands: #{Enum.join(available_commands, ", ")}")
     show_info("Use '/context help' for more information")
     :ok
   end

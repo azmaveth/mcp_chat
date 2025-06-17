@@ -1,9 +1,10 @@
-defmodule MCPChat.CLI.Commands.LLMCommandsTest do
+defmodule MCPChat.CLI.LLMCommandsTest do
   use ExUnit.Case
   import ExUnit.CaptureIO
 
   alias MCPChat.CLI.EnhancedCommands
   alias MCPChat.CLI.AgentCommandBridge
+  alias MCPChat.CLI.LLM
   alias MCPChat.Agents.{SessionManager, LLMAgent}
   alias MCPChat.Events.AgentEvents
 

@@ -1,4 +1,4 @@
-defmodule MCPChat.CLI.Commands.Session do
+defmodule MCPChat.CLI.SessionCommands do
   @moduledoc """
   Session-related CLI commands.
 
@@ -9,7 +9,7 @@ defmodule MCPChat.CLI.Commands.Session do
   - Listing available sessions
   """
 
-  use MCPChat.CLI.Commands.Base
+  use MCPChat.CLI.Base
 
   alias MCPChat.CLI.Renderer
   alias MCPChat.{Persistence, Gateway}

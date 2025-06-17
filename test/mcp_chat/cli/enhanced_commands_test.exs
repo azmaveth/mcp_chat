@@ -128,7 +128,7 @@ defmodule MCPChat.CLI.EnhancedCommandsTest do
     test "legacy command routing still works" do
       # Ensure legacy commands can still be executed
       # This would be tested by checking the original Commands module
-      commands = MCPChat.CLI.Commands.get_completions("h")
+      commands = MCPChat.CLI.get_completions("h")
       assert is_list(commands)
       assert "help" in commands
     end

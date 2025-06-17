@@ -1,9 +1,9 @@
-defmodule MCPChat.CLI.Commands.TUI do
+defmodule MCPChat.CLI.TUI do
   @moduledoc """
   Command module for controlling the TUI (Text User Interface) displays.
   """
 
-  use MCPChat.CLI.Commands.Base
+  use MCPChat.CLI.Base
 
   alias MCPChat.CLI.Renderer
   alias MCPChat.UI.TUIManager

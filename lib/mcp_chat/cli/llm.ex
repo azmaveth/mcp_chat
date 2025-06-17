@@ -1,4 +1,4 @@
-defmodule MCPChat.CLI.Commands.LLM do
+defmodule MCPChat.CLI.LLM do
   @moduledoc """
   LLM-related CLI commands.
 
@@ -10,7 +10,7 @@ defmodule MCPChat.CLI.Commands.LLM do
   - Hardware acceleration info
   """
 
-  use MCPChat.CLI.Commands.Base
+  use MCPChat.CLI.Base
 
   require Logger
 

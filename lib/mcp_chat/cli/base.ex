@@ -1,4 +1,4 @@
-defmodule MCPChat.CLI.Commands.Base do
+defmodule MCPChat.CLI.Base do
   @moduledoc """
   Base behavior and common functionality for CLI commands.
 
@@ -7,7 +7,7 @@ defmodule MCPChat.CLI.Commands.Base do
   """
 
   alias MCPChat.CLI.Renderer
-  alias MCPChat.CLI.Commands.Helpers.{Arguments, Display, Session, Usage}
+  alias MCPChat.Session
 
   @doc """
   Defines the behavior that command modules must implement.
@@ -20,29 +20,10 @@ defmodule MCPChat.CLI.Commands.Base do
   """
   defmacro __using__(_opts) do
     quote do
-      @behaviour MCPChat.CLI.Commands.Base
+      @behaviour MCPChat.CLI.Base
 
-      import MCPChat.CLI.Commands.Base
-
-      import MCPChat.CLI.Commands.Helpers.Arguments,
-        only: [parse_subcommand: 2, parse_key_value_pairs: 1, validate_required_args: 3]
-
-      import MCPChat.CLI.Commands.Helpers.Display
-
-      import MCPChat.CLI.Commands.Helpers.Session,
-        only: [
-          get_session_property: 2,
-          get_session_backend: 0,
-          get_session_model: 0,
-          require_session: 0,
-          with_session: 1,
-          get_session_context: 2,
-          update_session_context: 1,
-          update_session: 1
-        ]
-
-      import MCPChat.CLI.Commands.Helpers.Usage,
-        only: [show_command_help: 3, show_usage_error: 1, show_operation_success: 2, show_operation_failure: 2]
+      import MCPChat.CLI.Base
+      import MCPChat.CLI.Helpers
 
       require Logger
     end

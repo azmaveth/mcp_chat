@@ -1,4 +1,4 @@
-defmodule MCPChat.CLI.Commands.ToolTest do
+defmodule MCPChat.CLI.ToolTest do
   @moduledoc """
   CLI commands for testing MCP tool integration with LLMs.
 

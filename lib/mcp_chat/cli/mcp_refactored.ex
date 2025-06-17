@@ -1,10 +1,10 @@
-defmodule MCPChat.CLI.Commands.MCPRefactored do
+defmodule MCPChat.CLI.MCPRefactored do
   @moduledoc """
   Refactored MCP commands that route through the agent architecture.
   Tool executions are handled by agents with real-time progress updates.
   """
 
-  use MCPChat.CLI.Commands.Base
+  use MCPChat.CLI.Base
 
   alias MCPChat.Gateway
   alias MCPChat.CLI.EventSubscriber

@@ -1,10 +1,10 @@
-defmodule MCPChat.CLI.Commands.ExportWithAgents do
+defmodule MCPChat.CLI.ExportWithAgents do
   @moduledoc """
   Example of how to integrate agent architecture into existing CLI commands.
   This shows export functionality using agents for async processing with progress.
   """
 
-  use MCPChat.CLI.Commands.Base
+  use MCPChat.CLI.Base
 
   alias MCPChat.CLI.AgentBridge
 

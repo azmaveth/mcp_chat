@@ -1,4 +1,4 @@
-defmodule MCPChat.CLI.Commands.MCP do
+defmodule MCPChat.CLI.MCP do
   @moduledoc """
   MCP (Model Context Protocol) related CLI commands.
 
@@ -9,9 +9,9 @@ defmodule MCPChat.CLI.Commands.MCP do
   - Prompt retrieval
   """
 
-  use MCPChat.CLI.Commands.Base
+  use MCPChat.CLI.Base
 
-  alias MCPChat.CLI.Commands.MCPExtended
+  alias MCPChat.CLI.MCPExtended
   alias MCPChat.MCP.ServerManager.Server
   alias MCPChat.MCP.{Discovery, NotificationClient, ServerManager, ServerPersistence}
 

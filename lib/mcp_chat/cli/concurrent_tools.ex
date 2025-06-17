@@ -1,11 +1,11 @@
-defmodule MCPChat.CLI.Commands.ConcurrentTools do
+defmodule MCPChat.CLI.ConcurrentTools do
   @moduledoc """
   Commands for concurrent tool execution.
 
   Provides /concurrent command for testing and managing concurrent tool operations.
   """
 
-  use MCPChat.CLI.Commands.Base
+  use MCPChat.CLI.Base
 
   alias MCPChat.MCP.{ConcurrentToolExecutor, ServerManager}
 

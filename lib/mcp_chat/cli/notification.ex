@@ -1,9 +1,9 @@
-defmodule MCPChat.CLI.Commands.Notification do
+defmodule MCPChat.CLI.Notification do
   @moduledoc """
   Commands for managing MCP notifications.
   """
 
-  use MCPChat.CLI.Commands.Base
+  use MCPChat.CLI.Base
 
   alias MCPChat.MCP.Handlers.ComprehensiveNotificationHandler
 

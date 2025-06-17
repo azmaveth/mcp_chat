@@ -1,4 +1,4 @@
-defmodule MCPChat.CLI.Commands.Utility do
+defmodule MCPChat.CLI.Utility do
   @moduledoc """
   Utility CLI commands.
 
@@ -10,7 +10,7 @@ defmodule MCPChat.CLI.Commands.Utility do
   - Session export
   """
 
-  use MCPChat.CLI.Commands.Base
+  use MCPChat.CLI.Base
 
   alias MCPChat.CLI.Renderer
   alias MCPChat.LLM.ExLLMAdapter
@@ -440,12 +440,12 @@ defmodule MCPChat.CLI.Commands.Utility do
   defp collect_all_commands do
     # Import commands from all command modules
     modules = [
-      MCPChat.CLI.Commands.Session,
-      MCPChat.CLI.Commands.Utility,
-      MCPChat.CLI.Commands.LLM,
-      MCPChat.CLI.Commands.MCP,
-      MCPChat.CLI.Commands.Context,
-      MCPChat.CLI.Commands.Alias
+      MCPChat.CLI.SessionCommands,
+      MCPChat.CLI.Utility,
+      MCPChat.CLI.LLM,
+      MCPChat.CLI.MCP,
+      MCPChat.CLI.Context,
+      MCPChat.CLI.Alias
     ]
 
     # Merge all command maps

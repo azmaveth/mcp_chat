@@ -1,4 +1,4 @@
-defmodule MCPChat.CLI.Commands.Alias do
+defmodule MCPChat.CLI.Alias do
   @moduledoc """
   Alias management CLI commands.
 
@@ -9,7 +9,7 @@ defmodule MCPChat.CLI.Commands.Alias do
   - Executing aliased commands
   """
 
-  use MCPChat.CLI.Commands.Base
+  use MCPChat.CLI.Base
 
   alias MCPChat.Alias.ExAliasAdapter, as: Alias
 

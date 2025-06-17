@@ -13,7 +13,7 @@ defmodule MCPChat.Agents.LLMAgent do
   require Logger
 
   alias MCPChat.Events.AgentEvents
-  alias MCPChat.CLI.Commands.Helpers.Session
+  alias MCPChat.Session
 
   # Public API
 
