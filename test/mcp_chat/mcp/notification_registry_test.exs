@@ -1,8 +1,7 @@
 defmodule NotificationRegistryTest do
   use ExUnit.Case, async: true
 
-  alias NotificationRegistry
-
+  alias MCPChat.MCP.NotificationRegistry
   alias MCPChat.MCP.NotificationHandler
   alias NotificationRegistryTest
   # Test handler module
@@ -26,9 +25,9 @@ defmodule NotificationRegistryTest do
   setup do
     # Use the existing registry or start a new one
     registry =
-      case Process.whereis(NotificationRegistry) do
+      case Process.whereis(MCPChat.MCP.NotificationRegistry) do
         nil ->
-          {:ok, pid} = NotificationRegistry.start_link()
+          {:ok, pid} = MCPChat.MCP.NotificationRegistry.start_link()
           pid
 
         pid ->
@@ -57,8 +56,8 @@ defmodule NotificationRegistryTest do
       handlers = GenServer.call(registry, :list_handlers)
       assert Map.has_key?(handlers, :progress)
       assert Map.has_key?(handlers, :tools_list_changed)
-      assert TestHandler in handlers[:progress]
-      assert TestHandler in handlers[:tools_list_changed]
+      assert "NotificationRegistryTest.TestHandler" in handlers[:progress]
+      assert "NotificationRegistryTest.TestHandler" in handlers[:tools_list_changed]
     end
 
     test "unregisters handler", %{registry: registry} do

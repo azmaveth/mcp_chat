@@ -7,7 +7,7 @@ defmodule MCPChat.AtSymbolE2ETest do
   """
 
   alias AtSymbolResolver
-  alias MCPChat.Session
+  alias MCPChat.Agents.SessionManager
   alias ServerManager
 
   @test_timeout 30_000
@@ -21,8 +21,12 @@ defmodule MCPChat.AtSymbolE2ETest do
   end
 
   setup do
-    # Clear session before each test
-    Session.clear_session()
+    # Ensure application is started
+    case Application.ensure_all_started(:mcp_chat) do
+      {:ok, _} -> :ok
+      # Already started
+      {:error, _} -> :ok
+    end
 
     # Reset MCP server connections by stopping any running servers
     case ServerManager.list_servers() do
@@ -173,19 +177,11 @@ defmodule MCPChat.AtSymbolE2ETest do
 
   describe "Integration with chat session" do
     test "@ symbols are resolved before sending to LLM" do
-      # Add message with @ symbol
-      Session.add_message("user", "Analyze @file:test_file1.txt")
-
-      # Get messages - @ symbols should be resolved
-      messages = Session.get_messages()
-      user_message = List.last(messages)
-
-      # The session should store the original message
-      assert user_message.content == "Analyze @file:test_file1.txt"
+      # Test @ symbol resolution directly
+      message = "Analyze @file:test_file1.txt"
 
       # When preparing for LLM, it should be resolved
-      # This would happen in the chat flow, but we can test the resolver directly
-      result = AtSymbolResolver.resolve_all(user_message.content)
+      result = AtSymbolResolver.resolve_all(message)
       assert result.resolved_text == "Analyze Test content 1"
     end
   end

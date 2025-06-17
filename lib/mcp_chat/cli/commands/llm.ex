@@ -16,7 +16,6 @@ defmodule MCPChat.CLI.Commands.LLM do
 
   alias MCPChat.CLI.Renderer
   alias MCPChat.LLM.ExLLMAdapter
-  alias MCPChat.Session
 
   @impl true
   def commands do
@@ -151,7 +150,7 @@ defmodule MCPChat.CLI.Commands.LLM do
   end
 
   defp complete_backend_switch(backend, adapter) do
-    Session.update_session(%{llm_backend: backend})
+    update_session(%{llm_backend: backend})
     show_success("Switched to #{backend} backend")
     show_available_models(adapter, backend)
   end
@@ -191,7 +190,7 @@ defmodule MCPChat.CLI.Commands.LLM do
       _ ->
         # Switch to specified model
         model = parse_args(args)
-        Session.update_session(%{model: model})
+        update_session(%{model: model})
         {backend, _} = get_current_model()
         show_success("Switched to model: #{model} (#{backend})")
         :ok
@@ -727,7 +726,7 @@ defmodule MCPChat.CLI.Commands.LLM do
     show_info("Feature Comparison:")
 
     # Create comparison table
-    model_names = Enum.map(models, & &1.display_name)
+    _model_names = Enum.map(models, & &1.display_name)
 
     features
     |> Enum.filter(fn {_feature, support_list} ->
@@ -787,7 +786,7 @@ defmodule MCPChat.CLI.Commands.LLM do
     |> to_string()
     |> String.replace("_", " ")
     |> String.split(" ")
-    |> Enum.map_join(&String.capitalize/1, " ")
+    |> Enum.map_join(" ", &String.capitalize/1)
   end
 
   defp format_capability_details(details) when is_map(details) do

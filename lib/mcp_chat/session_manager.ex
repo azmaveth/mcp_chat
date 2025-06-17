@@ -9,48 +9,21 @@ defmodule MCPChat.SessionManager do
   """
 
   require Logger
-  alias MCPChat.Session.Autosave
-  alias MCPChat.{Persistence, Session}
+  alias MCPChat.Persistence
 
   @doc """
   Start a new chat session with automatic saving.
   """
   def start_new_session(opts \\ []) do
-    backend = Keyword.get(opts, :backend, nil)
+    _backend = Keyword.get(opts, :backend, nil)
 
-    # Create new session
-    Session.new_session(backend)
+    # TODO: Implement new session creation with Gateway API
+    # For now, return error indicating this needs implementation
+    _session_name = generate_session_name()
+    Logger.warning("SessionManager.start_new_session not yet implemented with Gateway API")
+    {:error, :not_implemented}
 
-    # Generate session name based on datetime and directory
-    session_name = generate_session_name()
-
-    # Get the current session and save it immediately
-    session = Session.get_current_session()
-
-    # Update session metadata with the filename
-    Session.update_session(%{
-      metadata: %{
-        session_file: session_name,
-        start_directory: File.cwd!(),
-        started_at: DateTime.utc_now()
-      }
-    })
-
-    # Save initial session
-    case Persistence.save_session(session, session_name) do
-      {:ok, path} ->
-        Logger.info("Started new session: #{session_name}")
-        Logger.debug("Session saved to: #{path}")
-
-        # Configure autosave to save on every message
-        configure_autosave_for_immediate_save(session_name)
-
-        {:ok, %{name: session_name, path: path}}
-
-      {:error, reason} ->
-        Logger.error("Failed to save initial session: #{inspect(reason)}")
-        {:error, reason}
-    end
+    # Session creation/saving needs to be implemented with Gateway API
   end
 
   @doc """
@@ -75,8 +48,8 @@ defmodule MCPChat.SessionManager do
   def resume_session(identifier) do
     case Persistence.load_session(identifier) do
       {:ok, session} ->
-        # Restore the session
-        Session.restore_session(session)
+        # TODO: Implement session restore with Gateway API
+        Logger.warning("Session restore not yet implemented with Gateway API")
 
         # Extract session name from metadata or filename
         session_name = get_session_name(session, identifier)
@@ -102,24 +75,9 @@ defmodule MCPChat.SessionManager do
   Called by autosave when a new message is added.
   """
   def save_current_session do
-    session = Session.get_current_session()
-
-    # Get session name from metadata
-    session_name =
-      case session.metadata do
-        %{session_file: name} -> name
-        _ -> generate_session_name()
-      end
-
-    case Persistence.save_session(session, session_name) do
-      {:ok, _path} ->
-        Logger.debug("Session auto-saved: #{session_name}")
-        :ok
-
-      {:error, reason} ->
-        Logger.error("Failed to auto-save session: #{inspect(reason)}")
-        {:error, reason}
-    end
+    # TODO: Implement current session retrieval with Gateway API
+    Logger.warning("Save current session not yet implemented with Gateway API")
+    :ok
   end
 
   # Private functions
@@ -179,16 +137,16 @@ defmodule MCPChat.SessionManager do
     |> String.slice(0, 30)
   end
 
-  defp configure_autosave_for_immediate_save(session_name) do
-    # Configure autosave to trigger on every change
-    Autosave.configure(%{
-      # 24 hours - effectively disable periodic saves
-      interval: 24 * 60 * 60 * 1_000,
-      # Very short debounce for immediate saves
-      debounce: 100,
-      enabled: true,
-      session_name_prefix: session_name
-    })
+  defp configure_autosave_for_immediate_save(_session_name) do
+    # TODO: Configure autosave to trigger on every change when Autosave module is implemented
+    # Autosave.configure(%{
+    #   # 24 hours - effectively disable periodic saves
+    #   interval: 24 * 60 * 60 * 1_000,
+    #   # Very short debounce for immediate saves
+    #   debounce: 100,
+    #   enabled: true,
+    #   session_name_prefix: session_name
+    # })
 
     # Set up a hook to save on every message
     # This will be called by the Session module when messages are added

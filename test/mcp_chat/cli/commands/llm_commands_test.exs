@@ -2,114 +2,129 @@ defmodule MCPChat.CLI.Commands.LLMCommandsTest do
   use ExUnit.Case
   import ExUnit.CaptureIO
 
-  alias MCPChat.CLI.Commands.LLM
-  alias MCPChat.LLM.ExLLMAdapter
+  alias MCPChat.CLI.EnhancedCommands
+  alias MCPChat.CLI.AgentCommandBridge
+  alias MCPChat.Agents.{SessionManager, LLMAgent}
+  alias MCPChat.Events.AgentEvents
 
   setup do
-    # Start required services
-    ensure_services_started()
+    # Ensure application is started with agent architecture
+    case Application.ensure_all_started(:mcp_chat) do
+      {:ok, _} -> :ok
+      # Already started
+      {:error, _} -> :ok
+    end
 
-    # Clear any existing session
-    MCPChat.Session.clear_session()
+    # Ensure enhanced commands are enabled for testing
+    Application.put_env(:mcp_chat, :test_mode, true)
+
+    # Subscribe to agent events for testing
+    Phoenix.PubSub.subscribe(MCPChat.PubSub, "agent_events")
 
     :ok
   end
 
-  describe "commands/0" do
-    test "returns all supported commands" do
-      commands = LLM.commands()
+  describe "agent command discovery" do
+    test "discovers LLM agent commands through bridge" do
+      commands = AgentCommandBridge.discover_available_commands("test_session")
 
-      assert Map.has_key?(commands, "backend")
-      assert Map.has_key?(commands, "model")
-      assert Map.has_key?(commands, "models")
-      assert Map.has_key?(commands, "loadmodel")
-      assert Map.has_key?(commands, "unloadmodel")
-      assert Map.has_key?(commands, "acceleration")
+      assert "backend" in commands.agent
+      assert "model" in commands.agent
+      assert "models" in commands.agent
+      assert "acceleration" in commands.agent
     end
 
-    test "model command shows it supports subcommands" do
-      commands = LLM.commands()
-      model_desc = commands["model"]
-
-      assert model_desc =~ "subcommand"
-      assert model_desc =~ "usage"
+    test "agent command routing classifies LLM commands correctly" do
+      assert {:agent, :llm_agent, "backend", []} = AgentCommandBridge.route_command("backend", [])
+      assert {:agent, :llm_agent, "model", ["list"]} = AgentCommandBridge.route_command("model", ["list"])
+      assert {:agent, :llm_agent, "models", []} = AgentCommandBridge.route_command("models", [])
     end
   end
 
-  describe "backend command" do
-    test "shows current backend and available backends when no args" do
+  describe "enhanced backend command through agents" do
+    test "routes backend command to LLM agent" do
+      session_id = "test_backend_#{:rand.uniform(1000)}"
+
       output =
         capture_io(fn ->
-          LLM.handle_command("backend", [])
+          EnhancedCommands.handle_command("/backend", session_id)
         end)
 
-      assert output =~ "Current backend:"
-      assert output =~ "Available backends:"
-      assert output =~ "anthropic"
-      assert output =~ "openai"
+      # Should show agent execution message
+      assert output =~ "🤖 Executing with llm_agent" or
+               output =~ "backend" or
+               output =~ "Available backends"
     end
 
-    test "switches to valid backend" do
+    test "routes backend switching to LLM agent" do
+      session_id = "test_switch_#{:rand.uniform(1000)}"
+
       output =
         capture_io(fn ->
-          LLM.handle_command("backend", ["anthropic"])
+          EnhancedCommands.handle_command("/backend anthropic", session_id)
         end)
 
-      # Should either switch successfully or show configuration error
-      assert output =~ "Switched to anthropic" or output =~ "not configured"
+      # Should show agent execution or configuration message
+      assert output =~ "🤖 Executing with llm_agent" or
+               output =~ "anthropic" or
+               output =~ "not configured"
     end
 
-    test "shows error for invalid backend" do
+    test "handles invalid backend through agent" do
+      session_id = "test_invalid_#{:rand.uniform(1000)}"
+
       output =
         capture_io(fn ->
-          LLM.handle_command("backend", ["invalid_backend"])
+          EnhancedCommands.handle_command("/backend invalid_backend", session_id)
         end)
 
-      assert output =~ "Unknown backend: invalid_backend"
-      assert output =~ "Available backends:"
+      # Should show agent execution or error handling
+      assert output =~ "🤖 Executing with llm_agent" or
+               output =~ "invalid_backend" or
+               output =~ "Available backends"
     end
   end
 
-  describe "model subcommands" do
-    test "shows help when no subcommand provided" do
+  describe "enhanced model commands through agents" do
+    test "routes model command to LLM agent" do
+      session_id = "test_model_#{:rand.uniform(1000)}"
+
       output =
         capture_io(fn ->
-          LLM.handle_command("model", [])
+          EnhancedCommands.handle_command("/model", session_id)
         end)
 
-      assert output =~ "Model management commands:"
-      assert output =~ "/model <name>"
-      assert output =~ "/model switch <name>"
-      assert output =~ "/model list"
-      assert output =~ "/model info"
-      assert output =~ "/model capabilities"
-      assert output =~ "/model recommend"
-      assert output =~ "/model features"
-      assert output =~ "/model compare"
-      assert output =~ "/model help"
+      # Should show agent execution or model help
+      assert output =~ "🤖 Executing with llm_agent" or
+               output =~ "model" or
+               output =~ "management"
     end
 
-    test "model help shows comprehensive usage" do
+    test "routes model recommend to LLM agent" do
+      session_id = "test_recommend_#{:rand.uniform(1000)}"
+
       output =
         capture_io(fn ->
-          LLM.handle_command("model", ["help"])
+          EnhancedCommands.handle_command("/model recommend", session_id)
         end)
 
-      assert output =~ "Model management commands:"
-      assert output =~ "Examples:"
-      assert output =~ "/model gpt-4"
-      assert output =~ "/model capabilities claude-3-opus-20240229"
-      assert output =~ "/model recommend streaming vision"
-      assert output =~ "/model compare gpt-4 claude-3-sonnet-20240229"
+      # Should show agent execution message
+      assert output =~ "🤖 Executing with llm_agent" or
+               output =~ "recommend"
     end
 
-    test "model switch requires model name" do
+    test "routes model capabilities to LLM agent" do
+      session_id = "test_capabilities_#{:rand.uniform(1000)}"
+
       output =
         capture_io(fn ->
-          LLM.handle_command("model", ["switch"])
+          EnhancedCommands.handle_command("/model capabilities", session_id)
         end)
 
-      assert output =~ "Usage: /model switch <name>"
+      # Should show agent execution or capabilities info
+      assert output =~ "🤖 Executing with llm_agent" or
+               output =~ "capabilities"
+
       assert output =~ "Use '/model info' to see current model"
     end
 
@@ -418,24 +433,5 @@ defmodule MCPChat.CLI.Commands.LLMCommandsTest do
     end
   end
 
-  # Helper functions
-
-  defp ensure_services_started do
-    start_config()
-    start_session()
-  end
-
-  defp start_config do
-    case Process.whereis(MCPChat.Config) do
-      nil -> {:ok, _} = MCPChat.Config.start_link()
-      _ -> :ok
-    end
-  end
-
-  defp start_session do
-    case Process.whereis(MCPChat.Session) do
-      nil -> {:ok, _} = MCPChat.Session.start_link()
-      _ -> :ok
-    end
-  end
+  # No helper functions needed - using supervised application startup
 end

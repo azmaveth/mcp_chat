@@ -8,8 +8,7 @@ defmodule MCPChat.Application do
   alias MCPChat.MCP.Handlers.{ProgressHandler, ToolChangeHandler}
   alias MCPChat.MCP.{HealthMonitor, NotificationRegistry, ProgressTracker}
   alias MCPChat.Memory.StoreSupervisor
-  alias MCPChat.Session.Autosave
-  alias MCPChat.{Config, StartupProfiler}
+  alias MCPChat.StartupProfiler
 
   @impl true
   def start(_type, _args) do
@@ -34,10 +33,8 @@ defmodule MCPChat.Application do
       [
         # Configuration manager
         MCPChat.Config,
-        # Session manager
-        MCPChat.Session,
-        # Session autosave
-        {Autosave, autosave_config()},
+        # PubSub for real-time events (needed by agent architecture)
+        {Phoenix.PubSub, name: MCPChat.PubSub},
         # MCP Health monitoring
         HealthMonitor,
         # ExLLM circuit breaker is auto-initialized
@@ -47,6 +44,13 @@ defmodule MCPChat.Application do
         StoreSupervisor,
         # Chat session supervisor
         MCPChat.ChatSupervisor,
+        # Agent architecture supervisor
+        MCPChat.Agents.AgentSupervisor,
+        # Agent command bridge for CLI integration
+        MCPChat.CLI.AgentCommandBridge,
+        # CLI Event infrastructure
+        {Registry, keys: :duplicate, name: MCPChat.CLI.EventRegistry},
+        {DynamicSupervisor, strategy: :one_for_one, name: MCPChat.CLI.EventSupervisor},
         # ExAlias server (must be started before the adapter)
         ExAlias,
         # Alias manager adapter
@@ -78,6 +82,8 @@ defmodule MCPChat.Application do
         register_health_monitors()
         # Enable notifications by default
         enable_notifications()
+        # Initialize CLI agent bridge
+        MCPChat.CLI.AgentBridge.init()
 
         result
 
@@ -113,7 +119,7 @@ defmodule MCPChat.Application do
   end
 
   defp read_startup_mode_from_file(config_path) do
-    case Toml.decode_file(config_path) do
+    case toml_decode_file(config_path) do
       {:ok, config} -> parse_startup_mode_from_config(config)
       _ -> :lazy
     end
@@ -135,7 +141,8 @@ defmodule MCPChat.Application do
     # Register core processes for monitoring
     processes_to_monitor = [
       {:config, MCPChat.Config},
-      {:session, MCPChat.Session},
+      {:agent_supervisor, MCPChat.Agents.AgentSupervisor},
+      {:session_manager, MCPChat.Agents.SessionManager},
       {:server_manager, MCPChat.MCP.ServerManager},
       {:alias_adapter, MCPChat.Alias.ExAliasAdapter}
     ]
@@ -247,15 +254,40 @@ defmodule MCPChat.Application do
     _ -> :ok
   end
 
-  defp autosave_config do
-    # Default configuration - actual config will be loaded after Config starts
-    [
-      enabled: true,
-      # 5 minutes
-      interval: 5 * 60 * 1_000,
-      keep_count: 10,
-      compress_large: true,
-      session_name_prefix: "autosave"
-    ]
+  # Compatibility wrapper for Toml
+  defp toml_decode_file(path) do
+    # Try different approaches to decode TOML
+    cond do
+      Code.ensure_loaded?(Toml) and function_exported?(Toml, :decode_file, 1) ->
+        Toml.decode_file(path)
+
+      Code.ensure_loaded?(Toml) and function_exported?(Toml, :decode_file!, 1) ->
+        try do
+          {:ok, Toml.decode_file!(path)}
+        rescue
+          e -> {:error, e}
+        end
+
+      true ->
+        # Fallback: read file and parse manually
+        case File.read(path) do
+          {:ok, content} ->
+            # Very basic TOML parsing for startup mode only
+            if content =~ "mcp_connection_mode" do
+              mode =
+                case Regex.run(~r/mcp_connection_mode\s*=\s*"(\w+)"/, content) do
+                  [_, mode] -> mode
+                  _ -> "lazy"
+                end
+
+              {:ok, %{"startup" => %{"mcp_connection_mode" => mode}}}
+            else
+              {:ok, %{}}
+            end
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+    end
   end
 end

@@ -37,7 +37,8 @@ defmodule MCPChat.CLI.Commands.Base do
           require_session: 0,
           with_session: 1,
           get_session_context: 2,
-          update_session_context: 1
+          update_session_context: 1,
+          update_session: 1
         ]
 
       import MCPChat.CLI.Commands.Helpers.Usage,
@@ -105,18 +106,15 @@ defmodule MCPChat.CLI.Commands.Base do
   Gets the current backend name with proper error handling.
   """
   def get_current_backend do
-    MCPChat.Session.get_current_session()
-    |> Map.get(:llm_backend, MCPChat.Config.get([:llm, :default]) || "anthropic")
+    Session.get_session_backend()
   end
 
   @doc """
   Gets the current model with proper error handling.
   """
   def get_current_model do
-    session = MCPChat.Session.get_current_session()
     backend = get_current_backend()
-
-    model = Map.get(session, :model) || get_default_model(backend)
+    model = Session.get_session_model() || get_default_model(backend)
     {backend, model}
   end
 

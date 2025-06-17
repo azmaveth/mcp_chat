@@ -159,15 +159,25 @@ defmodule MCPChat.MCP.ServerManager.Core do
       nil ->
         {:error, :not_found}
 
-      pid ->
-        get_server_status_from_pid(pid)
+      server ->
+        {:ok,
+         %{
+           status: server.status,
+           server_name: server.name,
+           transport: get_transport_type(server.config),
+           capabilities: server.capabilities,
+           health: Server.health_status(server),
+           uptime: Server.uptime_seconds(server),
+           success_rate: Server.success_rate(server)
+         }}
     end
   end
 
-  defp get_server_status_from_pid(pid) do
-    case Server.get_status(pid) do
-      {:error, reason} -> {:error, reason}
-      status -> {:ok, status}
+  defp get_transport_type(config) do
+    cond do
+      config[:command] || config["command"] -> "stdio"
+      config[:url] || config["url"] -> "sse"
+      true -> "unknown"
     end
   end
 
@@ -207,7 +217,7 @@ defmodule MCPChat.MCP.ServerManager.Core do
     start_time = System.monotonic_time(:millisecond)
 
     case ServerWrapper.call_tool(pid, tool_name, arguments) do
-      {:ok, result} = success ->
+      {:ok, _result} = success ->
         response_time = System.monotonic_time(:millisecond) - start_time
         HealthMonitor.record_success(server_name, response_time)
         success

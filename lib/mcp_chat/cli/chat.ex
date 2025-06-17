@@ -8,7 +8,7 @@ defmodule MCPChat.CLI.Chat do
   alias MCPChat.CLI.{Commands, Renderer}
   alias MCPChat.Context.AtSymbolResolver
   alias MCPChat.LLM.ExLLMAdapter
-  alias MCPChat.{Config, Session}
+  alias MCPChat.{Config, Gateway}
 
   # alias MCPChat.LLM
 
@@ -20,26 +20,40 @@ defmodule MCPChat.CLI.Chat do
     Renderer.clear_screen()
     Renderer.show_welcome()
 
-    # Emit telemetry event for session start
+    # Create a gateway session
     session_id = generate_session_id()
-    MCPChat.Telemetry.emit_session_started(session_id, %{startup_time: System.system_time(:millisecond)})
+    user_id = "cli_user_#{session_id}"
 
-    # Set up command completion
-    ExReadlineAdapter.set_completion_fn(&Commands.get_completions/1)
+    case Gateway.create_session(user_id, backend: Config.get(:llm, %{})[:default_backend] || "anthropic", source: :cli) do
+      {:ok, gateway_session_id} ->
+        # Emit telemetry event for session start
+        MCPChat.Telemetry.emit_session_started(gateway_session_id, %{startup_time: System.system_time(:millisecond)})
 
-    # Start the chat loop
-    start_time = System.monotonic_time(:millisecond)
-    result = chat_loop()
+        # Set up command completion
+        ExReadlineAdapter.set_completion_fn(&Commands.get_completions/1)
 
-    # Emit telemetry event for session end
-    end_time = System.monotonic_time(:millisecond)
-    duration = end_time - start_time
-    MCPChat.Telemetry.emit_session_ended(session_id, duration, %{end_time: System.system_time(:millisecond)})
+        # Start the chat loop with session context
+        start_time = System.monotonic_time(:millisecond)
+        result = chat_loop(gateway_session_id)
 
-    result
+        # Emit telemetry event for session end
+        end_time = System.monotonic_time(:millisecond)
+        duration = end_time - start_time
+
+        MCPChat.Telemetry.emit_session_ended(gateway_session_id, duration, %{end_time: System.system_time(:millisecond)})
+
+        # Clean up session
+        Gateway.destroy_session(gateway_session_id)
+
+        result
+
+      {:error, reason} ->
+        Renderer.show_error("Failed to create chat session: #{inspect(reason)}")
+        :error
+    end
   end
 
-  defp chat_loop do
+  defp chat_loop(session_id) do
     # Print newline before prompt for spacing
     IO.write("\n")
     prompt = Renderer.format_prompt()
@@ -58,23 +72,23 @@ defmodule MCPChat.CLI.Chat do
 
         input = String.trim(input)
 
-        case process_input(input) do
+        case process_input(input, session_id) do
           :exit ->
             Renderer.show_goodbye()
             :ok
 
           :continue ->
-            chat_loop()
+            chat_loop(session_id)
         end
     end
   end
 
-  defp process_input(""), do: :continue
-  defp process_input("/exit"), do: :exit
-  defp process_input("/quit"), do: :exit
-  defp process_input("/q"), do: :exit
+  defp process_input("", _session_id), do: :continue
+  defp process_input("/exit", _session_id), do: :exit
+  defp process_input("/quit", _session_id), do: :exit
+  defp process_input("/q", _session_id), do: :exit
 
-  defp process_input("/" <> command) do
+  defp process_input("/" <> command, session_id) do
     # Debug output
     if System.get_env("MCP_DEBUG") == "1" do
       IO.puts("[DEBUG] Processing command: #{inspect(command)}")
@@ -83,11 +97,11 @@ defmodule MCPChat.CLI.Chat do
     case Commands.handle_command(command) do
       {:message, text} ->
         # Alias returned a message to send
-        process_input(text)
+        process_input(text, session_id)
 
       {:resume_stream, stream} ->
         # Handle resumed stream
-        handle_resumed_stream(stream)
+        handle_resumed_stream(stream, session_id)
         :continue
 
       :exit ->
@@ -103,12 +117,12 @@ defmodule MCPChat.CLI.Chat do
     end
   end
 
-  defp process_input(message) do
+  defp process_input(message, session_id) do
     # Process @ symbol references if any
     {processed_message, at_metadata} = process_at_symbols(message)
 
     # Add user message to session (original message for history)
-    Session.add_message("user", message)
+    Gateway.send_message(session_id, message)
 
     # Display @ symbol processing results if any
     if at_metadata.total_tokens > 0 do
@@ -119,14 +133,15 @@ defmodule MCPChat.CLI.Chat do
     Renderer.show_thinking()
 
     # Get LLM response using processed message
-    case get_llm_response(processed_message) do
+    case get_llm_response(processed_message, session_id) do
       {:ok, response_data} ->
         # response_data is now the full response map with content, usage, cost, etc.
         content = get_response_content(response_data)
-        Session.add_message("assistant", content)
+        # Assistant message is already tracked by the agent
+        # No need to explicitly add it here
 
-        # Track cost using full response for comprehensive tracking
-        Session.track_cost(response_data)
+        # Cost tracking is handled by the agent
+        # No explicit tracking needed here
 
         Renderer.show_assistant_message(content)
 
@@ -141,22 +156,38 @@ defmodule MCPChat.CLI.Chat do
     :continue
   end
 
-  defp get_llm_response(processed_message) do
-    session = Session.get_current_session()
-    messages = prepare_messages(session, processed_message)
-    adapter = get_llm_adapter(session.llm_backend)
-    options = build_llm_options(session)
+  defp get_llm_response(processed_message, session_id) do
+    case Gateway.get_session_state(session_id) do
+      {:ok, session} ->
+        messages = prepare_messages(session, processed_message)
+        adapter = get_llm_adapter(session.llm_backend)
+        options = build_llm_options(session)
 
-    if adapter.configured?(session.llm_backend) do
-      execute_llm_request(adapter, messages, options)
-    else
-      build_configuration_error(session.llm_backend)
+        if adapter.configured?(session.llm_backend) do
+          execute_llm_request(adapter, messages, options, session_id)
+        else
+          build_configuration_error(session.llm_backend)
+        end
+
+      error ->
+        error
     end
   end
 
   defp prepare_messages(session, processed_message) do
-    base_messages = Session.get_messages_for_llm()
+    # Get messages from session state
+    base_messages = format_messages_for_llm(session.messages)
     replace_last_user_message(base_messages, processed_message)
+  end
+
+  defp format_messages_for_llm(messages) do
+    messages
+    |> Enum.map(fn msg ->
+      %{
+        "role" => msg.role,
+        "content" => msg.content
+      }
+    end)
   end
 
   defp build_llm_options(session) do
@@ -198,26 +229,24 @@ defmodule MCPChat.CLI.Chat do
     end
   end
 
-  defp execute_llm_request(adapter, messages, options) do
-    response = choose_response_method(adapter, messages, options)
-    handle_llm_response(response, messages)
+  defp execute_llm_request(adapter, messages, options, session_id) do
+    response = choose_response_method(adapter, messages, options, session_id)
+    handle_llm_response(response, messages, session_id)
   end
 
-  defp choose_response_method(adapter, messages, options) do
+  defp choose_response_method(adapter, messages, options, session_id) do
     if Config.get([:ui, :streaming]) != false do
-      stream_response(adapter, messages, options)
+      stream_response(adapter, messages, options, session_id)
     else
       adapter.chat(messages, options)
     end
   end
 
-  defp handle_llm_response(response, messages) do
+  defp handle_llm_response(response, _messages, _session_id) do
     case response do
       {:ok, response_data} ->
         # response_data is the full response map from ExLLM adapter
-        content = get_response_content(response_data)
-        Session.track_token_usage(messages, content)
-        # Return full response data instead of just content
+        # Token usage is tracked by the agent automatically
         {:ok, response_data}
 
       error ->
@@ -254,32 +283,32 @@ defmodule MCPChat.CLI.Chat do
 
   defp get_llm_adapter(_), do: ExLLMAdapter
 
-  defp stream_response(adapter, messages, options) do
+  defp stream_response(adapter, messages, options, session_id) do
     # Add recovery options if enabled
     options = maybe_add_recovery_options(options)
 
     case adapter.stream_chat(messages, options) do
       {:ok, stream, recovery_id} ->
-        handle_recoverable_stream(stream, recovery_id, options)
+        handle_recoverable_stream(stream, recovery_id, options, session_id)
 
       {:ok, stream} ->
-        handle_simple_stream(stream, options)
+        handle_simple_stream(stream, options, session_id)
 
       error ->
         error
     end
   end
 
-  defp handle_recoverable_stream(stream, recovery_id, options) do
-    # Store recovery ID in session for potential resume
-    Session.set_last_recovery_id(recovery_id)
+  defp handle_recoverable_stream(stream, recovery_id, options, session_id) do
+    # Store recovery ID in session state via Gateway
+    Gateway.execute_command(session_id, "set_recovery_id #{recovery_id}")
     Logger.debug("Stream started with recovery ID: #{recovery_id}")
 
     result = execute_stream(stream, options)
-    handle_stream_result(result, recovery_id)
+    handle_stream_result(result, recovery_id, session_id)
   end
 
-  defp handle_simple_stream(stream, options) do
+  defp handle_simple_stream(stream, options, _session_id) do
     # No recovery ID - proceed normally
     Logger.debug("Stream started without recovery support")
     execute_stream(stream, options)
@@ -294,10 +323,10 @@ defmodule MCPChat.CLI.Chat do
     end
   end
 
-  defp handle_stream_result(result, recovery_id) do
+  defp handle_stream_result(result, recovery_id, session_id) do
     case result do
       {:ok, response} ->
-        Session.clear_last_recovery_id()
+        Gateway.execute_command(session_id, "clear_recovery_id")
         Logger.debug("Stream completed successfully, cleared recovery ID")
         {:ok, response}
 
@@ -308,17 +337,17 @@ defmodule MCPChat.CLI.Chat do
         result
 
       {:error, reason} = error ->
-        handle_stream_error(reason, recovery_id)
+        handle_stream_error(reason, recovery_id, session_id)
         error
     end
   end
 
-  defp handle_stream_error(reason, recovery_id) do
+  defp handle_stream_error(reason, recovery_id, session_id) do
     if recoverable_error?(reason) do
       Logger.info("Recoverable error occurred, recovery ID preserved: #{recovery_id}")
       show_resume_hint()
     else
-      Session.clear_last_recovery_id()
+      Gateway.execute_command(session_id, "clear_recovery_id")
       Logger.error("Non-recoverable error: #{inspect(reason)}")
     end
   end
@@ -396,7 +425,7 @@ defmodule MCPChat.CLI.Chat do
     "mcp_chat_#{timestamp}_#{random}"
   end
 
-  defp stream_with_enhanced_consumer(stream, options) do
+  defp stream_with_enhanced_consumer(stream, _options) do
     # Use ExLLM's enhanced streaming infrastructure directly
     # Since ExLLM.stream_chat now returns an enhanced stream with built-in
     # flow control, batching, and backpressure handling, we can consume it directly
@@ -432,7 +461,7 @@ defmodule MCPChat.CLI.Chat do
     e -> {:error, Exception.message(e)}
   end
 
-  defp handle_resumed_stream(stream) do
+  defp handle_resumed_stream(stream, session_id) do
     # Process the resumed stream with recovery support
     result =
       if Config.get(:streaming, :enhanced, true) do
@@ -443,26 +472,29 @@ defmodule MCPChat.CLI.Chat do
 
     case result do
       {:ok, continuation} ->
-        handle_continuation_success(continuation)
+        handle_continuation_success(continuation, session_id)
 
       {:error, reason} ->
         Renderer.show_error("Failed to process resumed stream: #{inspect(reason)}")
     end
   end
 
-  defp handle_continuation_success(continuation) do
-    case Session.get_last_recovery_id() do
-      nil ->
-        # Just add the continuation as a new message
-        Session.add_message("assistant", continuation)
+  defp handle_continuation_success(continuation, session_id) do
+    case Gateway.execute_command(session_id, "get_recovery_id") do
+      {:ok, nil} ->
+        # Just show the continuation as a new message
         Renderer.show_assistant_message(continuation)
 
-      recovery_id ->
-        handle_recovery_continuation(recovery_id, continuation)
+      {:ok, recovery_id} ->
+        handle_recovery_continuation(recovery_id, continuation, session_id)
+
+      _ ->
+        # Fallback - just show the continuation
+        Renderer.show_assistant_message(continuation)
     end
   end
 
-  defp handle_recovery_continuation(recovery_id, continuation) do
+  defp handle_recovery_continuation(recovery_id, continuation, session_id) do
     case ExLLMAdapter.get_partial_response(recovery_id) do
       {:ok, chunks} ->
         partial_content = Enum.map_join(chunks, "", & &1.content)
@@ -487,17 +519,15 @@ defmodule MCPChat.CLI.Chat do
               partial_content <> continuation
           end
 
-        Session.add_message("assistant", full_response)
         Renderer.show_assistant_message(full_response)
-        Session.clear_last_recovery_id()
+        Gateway.execute_command(session_id, "clear_recovery_id")
         Logger.info("Successfully resumed response with #{recovery_strategy} strategy")
 
       {:error, reason} ->
         # Fallback to just the continuation
-        Logger.warn("Could not retrieve partial response: #{inspect(reason)}")
-        Session.add_message("assistant", continuation)
+        Logger.warning("Could not retrieve partial response: #{inspect(reason)}")
         Renderer.show_assistant_message(continuation)
-        Session.clear_last_recovery_id()
+        Gateway.execute_command(session_id, "clear_recovery_id")
     end
   end
 

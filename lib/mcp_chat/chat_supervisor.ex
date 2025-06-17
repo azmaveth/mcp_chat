@@ -6,7 +6,7 @@ defmodule MCPChat.ChatSupervisor do
   require Logger
 
   alias MCPChat.CLI.Chat
-  alias MCPChat.Session
+  alias MCPChat.Gateway
 
   defstruct [:chat_task, :session_backup, :restart_count, :max_restarts]
 
@@ -162,35 +162,27 @@ defmodule MCPChat.ChatSupervisor do
   # Private Functions
 
   defp backup_session do
-    session = Session.get_current_session()
+    case get_current_session_state() do
+      {:ok, session} ->
+        %{
+          messages: session.messages,
+          context: session.context,
+          timestamp: DateTime.utc_now()
+        }
 
-    %{
-      messages: session.messages,
-      context: session.context,
-      timestamp: DateTime.utc_now()
-    }
-  catch
-    _, _ ->
-      nil
+      _ ->
+        nil
+    end
   end
 
   defp restore_session(nil), do: :ok
 
-  defp restore_session(backup) do
-    # Restore messages
-    Enum.each(backup.messages, fn msg ->
-      Session.add_message(msg.role, msg.content)
-    end)
-
-    # Restore context
-    Session.update_session(%{context: backup.context})
-
-    Logger.info("Session restored from backup")
+  defp restore_session(_backup) do
+    # Note: Full session restore requires creating a new session with the backup data
+    # For now, we'll log that this functionality needs to be implemented
+    Logger.warning("Session restore functionality not yet implemented with Gateway API")
+    # TODO: Implement session restore when Gateway supports loading messages/context
     :ok
-  catch
-    _, reason ->
-      Logger.error("Failed to restore session: #{inspect(reason)}")
-      {:error, reason}
   end
 
   defp should_restart?(%{restart_count: count, max_restarts: max}) do
@@ -258,5 +250,16 @@ defmodule MCPChat.ChatSupervisor do
     ❌ The chat session crashed and could not be restarted.
     Please restart the application manually.
     """)
+  end
+
+  # Helper function to get current session state
+  defp get_current_session_state do
+    case Gateway.list_active_sessions() do
+      [session_id | _] ->
+        Gateway.get_session_state(session_id)
+
+      [] ->
+        {:error, :no_active_session}
+    end
   end
 end

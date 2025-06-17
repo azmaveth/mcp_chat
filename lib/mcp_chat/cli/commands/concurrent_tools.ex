@@ -12,24 +12,15 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
   @doc """
   Get the list of commands provided by this module.
   """
+  @impl true
   def commands do
-    [
-      %{
-        name: "concurrent",
-        description: "Execute tools concurrently with safety checks",
-        usage: "/concurrent <subcommand> [args...]",
-        subcommands: [
-          %{name: "test", description: "Run concurrent execution test"},
-          %{name: "execute", description: "Execute multiple tools concurrently"},
-          %{name: "stats", description: "Show execution statistics"},
-          %{name: "safety", description: "Check if tool is safe for concurrency"},
-          %{name: "help", description: "Show this help"}
-        ]
-      }
-    ]
+    %{
+      "concurrent" => "Execute tools concurrently with safety checks"
+    }
   end
 
-  def handle_command(["concurrent" | args]) do
+  @impl true
+  def handle_command("concurrent", args) do
     case args do
       [] ->
         show_help()
@@ -57,7 +48,7 @@ defmodule MCPChat.CLI.Commands.ConcurrentTools do
   @doc """
   Handle commands that are not concurrent commands (required by Base behavior).
   """
-  def handle_command(_command_args) do
+  def handle_command(_command, _args) do
     # This module only handles concurrent commands, return not handled for all others
     :not_handled
   end

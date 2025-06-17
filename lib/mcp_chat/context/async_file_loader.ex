@@ -12,7 +12,7 @@ defmodule MCPChat.Context.AsyncFileLoader do
   """
 
   require Logger
-  alias MCPChat.{MCP.ProgressTracker, Session}
+  alias MCPChat.MCP.ProgressTracker
 
   defmodule LoadOperation do
     @moduledoc false
@@ -394,20 +394,9 @@ defmodule MCPChat.Context.AsyncFileLoader do
   defp add_loaded_file_to_context(load_result) do
     file_info = load_result.result
 
-    # Get current session
-    session = Session.get_current_session()
-
-    # Get or initialize context files map
-    context_files = session.context[:files] || %{}
-
-    # Add file to context
-    updated_files = Map.put(context_files, file_info.name, file_info)
-    updated_context = Map.put(session.context, :files, updated_files)
-
-    # Update session
-    Session.update_session(%{context: updated_context})
-
-    Logger.info("Added #{file_info.name} to context (#{byte_size(file_info.content)} bytes)")
+    # TODO: Implement file context addition with Gateway API
+    Logger.warning("Async file loading to context not yet implemented with Gateway API")
+    Logger.info("Would add #{file_info.name} to context (#{byte_size(file_info.content)} bytes)")
   end
 
   defp generate_operation_id do

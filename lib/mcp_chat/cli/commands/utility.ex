@@ -15,7 +15,7 @@ defmodule MCPChat.CLI.Commands.Utility do
   alias MCPChat.CLI.Renderer
   alias MCPChat.LLM.ExLLMAdapter
   alias MCPChat.MCP.ServerManager
-  alias MCPChat.{Cost, Persistence, Session}
+  alias MCPChat.{Persistence, Gateway}
 
   @impl true
   def commands do
@@ -108,56 +108,72 @@ defmodule MCPChat.CLI.Commands.Utility do
   end
 
   defp show_config do
-    session = Session.get_current_session()
+    # Get session ID from command context
+    case get_current_session_id() do
+      {:ok, session_id} ->
+        case Gateway.get_session_state(session_id) do
+          {:ok, session} ->
+            Renderer.show_text("## Current Configuration\n")
 
-    Renderer.show_text("## Current Configuration\n")
+            # Show configuration in table format
+            IO.puts("Setting              | Value")
+            IO.puts("-------------------- | -----")
+            IO.puts("LLM Backend          | #{session.llm_backend || "Not set"}")
+            IO.puts("Model                | #{session.context[:model] || "Not set"}")
 
-    # Show configuration in table format
-    IO.puts("Setting              | Value")
-    IO.puts("-------------------- | -----")
-    IO.puts("LLM Backend          | #{session.llm_backend || "Not set"}")
-    IO.puts("Model                | #{session.context[:model] || "Not set"}")
+            # Show MCP servers
+            servers = ServerManager.list_servers()
+            server_count = length(servers)
+            IO.puts("MCP Servers          | #{server_count} connected")
 
-    # Show MCP servers
-    servers = ServerManager.list_servers()
-    server_count = length(servers)
-    IO.puts("MCP Servers          | #{server_count} connected")
+            # Show context settings
+            IO.puts("Max Tokens           | #{session.context[:max_tokens] || "4_096"}")
+            IO.puts("Truncation Strategy  | #{session.context[:truncation_strategy] || "sliding_window"}")
 
-    # Show context settings
-    IO.puts("Max Tokens           | #{session.context[:max_tokens] || "4_096"}")
-    IO.puts("Truncation Strategy  | #{session.context[:truncation_strategy] || "sliding_window"}")
+            :ok
 
-    :ok
+          {:error, reason} ->
+            show_error("Failed to get session state: #{inspect(reason)}")
+        end
+
+      {:error, reason} ->
+        show_error("No active session: #{inspect(reason)}")
+    end
   end
 
-  defp show_cost(args \\ []) do
-    session = Session.get_current_session()
+  defp show_cost(args) do
+    case get_current_session_with_state() do
+      {:ok, session} ->
+        case args do
+          [] ->
+            # Default detailed view
+            show_cost_with_format(session, :detailed)
 
-    case args do
-      [] ->
-        # Default detailed view
-        show_cost_with_format(session, :detailed)
+          ["detailed"] ->
+            show_cost_with_format(session, :detailed)
 
-      ["detailed"] ->
-        show_cost_with_format(session, :detailed)
+          ["compact"] ->
+            show_cost_with_format(session, :compact)
 
-      ["compact"] ->
-        show_cost_with_format(session, :compact)
+          ["table"] ->
+            show_cost_with_format(session, :table)
 
-      ["table"] ->
-        show_cost_with_format(session, :table)
+          ["breakdown"] ->
+            show_cost_breakdown(session)
 
-      ["breakdown"] ->
-        show_cost_breakdown(session)
+          ["help"] ->
+            show_cost_help()
 
-      ["help"] ->
-        show_cost_help()
+          _ ->
+            IO.puts("Invalid cost command. Use: /cost [detailed|compact|table|breakdown|help]")
+        end
 
-      _ ->
-        IO.puts("Invalid cost command. Use: /cost [detailed|compact|table|breakdown|help]")
+        :ok
+
+      {:error, reason} ->
+        show_error("Failed to get session: #{inspect(reason)}")
+        :ok
     end
-
-    :ok
   end
 
   defp show_cost_with_format(session, format) do
@@ -169,10 +185,11 @@ defmodule MCPChat.CLI.Commands.Utility do
     end
   end
 
-  defp show_enhanced_cost_summary(cost_session, format \\ :detailed) do
-    # Use ExLLM's enhanced formatting
-    formatted_summary = ExLLM.Cost.Session.format_summary(cost_session, format: format)
-    IO.puts(formatted_summary)
+  defp show_enhanced_cost_summary(cost_session, format) do
+    # Use ExLLM's enhanced formatting when available
+    # TODO: Implement when ExLLM.Cost.Session is available
+    _ = format
+    show_legacy_cost_summary(%{cost_session: cost_session})
   end
 
   defp show_legacy_cost_summary(session) do
@@ -199,7 +216,7 @@ defmodule MCPChat.CLI.Commands.Utility do
 
       if total_cost > 0 do
         IO.puts("Cost (calculated by ExLLM):")
-        IO.puts("  Total cost:  #{ExLLM.Cost.format(total_cost)}")
+        IO.puts("  Total cost:  $#{Float.round(total_cost, 4)}")
       else
         IO.puts("Cost calculation not available for this provider/model.")
       end
@@ -225,15 +242,16 @@ defmodule MCPChat.CLI.Commands.Utility do
     display_model_breakdown(cost_session)
   end
 
-  defp display_provider_breakdown(cost_session) do
-    provider_breakdown = ExLLM.Cost.Session.provider_breakdown(cost_session)
+  defp display_provider_breakdown(_cost_session) do
+    # TODO: Implement when ExLLM.Cost.Session is available
+    provider_breakdown = []
 
     if Enum.any?(provider_breakdown) do
       IO.puts("📊 By Provider:")
 
       Enum.each(provider_breakdown, fn provider_stats ->
         IO.puts(
-          "  #{String.capitalize(provider_stats.provider)}: #{ExLLM.Cost.format(provider_stats.total_cost)} " <>
+          "  #{String.capitalize(provider_stats.provider)}: $#{Float.round(provider_stats.total_cost, 4)} " <>
             "(#{provider_stats.message_count} msgs, #{format_number(provider_stats.total_tokens)} tokens)"
         )
       end)
@@ -242,8 +260,9 @@ defmodule MCPChat.CLI.Commands.Utility do
     end
   end
 
-  defp display_model_breakdown(cost_session) do
-    model_breakdown = ExLLM.Cost.Session.model_breakdown(cost_session)
+  defp display_model_breakdown(_cost_session) do
+    # TODO: Implement when ExLLM.Cost.Session is available
+    model_breakdown = []
 
     if Enum.any?(model_breakdown) do
       IO.puts("🤖 By Model:")
@@ -259,7 +278,7 @@ defmodule MCPChat.CLI.Commands.Utility do
 
   defp display_model_stats(model_stats) do
     IO.puts(
-      "  #{model_stats.model}: #{ExLLM.Cost.format(model_stats.total_cost)} " <>
+      "  #{model_stats.model}: $#{Float.round(model_stats.total_cost, 4)} " <>
         "(#{model_stats.message_count} msgs, #{format_number(model_stats.total_tokens)} tokens)"
     )
   end
@@ -289,17 +308,22 @@ defmodule MCPChat.CLI.Commands.Utility do
   end
 
   defp show_stats do
-    session = Session.get_current_session()
+    case get_current_session_with_state() do
+      {:ok, session} ->
+        IO.puts("## Session Statistics")
+        IO.puts("")
+        IO.puts("Session ID: #{session.id}")
+        IO.puts("Messages: #{length(session.messages)}")
+        IO.puts("Created: #{session.created_at}")
 
-    IO.puts("## Session Statistics")
-    IO.puts("")
-    IO.puts("Session ID: #{session.id}")
-    IO.puts("Messages: #{length(session.messages)}")
-    IO.puts("Created: #{session.created_at}")
+        show_token_usage(session)
+        show_context_usage(session)
+        :ok
 
-    show_token_usage(session)
-    show_context_usage(session)
-    :ok
+      {:error, reason} ->
+        show_error("Failed to get session: #{inspect(reason)}")
+        :ok
+    end
   end
 
   defp show_token_usage(session) do
@@ -323,13 +347,18 @@ defmodule MCPChat.CLI.Commands.Utility do
 
   defp show_cost_estimate(nil, _input_tokens, _output_tokens), do: :ok
 
-  defp show_cost_estimate(backend, input_tokens, output_tokens) do
+  defp show_cost_estimate(_backend, _input_tokens, _output_tokens) do
     # Cost estimation is now handled by ExLLM, so we'll get it from the session's accumulated_cost
-    session = Session.get_current_session()
-    cost = session.accumulated_cost || 0.0
+    case get_current_session_with_state() do
+      {:ok, session} ->
+        cost = session.accumulated_cost || 0.0
 
-    if cost > 0 do
-      IO.puts("Estimated cost: $#{:erlang.float_to_binary(cost, decimals: 4)}")
+        if cost > 0 do
+          IO.puts("Estimated cost: $#{:erlang.float_to_binary(cost, decimals: 4)}")
+        end
+
+      _ ->
+        :ok
     end
   end
 
@@ -376,8 +405,6 @@ defmodule MCPChat.CLI.Commands.Utility do
         [f | _] -> String.to_atom(f)
       end
 
-    session = Session.get_current_session()
-
     # Generate filename
     timestamp = DateTime.utc_now() |> DateTime.to_iso8601(:basic)
 
@@ -390,13 +417,19 @@ defmodule MCPChat.CLI.Commands.Utility do
 
     filename = "chat_export_#{timestamp}.#{extension}"
 
-    case Persistence.export_session(session, format, filename) do
-      {:ok, content} ->
-        File.write!(filename, content)
-        show_success("Conversation exported to: #{filename}")
+    case get_current_session_with_state() do
+      {:ok, session} ->
+        case Persistence.export_session(session, format, filename) do
+          {:ok, content} ->
+            File.write!(filename, content)
+            show_success("Conversation exported to: #{filename}")
+
+          {:error, reason} ->
+            show_error("Failed to export: #{reason}")
+        end
 
       {:error, reason} ->
-        show_error("Failed to export: #{reason}")
+        show_error("Failed to get session: #{inspect(reason)}")
     end
 
     :ok
@@ -434,23 +467,29 @@ defmodule MCPChat.CLI.Commands.Utility do
 
   # Note: format_number now comes from Display helper
 
-  defp format_cost(cost) when cost < 0.01, do: "#{Float.round(cost, 4)}"
-  defp format_cost(cost), do: "#{Float.round(cost, 2)}"
-
   defp resume_interrupted_response(_args) do
     alias MCPChat.CLI.Renderer
     alias MCPChat.LLM.ExLLMAdapter
 
-    case Session.get_last_recovery_id() do
-      nil ->
-        Renderer.show_error("No interrupted response to resume")
+    case get_current_session_id() do
+      {:ok, session_id} ->
+        case Gateway.execute_command(session_id, "get_recovery_id") do
+          {:ok, nil} ->
+            Renderer.show_error("No interrupted response to resume")
 
-      recovery_id ->
-        handle_recovery(recovery_id, ExLLMAdapter, Renderer)
+          {:ok, recovery_id} ->
+            handle_recovery(recovery_id, ExLLMAdapter, Renderer, session_id)
+
+          _ ->
+            Renderer.show_error("No interrupted response to resume")
+        end
+
+      {:error, _} ->
+        Renderer.show_error("No active session")
     end
   end
 
-  defp handle_recovery(recovery_id, adapter, renderer) do
+  defp handle_recovery(recovery_id, adapter, renderer, session_id) do
     recoverable = adapter.list_recoverable_streams()
 
     case Enum.find(recoverable, &(&1.id == recovery_id)) do
@@ -458,22 +497,29 @@ defmodule MCPChat.CLI.Commands.Utility do
         handle_recovery_not_found(recovery_id, renderer)
 
       stream_info ->
-        handle_recovery_found(recovery_id, stream_info, adapter, renderer)
+        handle_recovery_found(recovery_id, stream_info, adapter, renderer, session_id)
     end
   end
 
-  defp handle_recovery_not_found(recovery_id, renderer) do
+  defp handle_recovery_not_found(_recovery_id, renderer) do
     renderer.show_error("Previous response is no longer recoverable")
-    Session.clear_last_recovery_id()
+
+    case get_current_session_id() do
+      {:ok, session_id} ->
+        Gateway.execute_command(session_id, "clear_recovery_id")
+
+      _ ->
+        :ok
+    end
   end
 
-  defp handle_recovery_found(recovery_id, stream_info, adapter, renderer) do
+  defp handle_recovery_found(recovery_id, stream_info, adapter, renderer, session_id) do
     show_recovery_info(stream_info, renderer)
 
     case adapter.get_partial_response(recovery_id) do
       {:ok, chunks} ->
         show_partial_content(chunks, renderer)
-        attempt_resume_stream(recovery_id, adapter, renderer)
+        attempt_resume_stream(recovery_id, adapter, renderer, session_id)
 
       {:error, reason} ->
         renderer.show_error("Failed to get partial response: #{inspect(reason)}")
@@ -498,11 +544,11 @@ defmodule MCPChat.CLI.Commands.Utility do
     end
   end
 
-  defp attempt_resume_stream(recovery_id, adapter, renderer) do
+  defp attempt_resume_stream(recovery_id, adapter, renderer, session_id) do
     case adapter.resume_stream(recovery_id) do
       {:ok, stream} ->
         renderer.show_success("Response resumed successfully")
-        Session.clear_last_recovery_id()
+        Gateway.execute_command(session_id, "clear_recovery_id")
         {:resume_stream, stream}
 
       {:error, reason} ->
@@ -566,10 +612,18 @@ defmodule MCPChat.CLI.Commands.Utility do
         )
       end)
 
-      current_recovery_id = Session.get_last_recovery_id()
+      case get_current_session_id() do
+        {:ok, session_id} ->
+          case Gateway.execute_command(session_id, "get_recovery_id") do
+            {:ok, recovery_id} when not is_nil(recovery_id) ->
+              IO.puts("\n* Current session recovery ID: #{recovery_id}")
 
-      if current_recovery_id do
-        IO.puts("\\n* Current session recovery ID: #{current_recovery_id}")
+            _ ->
+              :ok
+          end
+
+        _ ->
+          :ok
       end
     end
   end
@@ -578,13 +632,8 @@ defmodule MCPChat.CLI.Commands.Utility do
     alias MCPChat.CLI.Renderer
 
     # This would call ExLLM to clean expired streams
-    case ExLLM.StreamRecovery.cleanup_expired() do
-      {:ok, count} ->
-        Renderer.show_success("Cleaned #{count} expired stream(s)")
-
-      {:error, reason} ->
-        Renderer.show_error("Failed to clean streams: #{inspect(reason)}")
-    end
+    # TODO: Implement when ExLLM.StreamRecovery is available
+    Renderer.show_info("Stream cleanup not yet implemented")
   end
 
   defp show_recovery_info(recovery_id) do
@@ -606,14 +655,21 @@ defmodule MCPChat.CLI.Commands.Utility do
     alias MCPChat.CLI.Renderer
     alias MCPChat.LLM.ExLLMAdapter
 
-    # Set the recovery ID as current and then resume
-    Session.set_last_recovery_id(recovery_id)
+    case get_current_session_id() do
+      {:ok, session_id} ->
+        # Set the recovery ID as current and then resume
+        Gateway.execute_command(session_id, "set_recovery_id #{recovery_id}")
 
-    case handle_recovery(recovery_id, ExLLMAdapter, Renderer) do
-      {:resume_stream, _stream} ->
-        {:resume_stream_command, recovery_id}
+        case handle_recovery(recovery_id, ExLLMAdapter, Renderer, session_id) do
+          {:resume_stream, _stream} ->
+            {:resume_stream_command, recovery_id}
 
-      _ ->
+          _ ->
+            :ok
+        end
+
+      {:error, _} ->
+        Renderer.show_error("No active session")
         :ok
     end
   end
@@ -872,4 +928,25 @@ defmodule MCPChat.CLI.Commands.Utility do
   end
 
   # Cost calculation is now handled by ExLLM with accurate pricing data
+
+  # Helper functions for session access
+
+  defp get_current_session_id do
+    # In a command context, we need to get the session ID from somewhere
+    # For now, we'll get the first active session
+    case Gateway.list_active_sessions() do
+      [session_id | _] -> {:ok, session_id}
+      [] -> {:error, :no_active_session}
+    end
+  end
+
+  defp get_current_session_with_state do
+    case get_current_session_id() do
+      {:ok, session_id} ->
+        Gateway.get_session_state(session_id)
+
+      error ->
+        error
+    end
+  end
 end

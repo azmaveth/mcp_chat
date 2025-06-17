@@ -46,7 +46,7 @@ defmodule MCPChat.CLI.Commands.Helpers.Arguments do
 
     {:ok, pairs}
   rescue
-    error -> {:error, error.message}
+    error -> {:error, Exception.message(error)}
   end
 
   @doc """
@@ -77,7 +77,7 @@ defmodule MCPChat.CLI.Commands.Helpers.Arguments do
 
     {:ok, final_flags, Enum.reverse(remaining)}
   rescue
-    error -> {:error, error.message}
+    error -> {:error, Exception.message(error)}
   end
 
   @doc """

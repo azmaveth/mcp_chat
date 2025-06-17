@@ -6,13 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Initial setup and build
-./setup.sh                        # One-time setup: installs deps, builds, creates config
+scripts/build/setup.sh            # One-time setup: installs deps, builds, creates config
 
 # Development workflow
 mix deps.get                      # Get dependencies
 mix compile                       # Compile the project
 mix escript.build                 # Build the executable
-./mcp_chat                        # Run the chat client
+bin/mcp_chat                      # Run the chat client
 
 # Testing
 mix test                          # Run all tests
@@ -30,15 +30,15 @@ iex -S mix                        # Start in IEx shell
 iex> MCPChat.main()              # Run with full readline support
 
 # Method 2: Direct launcher (uses elixir --no-halt)
-./mcp_chat                        # Direct execution with terminal support
+bin/mcp_chat                      # Direct execution with terminal support
 
 # Method 3: IEx launcher scripts
-./mcp_chat_iex                    # Attempts to auto-start (may have issues)
-./mcp_chat_manual                 # Starts IEx, type MCPChat.main() to begin
+bin/mcp_chat_iex                  # Attempts to auto-start (may have issues)
+bin/mcp_chat_manual               # Starts IEx, type MCPChat.main() to begin
 
 # Method 4: Escript mode (limited terminal features)
 mix escript.build
-./mcp_chat                        # Basic functionality, no arrow keys
+bin/mcp_chat                      # Basic functionality, no arrow keys
 
 # Method 5: Mix task (not recommended for interactive use)
 mix mcp_chat.run                  # May exit immediately due to TTY issues
@@ -58,7 +58,7 @@ MCP Chat is an Elixir OTP application using extracted libraries for modularity:
 - `MCPChat` - Main entry point (escript module)
 - `MCPChat.Application` - OTP supervisor defining the supervision tree
 - `MCPChat.Config` - TOML configuration loader with env var support
-- `MCPChat.Session` - Chat session state management (GenServer)
+- `MCPChat.Agents.*` - Agent-based architecture with specialized agents (LLM, MCP, Analysis, Export)
 - `MCPChat.CLI.Chat` - Main interactive chat loop
 - `MCPChat.CLI.Commands.*` - Refactored command modules (session, utility, llm, mcp, context, alias)
 

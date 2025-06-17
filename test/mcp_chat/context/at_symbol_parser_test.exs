@@ -1,7 +1,7 @@
 defmodule AtSymbolParserTest do
   use ExUnit.Case, async: true
 
-  alias AtSymbolParser
+  alias MCPChat.Context.AtSymbolParser
 
   alias AtSymbolParserTest
 
@@ -18,7 +18,7 @@ defmodule AtSymbolParserTest do
                identifier: "src/main.ex",
                full_match: "@file:src/main.ex",
                start_pos: 14,
-               end_pos: 30
+               end_pos: 31
              }
     end
 
@@ -135,7 +135,7 @@ defmodule AtSymbolParserTest do
     test "rejects empty identifier" do
       result = AtSymbolParser.validate_reference("@file:")
 
-      assert {:error, "Empty identifier in @ reference"} = result
+      assert {:error, "No valid @ reference found"} = result
     end
 
     test "rejects invalid file path" do

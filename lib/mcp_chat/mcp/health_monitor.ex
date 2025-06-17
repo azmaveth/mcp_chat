@@ -13,8 +13,6 @@ defmodule MCPChat.MCP.HealthMonitor do
 
   # 30 seconds
   @ping_interval 30_000
-  # 5 seconds
-  @health_check_timeout 5_000
 
   # Client API
 

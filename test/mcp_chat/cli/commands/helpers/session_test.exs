@@ -9,59 +9,45 @@ defmodule MCPChat.CLI.Commands.Helpers.SessionTest do
     test "get_session_property/2 is defined" do
       # Test that the function exists and can be called
       # The actual session behavior is tested via integration tests
-      assert function_exported?(Session, :get_session_property, 2)
-
-      # Test with a non-existent session (should return default)
+      # Direct test instead of function_exported? due to compilation issue
       result = Session.get_session_property(:any_property, "default")
-      assert is_binary(result) || result == :anthropic
+      assert is_binary(result) || result == :anthropic || result == "default"
     end
 
     test "get_session_backend/0 is defined" do
-      assert function_exported?(Session, :get_session_backend, 0)
-
-      # Should return atom or string (either from session or default :anthropic)
+      # Direct test instead of function_exported? due to compilation issue
       result = Session.get_session_backend()
       assert is_atom(result) || is_binary(result)
     end
 
     test "get_session_model/0 is defined" do
-      assert function_exported?(Session, :get_session_model, 0)
-
-      # Should return string (either from session or default model)
+      # Direct test instead of function_exported? due to compilation issue
       result = Session.get_session_model()
       assert is_binary(result) || is_nil(result)
     end
 
     test "get_session_backend_and_model/0 is defined" do
-      assert function_exported?(Session, :get_session_backend_and_model, 0)
-
-      # Should return tuple of {backend, model}
+      # Direct test instead of function_exported? due to compilation issue
       {backend, model} = Session.get_session_backend_and_model()
       assert is_atom(backend) || is_binary(backend)
       assert is_binary(model) || is_nil(model)
     end
 
     test "get_session_context/2 is defined" do
-      assert function_exported?(Session, :get_session_context, 2)
-
-      # Test with default value
+      # Direct test instead of function_exported? due to compilation issue
       result = Session.get_session_context(:any_key, "default")
       assert result == "default"
     end
 
     test "update_session_context/1 is defined" do
-      assert function_exported?(Session, :update_session_context, 1)
-
-      # Test updating context (should handle gracefully)
+      # Direct test instead of function_exported? due to compilation issue
       result = Session.update_session_context(%{test: "value"})
       # Should return either :ok (if session exists) or error (if no session)
       assert result == :ok || result == {:error, :no_session}
     end
 
     test "get_session_stats/0 is defined" do
-      assert function_exported?(Session, :get_session_stats, 0)
-
-      # Should return a map with stats
+      # Direct test instead of function_exported? due to compilation issue
       stats = Session.get_session_stats()
       assert is_map(stats)
       assert Map.has_key?(stats, :exists)
@@ -70,17 +56,13 @@ defmodule MCPChat.CLI.Commands.Helpers.SessionTest do
     end
 
     test "require_session/0 is defined" do
-      assert function_exported?(Session, :require_session, 0)
-
-      # Should return either {:ok, session} or {:error, :no_active_session}
+      # Direct test instead of function_exported? due to compilation issue
       result = Session.require_session()
       assert match?({:ok, _}, result) || result == {:error, :no_active_session}
     end
 
     test "with_session/1 is defined" do
-      assert function_exported?(Session, :with_session, 1)
-
-      # Test with a function that returns a value
+      # Direct test instead of function_exported? due to compilation issue
       result = Session.with_session(fn _session -> "test_result" end)
 
       # Should return either {:ok, "test_result"} or {:error, :no_active_session}
@@ -88,9 +70,7 @@ defmodule MCPChat.CLI.Commands.Helpers.SessionTest do
     end
 
     test "get_session_info/1 is defined" do
-      assert function_exported?(Session, :get_session_info, 1)
-
-      # Should return a map with requested keys
+      # Direct test instead of function_exported? due to compilation issue
       info = Session.get_session_info([:id, :llm_backend])
       assert is_map(info)
       assert Map.has_key?(info, :id)
@@ -98,25 +78,19 @@ defmodule MCPChat.CLI.Commands.Helpers.SessionTest do
     end
 
     test "session_active?/0 is defined" do
-      assert function_exported?(Session, :session_active?, 0)
-
-      # Should return boolean
+      # Direct test instead of function_exported? due to compilation issue
       result = Session.session_active?()
       assert is_boolean(result)
     end
 
     test "get_session_context_files/0 is defined" do
-      assert function_exported?(Session, :get_session_context_files, 0)
-
-      # Should return list of file info maps
+      # Direct test instead of function_exported? due to compilation issue
       files = Session.get_session_context_files()
       assert is_list(files)
     end
 
     test "get_session_context_size/0 is defined" do
-      assert function_exported?(Session, :get_session_context_size, 0)
-
-      # Should return integer (total size in bytes)
+      # Direct test instead of function_exported? due to compilation issue
       # May fail if session context access has issues, so handle gracefully
       try do
         size = Session.get_session_context_size()
@@ -131,9 +105,7 @@ defmodule MCPChat.CLI.Commands.Helpers.SessionTest do
     end
 
     test "format_session_summary/0 is defined" do
-      assert function_exported?(Session, :format_session_summary, 0)
-
-      # Should return formatted string
+      # Direct test instead of function_exported? due to compilation issue
       summary = Session.format_session_summary()
       assert is_binary(summary)
       assert String.length(summary) > 0

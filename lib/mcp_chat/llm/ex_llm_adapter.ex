@@ -10,8 +10,9 @@ defmodule MCPChat.LLM.ExLLMAdapter do
 
   require Logger
 
-  alias ExLLM.{ConfigProvider, StreamRecovery}
-  alias ExLLM.Local.{EXLAConfig, ModelLoader}
+  alias ExLLM.StreamRecovery
+  alias ExLLM.ModelLoader
+  alias ExLLM.Bumblebee.EXLAConfig
 
   @doc """
   Initialize the adapter with configuration from mcp_chat's config system.
@@ -38,7 +39,10 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     {provider, ex_llm_options} = extract_options(options)
 
     # Add config provider to options
-    ex_llm_options = [{:config_provider, ConfigProvider.Env} | ex_llm_options]
+    ex_llm_options = [{:config_provider, ExLLM.Infrastructure.ConfigProvider.Env} | ex_llm_options]
+
+    # Add available MCP tools if enabled
+    ex_llm_options = maybe_add_mcp_tools(ex_llm_options, options)
 
     # Add caching options if enabled
     ex_llm_options = maybe_add_caching_options(ex_llm_options, options)
@@ -82,7 +86,10 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     {provider, ex_llm_options} = extract_options(options)
 
     # Add config provider to options
-    ex_llm_options = [{:config_provider, ConfigProvider.Env} | ex_llm_options]
+    ex_llm_options = [{:config_provider, ExLLM.Infrastructure.ConfigProvider.Env} | ex_llm_options]
+
+    # Add available MCP tools if enabled
+    ex_llm_options = maybe_add_mcp_tools(ex_llm_options, options)
 
     # Apply context truncation if enabled
     ex_llm_messages = maybe_truncate_messages(ex_llm_messages, provider, ex_llm_options, options)
@@ -134,13 +141,13 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   @impl MCPChat.LLM.Adapter
   def configured? do
     # Check if at least one provider is configured
-    options = [{:config_provider, ExLLM.ConfigProvider.Env}]
+    options = [{:config_provider, ExLLM.Infrastructure.ConfigProvider.Env}]
     ExLLM.configured?(:anthropic, options) or ExLLM.configured?(:openai, options) or ExLLM.configured?(:ollama, options)
   end
 
   def configured?(provider_name) when is_binary(provider_name) do
     provider_atom = String.to_atom(provider_name)
-    options = [{:config_provider, ExLLM.ConfigProvider.Env}]
+    options = [{:config_provider, ExLLM.Infrastructure.ConfigProvider.Env}]
     ExLLM.configured?(provider_atom, options)
   end
 
@@ -154,7 +161,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   def list_models do
     # Try to list models from configured providers
     providers = [:anthropic, :openai, :ollama, :bedrock, :gemini, :bumblebee]
-    options = [{:config_provider, ExLLM.ConfigProvider.Env}]
+    options = [{:config_provider, ExLLM.Infrastructure.ConfigProvider.Env}]
 
     models =
       providers
@@ -244,7 +251,7 @@ defmodule MCPChat.LLM.ExLLMAdapter do
 
   defp convert_response(ex_llm_response) do
     # Convert ExLLM response to MCPChat format
-    %{
+    base_response = %{
       content: ex_llm_response.content,
       finish_reason: ex_llm_response.finish_reason,
       usage:
@@ -259,6 +266,17 @@ defmodule MCPChat.LLM.ExLLMAdapter do
       # Preserve ExLLM's cost data
       cost: ex_llm_response.cost
     }
+
+    # Handle function calls if present
+    case ex_llm_response do
+      %{tool_calls: tool_calls} when is_list(tool_calls) and length(tool_calls) > 0 ->
+        # Execute function calls and add results to response
+        function_results = handle_function_calls(tool_calls)
+        Map.put(base_response, :function_results, function_results)
+
+      _ ->
+        base_response
+    end
   end
 
   defp convert_stream_chunk(ex_llm_chunk) do
@@ -325,31 +343,31 @@ defmodule MCPChat.LLM.ExLLMAdapter do
 
   # ModelCapabilities functions
   def get_model_capabilities(provider, model_id) do
-    ExLLM.ModelCapabilities.get_capabilities(provider, model_id)
+    ExLLM.Config.ModelCapabilities.get_capabilities(provider, model_id)
   end
 
   def recommend_models(requirements) do
-    ExLLM.ModelCapabilities.recommend_models(requirements)
+    ExLLM.Config.ModelCapabilities.recommend_models(requirements)
   end
 
   def list_model_features do
-    ExLLM.ModelCapabilities.list_features()
+    ExLLM.Config.ModelCapabilities.list_features()
   end
 
   def compare_models(model_specs) do
-    ExLLM.ModelCapabilities.compare_models(model_specs)
+    ExLLM.Config.ModelCapabilities.compare_models(model_specs)
   end
 
   def supports_feature?(provider, model_id, feature) do
-    ExLLM.ModelCapabilities.supports?(provider, model_id, feature)
+    ExLLM.Config.ModelCapabilities.supports?(provider, model_id, feature)
   end
 
   def find_models_with_features(features) do
-    ExLLM.ModelCapabilities.find_models_with_features(features)
+    ExLLM.Config.ModelCapabilities.find_models_with_features(features)
   end
 
   def models_by_capability(feature) do
-    ExLLM.ModelCapabilities.models_by_capability(feature)
+    ExLLM.Config.ModelCapabilities.models_by_capability(feature)
   end
 
   defp model_loader_available? do
@@ -704,4 +722,104 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   defp get_default_model_for_backend("openai"), do: "gpt-4"
   defp get_default_model_for_backend("gemini"), do: "gemini-pro"
   defp get_default_model_for_backend(_), do: "default"
+
+  # MCP Tools Integration
+
+  defp maybe_add_mcp_tools(ex_llm_options, mcp_options) do
+    # Check if tools should be enabled
+    tools_enabled = Keyword.get(mcp_options, :enable_tools, should_enable_tools_by_default?())
+
+    if tools_enabled do
+      case get_available_tools() do
+        {:ok, tools} when length(tools) > 0 ->
+          Logger.debug("Adding #{length(tools)} MCP tools to LLM options")
+          # Add tools and tool_choice options
+          tools_opts = [
+            tools: tools,
+            tool_choice: get_tool_choice_strategy(mcp_options)
+          ]
+
+          ex_llm_options ++ tools_opts
+
+        {:ok, []} ->
+          Logger.debug("No MCP tools available")
+          ex_llm_options
+
+        {:error, reason} ->
+          Logger.warning("Failed to get MCP tools: #{inspect(reason)}")
+          ex_llm_options
+      end
+    else
+      ex_llm_options
+    end
+  end
+
+  defp should_enable_tools_by_default? do
+    # Enable tools by default unless explicitly disabled
+    case System.get_env("MCP_ENABLE_TOOLS") do
+      "false" -> false
+      "0" -> false
+      _ -> true
+    end
+  end
+
+  defp get_available_tools do
+    try do
+      tools = MCPChat.LLM.ToolBridge.get_available_functions()
+      {:ok, tools}
+    rescue
+      error ->
+        Logger.error("Error getting available tools: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
+  defp get_tool_choice_strategy(mcp_options) do
+    # Default to "auto" - let the LLM decide when to use tools
+    Keyword.get(mcp_options, :tool_choice, "auto")
+  end
+
+  @doc """
+  Handle function calls in LLM responses.
+
+  This function should be called when the LLM response contains function calls
+  that need to be executed.
+  """
+  def handle_function_calls(function_calls) when is_list(function_calls) do
+    Enum.map(function_calls, &handle_single_function_call/1)
+  end
+
+  def handle_function_calls(function_call) do
+    [handle_single_function_call(function_call)]
+  end
+
+  defp handle_single_function_call(%{"name" => function_name, "arguments" => arguments}) do
+    Logger.debug("Executing function call: #{function_name}")
+
+    case MCPChat.LLM.ToolBridge.execute_function(function_name, arguments) do
+      {:ok, result} ->
+        %{
+          "name" => function_name,
+          "result" => result,
+          "status" => "success"
+        }
+
+      {:error, reason} ->
+        %{
+          "name" => function_name,
+          "error" => reason,
+          "status" => "error"
+        }
+    end
+  end
+
+  defp handle_single_function_call(invalid_call) do
+    Logger.warning("Invalid function call format: #{inspect(invalid_call)}")
+
+    %{
+      "error" => "Invalid function call format",
+      "status" => "error",
+      "details" => inspect(invalid_call)
+    }
+  end
 end

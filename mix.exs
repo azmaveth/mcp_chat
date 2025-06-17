@@ -65,6 +65,9 @@ defmodule McpChat.MixProject do
       # Configuration
       {:toml, "~> 0.7"},
 
+      # PubSub for real-time events
+      {:phoenix_pubsub, "~> 2.1"},
+
       # Development dependencies
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},

@@ -27,13 +27,22 @@ defmodule MCPChat.ApplicationTest do
       assert Process.alive?(pid)
 
       # Give processes time to start
-      Process.sleep(200)
+      Process.sleep(500)
 
       # Verify core children are started
       assert Process.whereis(MCPChat.Config) != nil
-      assert Process.whereis(MCPChat.Session) != nil
+      assert Process.whereis(MCPChat.PubSub) != nil
+
+      # Verify agent architecture components
+      assert Process.whereis(MCPChat.Agents.AgentSupervisor) != nil
+      assert Process.whereis(MCPChat.Agents.SessionManager) != nil
+      assert Process.whereis(MCPChat.Agents.AgentPool) != nil
+
+      # Verify MCP components (ExAlias needs to start before ExAliasAdapter)
+      assert Process.whereis(ExAlias) != nil
+      # ExAliasAdapter may need more time to start
+      Process.sleep(200)
       assert Process.whereis(ExAliasAdapter) != nil
-      assert Process.whereis(ServerManager) != nil
 
       # Clean up
       Supervisor.stop(pid)
@@ -42,28 +51,28 @@ defmodule MCPChat.ApplicationTest do
     test "supervisor restarts crashed children" do
       # Start the application
       {:ok, sup_pid} = MCPChat.Application.start(:normal, [])
-      Process.sleep(200)
+      Process.sleep(500)
 
-      # Get the Session process
-      session_pid = Process.whereis(MCPChat.Session)
-      assert session_pid != nil
+      # Get the AgentSupervisor process (more critical than the legacy Session)
+      agent_supervisor_pid = Process.whereis(MCPChat.Agents.AgentSupervisor)
+      assert agent_supervisor_pid != nil
 
       # Monitor the process
-      ref = Process.monitor(session_pid)
+      ref = Process.monitor(agent_supervisor_pid)
 
       # Kill the process
-      Process.exit(session_pid, :kill)
+      Process.exit(agent_supervisor_pid, :kill)
 
       # Wait for the DOWN message
-      assert_receive {:DOWN, ^ref, :process, ^session_pid, :killed}, 1_000
+      assert_receive {:DOWN, ^ref, :process, ^agent_supervisor_pid, :killed}, 1_000
 
       # Give supervisor time to restart
       Process.sleep(100)
 
       # Verify it was restarted with a new PID
-      new_session_pid = Process.whereis(MCPChat.Session)
-      assert new_session_pid != nil
-      assert new_session_pid != session_pid
+      new_agent_supervisor_pid = Process.whereis(MCPChat.Agents.AgentSupervisor)
+      assert new_agent_supervisor_pid != nil
+      assert new_agent_supervisor_pid != agent_supervisor_pid
 
       # Clean up
       Supervisor.stop(sup_pid)
@@ -76,20 +85,20 @@ defmodule MCPChat.ApplicationTest do
 
       # Get PIDs of multiple children
       config_pid = Process.whereis(MCPChat.Config)
-      session_pid = Process.whereis(MCPChat.Session)
+      session_manager_pid = Process.whereis(MCPChat.Agents.SessionManager)
       alias_pid = Process.whereis(ExAliasAdapter)
 
       assert config_pid != nil
-      assert session_pid != nil
+      assert session_manager_pid != nil
       assert alias_pid != nil
 
       # Kill one child
-      Process.exit(session_pid, :kill)
+      Process.exit(session_manager_pid, :kill)
       Process.sleep(100)
 
       # Verify only the killed child was restarted
       assert Process.whereis(MCPChat.Config) == config_pid
-      assert Process.whereis(MCPChat.Session) != session_pid
+      assert Process.whereis(MCPChat.Agents.SessionManager) != session_manager_pid
       assert Process.whereis(ExAliasAdapter) == alias_pid
 
       # Clean up
@@ -117,7 +126,7 @@ defmodule MCPChat.ApplicationTest do
 
       # Verify core children are present
       assert MCPChat.Config in child_ids
-      assert MCPChat.Session in child_ids
+      assert MCPChat.Agents.AgentSupervisor in child_ids
       assert ExAliasAdapter in child_ids
       assert ServerManager in child_ids
 
@@ -272,7 +281,7 @@ defmodule MCPChat.ApplicationTest do
     # Stop individual processes if still running
     processes = [
       MCPChat.Config,
-      MCPChat.Session,
+      MCPChat.Agents.AgentSupervisor,
       ExAliasAdapter,
       ServerManager,
       StdioServer,

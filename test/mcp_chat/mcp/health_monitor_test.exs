@@ -5,8 +5,9 @@ defmodule MCPChat.MCP.HealthMonitorTest do
   alias ServerManager
 
   alias MCPChat.MCP.HealthMonitorTest
-  alias ServerManager.Server
-  alias ServerWrapper
+  alias MCPChat.MCP.ServerManager
+  alias MCPChat.MCP.ServerManager.Server
+  alias MCPChat.MCP.ServerWrapper
   # Import test helpers
   import ExUnit.CaptureLog
 

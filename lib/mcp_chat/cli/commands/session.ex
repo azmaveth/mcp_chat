@@ -12,7 +12,7 @@ defmodule MCPChat.CLI.Commands.Session do
   use MCPChat.CLI.Commands.Base
 
   alias MCPChat.CLI.Renderer
-  alias MCPChat.{Persistence, Session}
+  alias MCPChat.{Persistence, Gateway}
 
   @impl true
   def commands do
@@ -53,19 +53,43 @@ defmodule MCPChat.CLI.Commands.Session do
   # Command implementations
 
   defp new_conversation do
-    Session.clear_session()
-    show_success("Started new conversation")
+    # Get current session and destroy it, then create a new one
+    case get_current_session_id() do
+      {:ok, session_id} ->
+        Gateway.destroy_session(session_id)
+
+      _ ->
+        :ok
+    end
+
+    # Create new session
+    user_id = "cli_user_#{System.unique_integer([:positive])}"
+    backend = MCPChat.Config.get(:llm, %{})[:default_backend] || "anthropic"
+
+    case Gateway.create_session(user_id, backend: backend, source: :cli) do
+      {:ok, _session_id} ->
+        show_success("Started new conversation")
+
+      {:error, reason} ->
+        show_error("Failed to start new conversation: #{inspect(reason)}")
+    end
   end
 
   defp save_session(args) do
     session_name = parse_args(args)
 
-    case Persistence.save_session(Session.get_current_session(), session_name) do
-      {:ok, path} ->
-        show_success("Session saved to: #{path}")
+    case get_current_session_with_state() do
+      {:ok, session} ->
+        case Persistence.save_session(session, session_name) do
+          {:ok, path} ->
+            show_success("Session saved to: #{path}")
+
+          {:error, reason} ->
+            show_error("Failed to save session: #{reason}")
+        end
 
       {:error, reason} ->
-        show_error("Failed to save session: #{reason}")
+        show_error("Failed to get session: #{inspect(reason)}")
     end
   end
 
@@ -73,7 +97,10 @@ defmodule MCPChat.CLI.Commands.Session do
     with {:ok, args} <- require_arg(args, "/load <name|id>"),
          session_identifier <- parse_args(args),
          {:ok, session} <- Persistence.load_session(session_identifier) do
-      Session.set_current_session(session)
+      # For loading a session, we need to destroy current and create new with loaded data
+      # This is a more complex operation that needs agent support
+      # For now, just display the loaded session info
+      show_info("Note: Session loading into active state not yet implemented")
       display_loaded_session_info(session)
       display_session_metadata(session)
       display_last_message_preview(session)
@@ -160,16 +187,21 @@ defmodule MCPChat.CLI.Commands.Session do
   end
 
   defp show_history do
-    session = Session.get_current_session()
+    case get_current_session_with_state() do
+      {:ok, session} ->
+        if Enum.empty?(session.messages) do
+          show_info("No messages in history")
+        else
+          Renderer.show_text("## Conversation History\n")
+          Enum.each(session.messages, &show_message/1)
+        end
 
-    if Enum.empty?(session.messages) do
-      show_info("No messages in history")
-    else
-      Renderer.show_text("## Conversation History\n")
-      Enum.each(session.messages, &show_message/1)
+        :ok
+
+      {:error, reason} ->
+        show_error("Failed to get session: #{inspect(reason)}")
+        :ok
     end
-
-    :ok
   end
 
   defp show_message(msg) do
@@ -213,6 +245,25 @@ defmodule MCPChat.CLI.Commands.Session do
   end
 
   # Helper functions - Note: format_time_ago and format_bytes now come from Display helper
+
+  defp get_current_session_id do
+    # In a command context, we need to get the session ID from somewhere
+    # For now, we'll get the first active session
+    case Gateway.list_active_sessions() do
+      [session_id | _] -> {:ok, session_id}
+      [] -> {:error, :no_active_session}
+    end
+  end
+
+  defp get_current_session_with_state do
+    case get_current_session_id() do
+      {:ok, session_id} ->
+        Gateway.get_session_state(session_id)
+
+      error ->
+        error
+    end
+  end
 
   defp extract_session_name(filename) do
     # Extract custom name from filename like "my-session_id.json"

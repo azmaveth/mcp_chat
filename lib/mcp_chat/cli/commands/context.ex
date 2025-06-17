@@ -13,7 +13,7 @@ defmodule MCPChat.CLI.Commands.Context do
 
   alias MCPChat.CLI.Renderer
   alias MCPChat.Context.AsyncFileLoader
-  alias MCPChat.{Context, Session}
+  alias MCPChat.{Context, Gateway}
 
   @impl true
   def commands do
@@ -165,7 +165,8 @@ defmodule MCPChat.CLI.Commands.Context do
 
       _ ->
         prompt = parse_args(args)
-        Session.set_system_prompt(prompt)
+        # TODO: Implement set_system_prompt with Gateway API
+        show_error("System prompt setting not yet implemented with Gateway API")
 
         # Calculate token count
         tokens = Context.estimate_tokens(prompt)
@@ -183,19 +184,12 @@ defmodule MCPChat.CLI.Commands.Context do
         show_error("Max tokens must be at least 100")
         :ok
       else
-        Session.update_session(%{context: %{max_tokens: tokens}})
+        # TODO: Implement session context update with Gateway API
+        show_error("Max tokens setting not yet implemented with Gateway API")
         show_success("Max tokens set to: #{tokens}")
 
-        # Show updated context stats
-        session = Session.get_current_session()
-        stats = Context.get_context_stats(session.messages, tokens)
-
-        if stats.estimated_tokens > tokens do
-          show_warning(
-            "Current context (#{stats.estimated_tokens} tokens) exceeds new limit. " <>
-              "Messages will be truncated on next request."
-          )
-        end
+        # Show updated context stats would go here
+        # TODO: Re-enable when Gateway supports context updates
 
         :ok
       end
@@ -216,10 +210,7 @@ defmodule MCPChat.CLI.Commands.Context do
     case args do
       [] ->
         # Show current strategy
-        session = Session.get_current_session()
-        current = session.context[:truncation_strategy] || "sliding_window"
-
-        show_info("Current strategy: #{current}")
+        show_error("Truncation strategy display not yet implemented with Gateway API")
         show_info("Available strategies: #{Enum.join(strategies, ", ")}")
         :ok
 
@@ -230,7 +221,8 @@ defmodule MCPChat.CLI.Commands.Context do
 
   defp set_truncation_strategy_value(strategy, strategies) do
     if strategy in strategies do
-      Session.update_session(%{context: %{truncation_strategy: strategy}})
+      # TODO: Implement truncation strategy update with Gateway API
+      show_error("Truncation strategy setting not yet implemented with Gateway API")
       show_success("Truncation strategy set to: #{strategy}")
       show_strategy_description(strategy)
       :ok
@@ -285,31 +277,10 @@ defmodule MCPChat.CLI.Commands.Context do
   end
 
   defp store_file_in_context(file_path, content) do
-    # Get current session
-    session = Session.get_current_session()
-
-    # Get or initialize context files map
-    context_files = session.context[:files] || %{}
-
-    # Add file to context with metadata
+    # TODO: Implement file context storage with Gateway API
     file_name = Path.basename(file_path)
-
-    file_info = %{
-      path: file_path,
-      name: file_name,
-      content: content,
-      size: byte_size(content),
-      added_at: DateTime.utc_now()
-    }
-
-    # Update context files
-    updated_files = Map.put(context_files, file_name, file_info)
-    updated_context = Map.put(session.context, :files, updated_files)
-
-    # Update session
-    Session.update_session(%{context: updated_context})
-
-    show_success("Added #{file_name} to context (#{format_bytes(file_info.size)})")
+    show_error("Adding files to context not yet implemented with Gateway API")
+    show_info("Would add: #{file_name} (#{format_bytes(byte_size(content))})")
   end
 
   defp remove_file_from_context(args) do
@@ -318,60 +289,20 @@ defmodule MCPChat.CLI.Commands.Context do
         show_error("Usage: /context rm <file_name>")
 
       [file_name | _] ->
-        session = Session.get_current_session()
-        context_files = session.context[:files] || %{}
-
-        if Map.has_key?(context_files, file_name) do
-          updated_files = Map.delete(context_files, file_name)
-          updated_context = Map.put(session.context, :files, updated_files)
-          Session.update_session(%{context: updated_context})
-          show_success("Removed #{file_name} from context")
-        else
-          show_error("File not found in context: #{file_name}")
-          list_context_files()
-        end
+        # TODO: Implement file context removal with Gateway API
+        show_error("Removing files from context not yet implemented with Gateway API")
+        show_info("Would remove: #{file_name}")
     end
   end
 
   defp list_context_files do
-    session = Session.get_current_session()
-    context_files = session.context[:files] || %{}
-
-    if map_size(context_files) == 0 do
-      show_info("No files in context")
-    else
-      show_info("Files in context:")
-
-      context_files
-      |> Enum.sort_by(fn {_, file_info} -> file_info.added_at end)
-      |> Enum.each(fn {_name, file_info} ->
-        time_ago = format_time_ago(file_info.added_at)
-        IO.puts("  • #{file_info.name} (#{format_bytes(file_info.size)}, added #{time_ago})")
-        IO.puts("    #{file_info.path}")
-      end)
-
-      # Show total size
-      total_size =
-        context_files
-        |> Enum.map(fn {_, file_info} -> file_info.size end)
-        |> Enum.sum()
-
-      IO.puts("\nTotal: #{map_size(context_files)} files, #{format_bytes(total_size)}")
-    end
+    # TODO: Implement context file listing with Gateway API
+    show_error("Context file listing not yet implemented with Gateway API")
   end
 
   defp clear_context_files do
-    session = Session.get_current_session()
-    context_files = session.context[:files] || %{}
-
-    if map_size(context_files) == 0 do
-      show_info("No files to clear")
-    else
-      count = map_size(context_files)
-      updated_context = Map.put(session.context, :files, %{})
-      Session.update_session(%{context: updated_context})
-      show_success("Cleared #{count} files from context")
-    end
+    # TODO: Implement context clear with Gateway API
+    show_error("Clearing context not yet implemented with Gateway API")
   end
 
   defp add_file_to_context_async(args) do
@@ -524,5 +455,24 @@ defmodule MCPChat.CLI.Commands.Context do
     end
   end
 
-  # Helper functions - Note: format_bytes and format_time_ago now come from Display helper
+  # Helper functions
+
+  defp get_current_session_with_state do
+    case get_current_session_id() do
+      {:ok, session_id} ->
+        Gateway.get_session_state(session_id)
+
+      error ->
+        error
+    end
+  end
+
+  defp get_current_session_id do
+    case Gateway.list_active_sessions() do
+      [session_id | _] -> {:ok, session_id}
+      [] -> {:error, :no_active_session}
+    end
+  end
+
+  # Note: format_bytes and format_time_ago now come from Display helper
 end

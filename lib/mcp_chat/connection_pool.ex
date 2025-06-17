@@ -158,6 +158,18 @@ defmodule MCPChat.ConnectionPool do
     end
   end
 
+  def handle_call(:get_stats, _from, state) do
+    stats = %{
+      total: map_size(state.connections),
+      available: :queue.len(state.available),
+      in_use: MapSet.size(state.in_use),
+      waiting: :queue.len(state.waiting),
+      healthy: count_healthy_connections(state)
+    }
+
+    {:reply, stats, state}
+  end
+
   defp handle_no_available_connections(from, state) do
     if can_create_new_connection?(state) do
       attempt_new_connection(from, state)
@@ -192,18 +204,6 @@ defmodule MCPChat.ConnectionPool do
   defp queue_checkout_request(from, state) do
     new_waiting = :queue.in(from, state.waiting)
     {:noreply, %{state | waiting: new_waiting}}
-  end
-
-  def handle_call(:get_stats, _from, state) do
-    stats = %{
-      total: map_size(state.connections),
-      available: :queue.len(state.available),
-      in_use: MapSet.size(state.in_use),
-      waiting: :queue.len(state.waiting),
-      healthy: count_healthy_connections(state)
-    }
-
-    {:reply, stats, state}
   end
 
   @impl true

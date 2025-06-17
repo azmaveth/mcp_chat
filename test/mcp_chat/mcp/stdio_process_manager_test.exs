@@ -1,6 +1,6 @@
 defmodule StdioProcessManagerTest do
   use ExUnit.Case, async: true
-  alias StdioProcessManager
+  alias MCPChat.MCP.StdioProcessManager
 
   @moduletag :integration
 
