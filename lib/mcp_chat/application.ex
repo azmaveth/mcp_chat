@@ -35,6 +35,9 @@ defmodule MCPChat.Application do
         MCPChat.Config,
         # PubSub for real-time events (needed by agent architecture)
         {Phoenix.PubSub, name: MCPChat.PubSub},
+        # Security system for capability-based access control
+        MCPChat.Security.AuditLogger,
+        MCPChat.Security.SecurityKernel,
         # MCP Health monitoring
         HealthMonitor,
         # ExLLM circuit breaker is auto-initialized

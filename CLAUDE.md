@@ -61,6 +61,7 @@ MCP Chat is an Elixir OTP application using extracted libraries for modularity:
 - `MCPChat.Agents.*` - Agent-based architecture with specialized agents (LLM, MCP, Analysis, Export)
 - `MCPChat.CLI.Chat` - Main interactive chat loop
 - `MCPChat.CLI.Commands.*` - Refactored command modules (session, utility, llm, mcp, context, alias)
+- `MCPChat.Security.*` - Capability-based security system for production-ready AI agent orchestration
 
 ### Extracted Libraries (Path Dependencies)
 - `ex_mcp` - Model Context Protocol implementation (stdio, SSE transports)
