@@ -11,7 +11,7 @@ defmodule MCPChat.Security.MetricsCollector do
 
   # Metrics collection interval (30 seconds)
   @collection_interval 30_000
-  
+
   # Metrics retention (24 hours)
   @metrics_retention_ms 24 * 60 * 60 * 1000
 
@@ -68,12 +68,13 @@ defmodule MCPChat.Security.MetricsCollector do
 
   def init(opts) do
     # Create ETS table for metrics storage
-    table = :ets.new(:security_metrics, [
-      :set, 
-      :public, 
-      :named_table, 
-      {:read_concurrency, true}
-    ])
+    table =
+      :ets.new(:security_metrics, [
+        :set,
+        :public,
+        :named_table,
+        {:read_concurrency, true}
+      ])
 
     # Schedule first collection
     timer = Process.send_after(self(), :collect_metrics, 1000)
@@ -107,7 +108,7 @@ defmodule MCPChat.Security.MetricsCollector do
   def handle_cast({:record_event, event_type, metadata}, state) do
     timestamp = System.system_time(:millisecond)
     event_key = {:event, event_type, timestamp}
-    
+
     :ets.insert(state.metrics_table, {event_key, metadata})
     {:noreply, state}
   end
@@ -127,10 +128,7 @@ defmodule MCPChat.Security.MetricsCollector do
     # Schedule next collection
     timer = Process.send_after(self(), :collect_metrics, @collection_interval)
 
-    new_state = %{state | 
-      collection_timer: timer,
-      collection_count: state.collection_count + 1
-    }
+    new_state = %{state | collection_timer: timer, collection_count: state.collection_count + 1}
 
     {:noreply, new_state}
   end
@@ -188,10 +186,10 @@ defmodule MCPChat.Security.MetricsCollector do
   defp collect_security_kernel_metrics do
     try do
       kernel_pid = Process.whereis(MCPChat.Security.SecurityKernel)
-      
+
       if kernel_pid do
         info = Process.info(kernel_pid, [:memory, :message_queue_len, :reductions])
-        
+
         %{
           status: :running,
           memory_bytes: Keyword.get(info, :memory, 0),
@@ -282,7 +280,7 @@ defmodule MCPChat.Security.MetricsCollector do
   defp collect_agent_metrics do
     try do
       agent_registry = Process.whereis(MCPChat.Agents.AgentRegistry)
-      
+
       if agent_registry do
         case GenServer.call(agent_registry, :get_metrics, 5000) do
           {:ok, metrics} ->
@@ -316,7 +314,7 @@ defmodule MCPChat.Security.MetricsCollector do
   defp collect_and_store_metrics(state) do
     timestamp = System.system_time(:millisecond)
     metrics = collect_current_metrics_data()
-    
+
     # Store in ETS table
     :ets.insert(state.metrics_table, {{:snapshot, timestamp}, metrics})
 
@@ -329,35 +327,37 @@ defmodule MCPChat.Security.MetricsCollector do
 
   defp cleanup_old_metrics(table) do
     cutoff_time = System.system_time(:millisecond) - @metrics_retention_ms
-    
+
     # Find and delete old entries
     patterns = [
       {{:snapshot, :"$1"}, :_, [{"=<", :"$1", cutoff_time}], [true]},
       {{:event, :_, :"$1"}, :_, [{"=<", :"$1", cutoff_time}], [true]}
     ]
-    
+
     Enum.each(patterns, fn pattern ->
       :ets.select_delete(table, [pattern])
     end)
   end
 
   defp get_metrics_in_range(table, from_time, to_time) do
-    pattern = {{:snapshot, :"$1"}, :"$2", [
-      {">=", :"$1", from_time},
-      {"=<", :"$1", to_time}
-    ], [%{timestamp: :"$1", data: :"$2"}]}
-    
+    pattern =
+      {{:snapshot, :"$1"}, :"$2",
+       [
+         {">=", :"$1", from_time},
+         {"=<", :"$1", to_time}
+       ], [%{timestamp: :"$1", data: :"$2"}]}
+
     :ets.select(table, [pattern])
     |> Enum.sort_by(& &1.timestamp)
   end
 
   defp build_dashboard_metrics(state) do
     current = collect_current_metrics_data()
-    
+
     # Get last hour of data for trends
-    one_hour_ago = System.system_time(:millisecond) - (60 * 60 * 1000)
+    one_hour_ago = System.system_time(:millisecond) - 60 * 60 * 1000
     historical = get_metrics_in_range(state.metrics_table, one_hour_ago, current.timestamp)
-    
+
     %{
       overview: %{
         uptime_ms: current.timestamp - state.start_time,
@@ -384,24 +384,26 @@ defmodule MCPChat.Security.MetricsCollector do
   end
 
   defp calculate_capability_trend(data) do
-    counts = Enum.map(data, fn %{data: d} -> 
-      get_in(d, [:capabilities, :active_count]) || 0 
-    end)
-    
+    counts =
+      Enum.map(data, fn %{data: d} ->
+        get_in(d, [:capabilities, :active_count]) || 0
+      end)
+
     if length(counts) >= 2 do
       first = List.first(counts)
       last = List.last(counts)
-      %{change: last - first, change_percent: ((last - first) / max(first, 1)) * 100}
+      %{change: last - first, change_percent: (last - first) / max(first, 1) * 100}
     else
       %{change: 0, change_percent: 0}
     end
   end
 
   defp calculate_violation_trend(data) do
-    counts = Enum.map(data, fn %{data: d} -> 
-      get_in(d, [:violations, :recent_violations_1h]) || 0 
-    end)
-    
+    counts =
+      Enum.map(data, fn %{data: d} ->
+        get_in(d, [:violations, :recent_violations_1h]) || 0
+      end)
+
     if length(counts) >= 2 do
       first = List.first(counts)
       last = List.last(counts)
@@ -412,10 +414,11 @@ defmodule MCPChat.Security.MetricsCollector do
   end
 
   defp calculate_performance_trend(data) do
-    validation_times = Enum.map(data, fn %{data: d} ->
-      get_in(d, [:performance, :security, :avg_validation_time_ms]) || 0
-    end)
-    
+    validation_times =
+      Enum.map(data, fn %{data: d} ->
+        get_in(d, [:performance, :security, :avg_validation_time_ms]) || 0
+      end)
+
     if length(validation_times) >= 2 do
       avg_time = Enum.sum(validation_times) / length(validation_times)
       %{avg_validation_time_ms: avg_time, trend: :stable}
@@ -428,37 +431,46 @@ defmodule MCPChat.Security.MetricsCollector do
     alerts = []
 
     # Check for high violation rate
-    alerts = 
+    alerts =
       if get_in(current_metrics, [:violations, :recent_violations_1h]) > 100 do
-        [%{
-          type: :high_violation_rate,
-          severity: :warning,
-          message: "High violation rate detected in the last hour"
-        } | alerts]
+        [
+          %{
+            type: :high_violation_rate,
+            severity: :warning,
+            message: "High violation rate detected in the last hour"
+          }
+          | alerts
+        ]
       else
         alerts
       end
 
     # Check for capability exhaustion
-    alerts = 
+    alerts =
       if get_in(current_metrics, [:capabilities, :active_count]) > 10_000 do
-        [%{
-          type: :capability_exhaustion,
-          severity: :warning,
-          message: "High number of active capabilities"
-        } | alerts]
+        [
+          %{
+            type: :capability_exhaustion,
+            severity: :warning,
+            message: "High number of active capabilities"
+          }
+          | alerts
+        ]
       else
         alerts
       end
 
     # Check SecurityKernel health
-    alerts = 
+    alerts =
       if get_in(current_metrics, [:security_kernel, :status]) != :running do
-        [%{
-          type: :security_kernel_down,
-          severity: :critical,
-          message: "SecurityKernel is not running"
-        } | alerts]
+        [
+          %{
+            type: :security_kernel_down,
+            severity: :critical,
+            message: "SecurityKernel is not running"
+          }
+          | alerts
+        ]
       else
         alerts
       end
@@ -470,12 +482,13 @@ defmodule MCPChat.Security.MetricsCollector do
     scores = []
 
     # Security Kernel health (30% weight)
-    kernel_score = 
+    kernel_score =
       case get_in(metrics, [:security_kernel, :status]) do
         :running -> 100
         :stopped -> 0
         _ -> 50
       end
+
     scores = [{kernel_score, 0.3} | scores]
 
     # Violation rate (25% weight)
@@ -499,9 +512,10 @@ defmodule MCPChat.Security.MetricsCollector do
     scores = [{audit_score, 0.1} | scores]
 
     # Calculate weighted average
-    total_score = Enum.reduce(scores, 0, fn {score, weight}, acc ->
-      acc + (score * weight)
-    end)
+    total_score =
+      Enum.reduce(scores, 0, fn {score, weight}, acc ->
+        acc + score * weight
+      end)
 
     round(total_score)
   end
@@ -509,8 +523,8 @@ defmodule MCPChat.Security.MetricsCollector do
   defp log_key_metrics(metrics) do
     active_caps = get_in(metrics, [:capabilities, :active_count]) || 0
     violations = get_in(metrics, [:violations, :recent_violations_1h]) || 0
-    
-    Logger.info("Security metrics: #{active_caps} active capabilities, #{violations} violations/1h", 
+
+    Logger.info("Security metrics: #{active_caps} active capabilities, #{violations} violations/1h",
       capabilities: active_caps,
       violations_1h: violations,
       timestamp: metrics.timestamp
@@ -519,13 +533,13 @@ defmodule MCPChat.Security.MetricsCollector do
 
   defp check_and_trigger_alerts(metrics) do
     alerts = get_active_alerts(metrics)
-    
+
     Enum.each(alerts, fn alert ->
       # Send alert via PubSub
       Phoenix.PubSub.broadcast(MCPChat.PubSub, "security:alerts", {:security_alert, alert})
-      
+
       # Log alert
-      Logger.warn("Security alert: #{alert.message}", 
+      Logger.warn("Security alert: #{alert.message}",
         alert_type: alert.type,
         severity: alert.severity
       )
@@ -536,7 +550,7 @@ defmodule MCPChat.Security.MetricsCollector do
 
   defp calculate_avg_delegation_depth(stats) do
     delegations = Map.get(stats, :delegations, [])
-    
+
     if length(delegations) > 0 do
       total_depth = Enum.sum(Enum.map(delegations, &Map.get(&1, :depth, 0)))
       total_depth / length(delegations)
@@ -547,7 +561,7 @@ defmodule MCPChat.Security.MetricsCollector do
 
   defp count_by_principal(stats) do
     capabilities = Map.get(stats, :capabilities, [])
-    
+
     Enum.reduce(capabilities, %{}, fn cap, acc ->
       principal = Map.get(cap, :principal_id, "unknown")
       Map.update(acc, principal, 1, &(&1 + 1))
@@ -557,7 +571,7 @@ defmodule MCPChat.Security.MetricsCollector do
   defp count_expiring_capabilities do
     # Count capabilities expiring in the next hour
     one_hour_from_now = System.system_time(:second) + 3600
-    
+
     # This would typically query the capability store
     # For now, return a placeholder
     0
@@ -603,7 +617,9 @@ defmodule MCPChat.Security.MetricsCollector do
 
   defp get_process_uptime(pid) do
     case Process.info(pid, :dictionary) do
-      nil -> 0
+      nil ->
+        0
+
       dictionary ->
         start_time = Keyword.get(dictionary, :start_time, System.system_time(:millisecond))
         System.system_time(:millisecond) - start_time

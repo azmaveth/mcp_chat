@@ -68,6 +68,9 @@ defmodule McpChat.MixProject do
       # PubSub for real-time events
       {:phoenix_pubsub, "~> 2.1"},
 
+      # Distributed systems support
+      {:horde, "~> 0.9.0"},
+
       # Web UI dependencies
       {:phoenix, "~> 1.7.0"},
       {:phoenix_live_view, "~> 0.20.0"},

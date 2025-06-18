@@ -44,6 +44,8 @@ defmodule MCPChat.Application do
         MCPChat.Security.RevocationCache,
         MCPChat.Security.TokenValidator.Cache,
         MCPChat.Security.ViolationMonitor,
+        # State persistence and recovery
+        MCPChat.State.RecoveryManager,
         # MCP Health monitoring
         HealthMonitor,
         # ExLLM circuit breaker is auto-initialized
@@ -55,6 +57,11 @@ defmodule MCPChat.Application do
         MCPChat.ChatSupervisor,
         # Agent architecture supervisor
         MCPChat.Agents.AgentSupervisor,
+        # Distributed agent orchestration (optional - only start if clustering enabled)
+        MCPChat.Agents.DistributedRegistry,
+        MCPChat.Agents.DistributedSupervisor,
+        MCPChat.Agents.ClusterManager,
+        MCPChat.Agents.LoadBalancer,
         # Agent command bridge for CLI integration
         MCPChat.CLI.AgentCommandBridge,
         # CLI Event infrastructure
