@@ -12,6 +12,7 @@ defmodule MCPChat.CLI.Commands do
   alias MCPChat.CLI.{Commands, Renderer}
 
   alias Commands.{
+    AgentCommands,
     Alias,
     ConcurrentTools,
     Context,
@@ -19,6 +20,7 @@ defmodule MCPChat.CLI.Commands do
     MCP,
     NativeFilesystem,
     Notification,
+    PlanMode,
     Session,
     ToolTest,
     TUI,
@@ -75,7 +77,13 @@ defmodule MCPChat.CLI.Commands do
     "fs" => NativeFilesystem,
 
     # Tool testing command
-    "tooltest" => ToolTest
+    "tooltest" => ToolTest,
+
+    # Plan Mode command
+    "plan" => PlanMode,
+
+    # Agent commands
+    "agent" => AgentCommands
   }
 
   @doc """

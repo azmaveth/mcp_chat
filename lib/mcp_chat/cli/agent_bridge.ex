@@ -218,4 +218,18 @@ defmodule MCPChat.CLI.AgentBridge do
     # TODO: Implement user ID retrieval with Gateway API
     "default_user"
   end
+
+  @doc "Get available commands for a session (stub for web UI)"
+  def get_available_commands(session_id) do
+    # Return default commands for now
+    commands = [
+      %{command: "/help", description: "Show available commands"},
+      %{command: "/model list", description: "List available models"},
+      %{command: "/mcp servers", description: "List MCP servers"},
+      %{command: "/cost", description: "Show cost information"},
+      %{command: "/context list", description: "Show context files"}
+    ]
+
+    {:ok, commands}
+  end
 end

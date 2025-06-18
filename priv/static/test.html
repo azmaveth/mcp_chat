@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Chat Web Dashboard - Test Interface</title>
+    <link rel="stylesheet" href="css/app.css">
+    <style>
+        /* Additional inline styles for the test interface */
+        .test-banner {
+            background: #fbbf24;
+            color: #78350f;
+            padding: 1rem;
+            text-align: center;
+            font-weight: bold;
+        }
+        .demo-data {
+            background: #f3f4f6;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-banner">
+        ⚠️ TEST INTERFACE - This is a static demo of the MCP Chat Web UI
+    </div>
+
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="#dashboard" class="active">Dashboard</a></li>
+                <li><a href="#sessions">Sessions</a></li>
+                <li><a href="#agents">Agents</a></li>
+                <li><a href="#chat">Chat Demo</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Dashboard Section -->
+        <div id="dashboard" class="section">
+            <h1>MCP Chat Dashboard</h1>
+            
+            <div class="card">
+                <h2>System Overview</h2>
+                <div class="grid grid-4">
+                    <div class="text-center">
+                        <div style="font-size: 2rem; font-weight: bold; color: #059669;">3</div>
+                        <div>Active Sessions</div>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">2</div>
+                        <div>Running Agents</div>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size: 2rem; font-weight: bold; color: #d97706;">145</div>
+                        <div>MB Memory</div>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size: 2rem; font-weight: bold; color: #7c3aed;">2h 34m</div>
+                        <div>Uptime</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Live Agent Status</h3>
+                <div class="agent-status">
+                    <div style="display: flex; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 4px; margin-bottom: 0.5rem;">
+                        <span class="status-indicator status-active"></span>
+                        <div style="flex: 1;">
+                            <strong>LLM Agent</strong> (ID: agent_123)
+                            <div style="font-size: 0.875rem; color: #6b7280;">
+                                Processing task • Session: demo_session_1 • CPU: 23%
+                            </div>
+                        </div>
+                        <button class="btn">View Details</button>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 4px;">
+                        <span class="status-indicator status-idle"></span>
+                        <div style="flex: 1;">
+                            <strong>MCP Tool Agent</strong> (ID: agent_456)
+                            <div style="font-size: 0.875rem; color: #6b7280;">
+                                Idle • Last activity: 5 minutes ago
+                            </div>
+                        </div>
+                        <button class="btn">View Details</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Demo: CLI/Agent Detachment</h3>
+                <p>This dashboard demonstrates how agents continue running even when the CLI disconnects:</p>
+                
+                <div class="demo-data">
+                    <div>1. CLI starts agent for long-running task ✓</div>
+                    <div>2. CLI disconnects (Ctrl+C) ✓</div>
+                    <div>3. Agent continues processing <span class="status-indicator status-thinking" style="display: inline-block;"></span></div>
+                    <div>4. Progress visible in web dashboard ← You are here</div>
+                    <div>5. CLI reconnects and gets results</div>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <strong>Current Task Progress:</strong>
+                    <div style="background: #e5e7eb; border-radius: 4px; height: 20px; margin-top: 0.5rem;">
+                        <div style="background: #3b82f6; height: 100%; width: 67%; border-radius: 4px; transition: width 0.3s;"></div>
+                    </div>
+                    <div style="text-align: center; margin-top: 0.5rem; color: #6b7280;">67% Complete</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Demo Section -->
+        <div id="chat-demo" class="section" style="margin-top: 2rem;">
+            <div class="card">
+                <h2>Chat Interface Demo</h2>
+                <div class="messages-container" style="height: 300px;">
+                    <div class="chat-message user-message">
+                        <strong>User:</strong> Start analyzing the codebase
+                    </div>
+                    <div class="chat-message assistant-message">
+                        <strong>Agent:</strong> Starting codebase analysis. This will take approximately 5 minutes...
+                    </div>
+                    <div class="chat-message system-message">
+                        <em>CLI disconnected at 14:32:15</em>
+                    </div>
+                    <div class="chat-message assistant-message">
+                        <strong>Agent:</strong> Analysis continues in background. Progress: 67%
+                        <br><br>Files scanned: 1,245 / 1,856
+                        <br>Issues found: 23
+                        <br>Time remaining: ~2 minutes
+                    </div>
+                    <div class="chat-message system-message">
+                        <em>Web user connected at 14:35:42</em>
+                    </div>
+                    <div class="chat-message user-message">
+                        <strong>Web User:</strong> What's the status of the analysis?
+                    </div>
+                    <div class="chat-message assistant-message">
+                        <strong>Agent:</strong> The codebase analysis is 67% complete. I've scanned 1,245 files and found 23 potential issues so far. The analysis should complete in about 2 minutes.
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                    <input type="text" placeholder="Type a message..." style="flex: 1;">
+                    <button class="btn">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Highlights -->
+        <div class="card" style="margin-top: 2rem;">
+            <h2>Key Features Demonstrated</h2>
+            <div class="grid grid-3">
+                <div>
+                    <h4>🔄 Multi-Interface Support</h4>
+                    <p>CLI and Web can connect to the same session simultaneously with real-time sync.</p>
+                </div>
+                <div>
+                    <h4>🚀 Agent Persistence</h4>
+                    <p>Agents continue working even when all interfaces disconnect.</p>
+                </div>
+                <div>
+                    <h4>📊 Real-time Monitoring</h4>
+                    <p>Phoenix LiveView provides instant updates via WebSockets.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="card" style="margin-top: 2rem;">
+            <h2>How to Use the Full System</h2>
+            <ol>
+                <li>Start MCP Chat: <code>iex -S mix</code></li>
+                <li>Configure and start Phoenix (see START_WEB_SERVER.md)</li>
+                <li>Open http://localhost:4000 for the live dashboard</li>
+                <li>Create sessions via web or CLI</li>
+                <li>Connect multiple interfaces to the same session</li>
+                <li>Watch agents work across disconnections</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // Simple demo interactivity
+        document.addEventListener('DOMContentLoaded', function() {
+            // Simulate progress updates
+            let progress = 67;
+            setInterval(function() {
+                if (progress < 100) {
+                    progress += Math.random() * 2;
+                    if (progress > 100) progress = 100;
+                    
+                    const progressBar = document.querySelector('.demo-data + div .card div[style*="width"]');
+                    if (progressBar) {
+                        progressBar.style.width = progress + '%';
+                        document.querySelector('.demo-data + div .card div[style*="text-align"] ').textContent = 
+                            Math.floor(progress) + '% Complete';
+                    }
+                }
+            }, 2000);
+
+            // Navigation
+            document.querySelectorAll('nav a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -288,7 +288,7 @@ async def call_tool(name: str, arguments: dict):
 async def main():
     """Run the calculator server."""
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream)
+        await server.run(read_stream, write_stream, {})
 
 if __name__ == "__main__":
     asyncio.run(main())

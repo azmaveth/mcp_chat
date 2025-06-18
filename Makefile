@@ -44,7 +44,7 @@ examples:
 
 acceptance:
 	@echo "Running user acceptance tests..."
-	@./test_examples.sh
+	@elixir examples/user_acceptance_tests.exs
 
 examples-full:
 	@echo "Running full example suite..."

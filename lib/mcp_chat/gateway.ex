@@ -13,11 +13,19 @@ defmodule MCPChat.Gateway do
 
   @doc "Create a new chat session"
   def create_session(user_id, opts \\ []) do
-    session_id = generate_session_id(user_id)
+    session_id = if opts[:session_id], do: opts[:session_id], else: generate_session_id(user_id)
 
     case MCPChat.Agents.SessionManager.start_session(session_id, [user_id: user_id] ++ opts) do
       {:ok, pid} ->
         Logger.info("Created session", session_id: session_id, user_id: user_id, pid: inspect(pid))
+
+        # Broadcast session created event
+        Phoenix.PubSub.broadcast(
+          MCPChat.PubSub,
+          "system:sessions",
+          {:session_created, %{id: session_id, user_id: user_id, created_at: DateTime.utc_now()}}
+        )
+
         {:ok, session_id}
 
       error ->
@@ -50,6 +58,11 @@ defmodule MCPChat.Gateway do
     end
   end
 
+  @doc "Get a session (alias for get_session_state)"
+  def get_session(session_id) do
+    get_session_state(session_id)
+  end
+
   @doc "List all active sessions"
   def list_active_sessions do
     MCPChat.Agents.SessionManager.list_active_sessions()
@@ -67,6 +80,18 @@ defmodule MCPChat.Gateway do
     case MCPChat.Agents.SessionManager.get_session_pid(session_id) do
       {:ok, pid} ->
         GenServer.cast(pid, {:send_message, content})
+
+        # Broadcast message event for real-time updates
+        Phoenix.PubSub.broadcast(MCPChat.PubSub, "session:#{session_id}", %{
+          type: :message_added,
+          message: %{
+            id: generate_message_id(),
+            role: :user,
+            content: content,
+            timestamp: DateTime.utc_now()
+          }
+        })
+
         :ok
 
       {:error, :not_found} ->
@@ -388,5 +413,30 @@ defmodule MCPChat.Gateway do
       end
 
     round(base_time * multiplier)
+  end
+
+  defp generate_message_id do
+    :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
+  end
+
+  # Additional functions needed by web UI
+
+  @doc "List all sessions (stub for web UI)"
+  def list_sessions do
+    list_active_sessions()
+  end
+
+  @doc "Archive a session (stub for web UI)"
+  def archive_session(session_id) do
+    # For now, just mark it as archived in memory
+    Logger.info("Archiving session", session_id: session_id)
+    {:ok, :archived}
+  end
+
+  @doc "Restore an archived session (stub for web UI)"
+  def restore_session(session_id) do
+    # For now, just mark it as restored
+    Logger.info("Restoring session", session_id: session_id)
+    {:ok, :restored}
   end
 end

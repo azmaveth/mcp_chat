@@ -40,6 +40,13 @@ defmodule MCPChat.Agents.SessionManager do
     Registry.select(@registry_name, [{{:"$1", :"$2", :"$3"}, [], [:"$1"]}])
   end
 
+  @doc "List all sessions with their PIDs (for AgentSupervisor)"
+  def list_all_sessions do
+    sessions = Registry.select(@registry_name, [{{:"$1", :"$2", :"$3"}, [], [{{:"$1", :"$2"}}]}])
+    result = Enum.map(sessions, fn {session_id, pid} -> {session_id, pid} end)
+    {:ok, result}
+  end
+
   @doc "Get session count and basic stats"
   def get_session_stats do
     GenServer.call(__MODULE__, :get_session_stats)

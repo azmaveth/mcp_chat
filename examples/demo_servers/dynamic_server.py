@@ -12,8 +12,8 @@ from datetime import datetime
 
 # MCP imports
 try:
-    from mcp import Server, Tool
-    from mcp.types import TextContent, ToolResult
+    from mcp.server import Server
+    from mcp.types import Tool, TextContent
 except ImportError:
     print("Error: MCP library not installed. Run: pip install mcp", file=sys.stderr)
     sys.exit(1)

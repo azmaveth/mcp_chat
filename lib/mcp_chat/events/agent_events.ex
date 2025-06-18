@@ -252,6 +252,111 @@ defmodule MCPChat.Events.AgentEvents do
     ]
   end
 
+  # Multi-Agent Orchestration Events
+
+  defmodule AgentStarted do
+    @moduledoc "Emitted when a specialized agent starts"
+
+    defstruct [
+      :agent_id,
+      :agent_type,
+      :capabilities,
+      :started_at,
+      :pid,
+      :timestamp,
+      event_type: :agent_started
+    ]
+  end
+
+  defmodule AgentStopped do
+    @moduledoc "Emitted when a specialized agent stops"
+
+    defstruct [
+      :agent_id,
+      :agent_type,
+      :reason,
+      :uptime_ms,
+      :timestamp,
+      event_type: :agent_stopped
+    ]
+  end
+
+  defmodule TaskCompleted do
+    @moduledoc "Emitted when an agent completes a task"
+
+    defstruct [
+      :agent_id,
+      :task_id,
+      :result,
+      :duration_ms,
+      :timestamp,
+      event_type: :task_completed
+    ]
+  end
+
+  defmodule TaskFailed do
+    @moduledoc "Emitted when an agent task fails"
+
+    defstruct [
+      :agent_id,
+      :task_id,
+      :error,
+      :duration_ms,
+      :timestamp,
+      event_type: :task_failed
+    ]
+  end
+
+  defmodule WorkflowStarted do
+    @moduledoc "Emitted when a multi-agent workflow starts"
+
+    defstruct [
+      :workflow_id,
+      :steps,
+      :started_at,
+      :timestamp,
+      event_type: :workflow_started
+    ]
+  end
+
+  defmodule WorkflowCompleted do
+    @moduledoc "Emitted when a workflow completes successfully"
+
+    defstruct [
+      :workflow_id,
+      :results,
+      :duration_ms,
+      :timestamp,
+      event_type: :workflow_completed
+    ]
+  end
+
+  defmodule WorkflowFailed do
+    @moduledoc "Emitted when a workflow fails"
+
+    defstruct [
+      :workflow_id,
+      :error,
+      :step_index,
+      :duration_ms,
+      :timestamp,
+      event_type: :workflow_failed
+    ]
+  end
+
+  defmodule CollaborationStarted do
+    @moduledoc "Emitted when agent collaboration begins"
+
+    defstruct [
+      :collaboration_id,
+      :agent_ids,
+      :collaboration_spec,
+      :started_at,
+      :timestamp,
+      event_type: :collaboration_started
+    ]
+  end
+
   # System Events
 
   defmodule SystemHealthUpdate do
@@ -290,6 +395,14 @@ defmodule MCPChat.Events.AgentEvents do
       :maintenance_failed,
       :session_agent_spawned,
       :session_agent_terminated,
+      :agent_started,
+      :agent_stopped,
+      :task_completed,
+      :task_failed,
+      :workflow_started,
+      :workflow_completed,
+      :workflow_failed,
+      :collaboration_started,
       :system_health_update
     ]
   end

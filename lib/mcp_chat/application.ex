@@ -69,7 +69,9 @@ defmodule MCPChat.Application do
         MCPChat.UI.ProgressDisplay,
         MCPChat.UI.ResourceCacheDisplay,
         # Resource cache
-        MCPChat.MCP.ResourceCache
+        MCPChat.MCP.ResourceCache,
+        # Phoenix Web Interface (optional)
+        MCPChatWeb.Endpoint
       ] ++ mcp_server_children()
 
     opts = [strategy: :one_for_one, name: MCPChat.Supervisor]

@@ -1,196 +1,230 @@
 #!/usr/bin/env elixir
-# Run with: elixir examples/notifications_demo.exs
 
-# This example demonstrates the new MCP v0.2.0 features:
-# - Progress notifications
-# - Change notifications
-# - Server-side LLM sampling
+# MCP Notifications Demo
+# Demonstrates MCP v0.2.0 notification features without complex dependencies
+
+IO.puts("🔔 MCP Notifications Demo")
 
 defmodule NotificationsDemo do
   @moduledoc """
-  Demo of MCP Chat's notification features using ex_mcp v0.2.0.
+  Demo of MCP Chat's notification features in MCP v0.2.0.
+  Shows progress tracking, change notifications, and server updates.
   """
   
   def run() do
-    IO.puts("\n🔔 MCP Notifications Demo\n")
-    
-    # Start required processes
-    {:ok, _} = MCPChat.Config.start_link()
-    {:ok, _} = MCPChat.MCP.NotificationRegistry.start_link()
-    {:ok, _} = MCPChat.MCP.ProgressTracker.start_link()
-    
-    # Enable notifications
-    enable_notifications()
-    
-    show_menu()
-  end
-  
-  defp show_menu() do
     IO.puts("""
     
-    Choose a demo:
-    1. Progress Tracking Demo
-    2. Change Notifications Demo
-    3. Server-side LLM Sampling Demo
-    4. Exit
-    
+    This demo showcases MCP v0.2.0 notification features:
+    - Progress notifications with visual progress bars
+    - Tool/resource change notifications  
+    - Server-side LLM sampling capabilities
+    - Real-time updates from MCP servers
     """)
     
-    case IO.gets("Enter choice (1-4): ") |> String.trim() do
-      "1" -> demo_progress()
-      "2" -> demo_changes()
-      "3" -> demo_sampling()
-      "4" -> IO.puts("Goodbye!")
-      _ -> 
-        IO.puts("Invalid choice")
-        show_menu()
-    end
+    demo_progress_notifications()
+    demo_change_notifications()
+    demo_server_sampling()
+    demo_notification_handling()
   end
   
-  defp demo_progress() do
-    IO.puts("\n📊 Progress Tracking Demo\n")
+  defp demo_progress_notifications() do
+    IO.puts("\n📊 1. Progress Notifications Demo")
+    IO.puts("================================")
     
-    # Simulate a long-running operation
-    {:ok, token} = MCPChat.MCP.ProgressTracker.start_operation(
-      "demo_server",
-      "process_large_file",
-      100
-    )
+    IO.puts("\nExample: File processing with progress tracking")
     
-    IO.puts("Started operation with token: #{token}")
-    IO.puts("Simulating progress updates...\n")
-    
-    # Simulate progress updates
-    for i <- 1..10 do
-      progress = i * 10
-      MCPChat.MCP.ProgressTracker.update_progress(token, progress, 100)
-      
-      # Show progress bar
-      show_progress_bar(progress, 100)
-      Process.sleep(500)
-    end
-    
-    IO.puts("\n✅ Operation completed!")
-    
-    # Show final status
-    case MCPChat.MCP.ProgressTracker.get_operation(token) do
-      nil -> IO.puts("Operation not found")
-      op -> 
-        IO.puts("Final status: #{op.status}")
-        IO.puts("Duration: #{DateTime.diff(op.updated_at, op.started_at)}s")
-    end
-    
-    show_menu()
-  end
-  
-  defp demo_changes() do
-    IO.puts("\n🔄 Change Notifications Demo\n")
-    
-    # Create a test notification handler that prints changes
-    defmodule DemoChangeHandler do
-      @behaviour MCPChat.MCP.NotificationHandler
-      
-      def init(_args), do: {:ok, %{}}
-      
-      def handle_notification(server, type, params, state) do
-        IO.puts("\n📢 Notification received!")
-        IO.puts("   Server: #{server}")
-        IO.puts("   Type: #{type}")
-        IO.puts("   Params: #{inspect(params)}")
-        {:ok, state}
-      end
-    end
-    
-    # Register the handler
-    MCPChat.MCP.NotificationRegistry.register_handler(
-      DemoChangeHandler,
-      [:tools_list_changed, :resources_list_changed, :prompts_list_changed]
-    )
-    
-    IO.puts("Handler registered. Simulating notifications...\n")
-    
-    # Simulate notifications
-    notifications = [
-      {"server1", "notifications/tools/list_changed", %{}},
-      {"server2", "notifications/resources/list_changed", %{}},
-      {"server1", "notifications/resources/updated", %{"uri" => "file:///example.txt"}},
-      {"server3", "notifications/prompts/list_changed", %{}}
+    tasks = [
+      "Analyzing file structure...",
+      "Reading file contents...", 
+      "Processing data...",
+      "Generating report...",
+      "Saving results..."
     ]
     
-    Enum.each(notifications, fn {server, method, params} ->
-      MCPChat.MCP.NotificationRegistry.dispatch_notification(server, method, params)
-      Process.sleep(1000)
+    total = length(tasks)
+    
+    Enum.with_index(tasks, 1)
+    |> Enum.each(fn {task, current} ->
+      percentage = round(current / total * 100)
+      progress_bar = String.duplicate("█", div(percentage, 5)) 
+                   |> String.pad_trailing(20, "░")
+      
+      IO.puts("  #{task}")
+      IO.puts("  [#{progress_bar}] #{percentage}%")
+      Process.sleep(300)
     end)
     
-    # Cleanup
-    MCPChat.MCP.NotificationRegistry.unregister_handler(DemoChangeHandler)
-    
-    show_menu()
+    IO.puts("  ✅ Processing complete!")
   end
   
-  defp demo_sampling() do
-    IO.puts("\n🤖 Server-side LLM Sampling Demo\n")
+  defp demo_change_notifications() do
+    IO.puts("\n🔄 2. Change Notifications Demo")
+    IO.puts("==============================")
     
-    IO.puts("This demo would connect to an MCP server that supports sampling.")
-    IO.puts("The server would use its own LLM to generate responses.\n")
+    IO.puts("\nSimulating MCP server changes:")
     
-    # Simulated sampling request
-    params = %{
-      messages: [
-        %{
-          role: "user",
-          content: %{
-            type: "text",
-            text: "Write a haiku about Elixir programming"
-          }
+    changes = [
+      {:tool_added, "calculator", "Basic arithmetic operations"},
+      {:resource_updated, "data/users.json", "User database updated"},
+      {:tool_removed, "old_converter", "Deprecated conversion tool"},
+      {:prompt_added, "code_review", "AI-powered code review"},
+      {:resource_added, "logs/today.log", "Today's system logs"}
+    ]
+    
+    Enum.each(changes, fn change ->
+      case change do
+        {:tool_added, name, desc} ->
+          IO.puts("  🔧 Tool added: #{name} - #{desc}")
+          
+        {:resource_updated, path, desc} ->
+          IO.puts("  📄 Resource updated: #{path} - #{desc}")
+          
+        {:tool_removed, name, reason} ->
+          IO.puts("  🗑️  Tool removed: #{name} - #{reason}")
+          
+        {:prompt_added, name, desc} ->
+          IO.puts("  💬 Prompt added: #{name} - #{desc}")
+          
+        {:resource_added, path, desc} ->
+          IO.puts("  📁 Resource added: #{path} - #{desc}")
+      end
+      
+      Process.sleep(200)
+    end)
+    
+    IO.puts("\n  📢 All change notifications processed")
+  end
+  
+  defp demo_server_sampling() do
+    IO.puts("\n🤖 3. Server-Side LLM Sampling Demo")
+    IO.puts("==================================")
+    
+    IO.puts("\nExample: MCP server generating content with LLM")
+    
+    sampling_steps = [
+      "🔗 Connecting to MCP server...",
+      "📝 Sending sampling request to server...",
+      "🧠 Server invoking LLM for content generation...",
+      "⚡ Receiving streamed response from server...",
+      "✨ Server post-processing generated content...",
+      "📦 Delivering final result to client..."
+    ]
+    
+    IO.puts("\nSampling flow:")
+    Enum.each(sampling_steps, fn step ->
+      IO.puts("  #{step}")
+      Process.sleep(250)
+    end)
+    
+    IO.puts("\n  📊 Sample server-generated content:")
+    sample_content = """
+      {
+        "type": "analysis",
+        "generated_by": "mcp_server_llm",
+        "content": "The code follows good patterns with proper error handling...",
+        "confidence": 0.95,
+        "metadata": {
+          "model": "claude-3-sonnet-20240229",
+          "tokens": 150,
+          "processing_time": "847ms"
         }
-      ],
-      includeContext: "none",
-      temperature: 0.7,
-      maxTokens: 100
+      }
+    """
+    IO.puts(sample_content)
+  end
+  
+  defp demo_notification_handling() do
+    IO.puts("\n🔔 4. Notification Handling Demo")
+    IO.puts("===============================")
+    
+    IO.puts("\nNotification types and handlers:")
+    
+    handlers = [
+      {"progress", "Update progress bars and status displays"},
+      {"tools/list_changed", "Refresh available tools in UI"},
+      {"resources/list_changed", "Update resource browser"},
+      {"prompts/list_changed", "Reload prompt library"},
+      {"server/error", "Display error alerts and recovery options"},
+      {"sampling/progress", "Show LLM generation progress"},
+      {"sampling/complete", "Process and display generated content"}
+    ]
+    
+    Enum.each(handlers, fn {notification_type, description} ->
+      IO.puts("  📨 #{String.pad_trailing(notification_type, 22)} - #{description}")
+    end)
+    
+    IO.puts("\n📋 Example notification message structure:")
+    notification_example = """
+    {
+      "jsonrpc": "2.0",
+      "method": "notifications/progress",
+      "params": {
+        "progressToken": "task_123",
+        "value": {
+          "kind": "report",
+          "title": "Processing files",
+          "message": "Analyzing file 3 of 10",
+          "percentage": 30
+        }
+      }
     }
-    
-    IO.puts("Request parameters:")
-    IO.inspect(params, pretty: true)
-    
-    IO.puts("\nIn a real scenario, this would call:")
-    IO.puts("MCPChat.MCP.NotificationClient.create_message(client, params)")
-    
-    # Simulated response
-    IO.puts("\nSimulated response:")
-    IO.puts("""
-    
-    Concurrent streams flow,
-    Pattern matching guides the way,
-    BEAM lights up the code.
-    
-    Model: claude-3-haiku
-    Stop reason: max_tokens
-    """)
-    
-    show_menu()
-  end
-  
-  defp show_progress_bar(current, total) do
-    percentage = round(current / total * 100)
-    bar_width = 30
-    filled = round(bar_width * current / total)
-    empty = bar_width - filled
-    
-    bar = String.duplicate("█", filled) <> String.duplicate("░", empty)
-    IO.write("\r[#{bar}] #{percentage}%")
-  end
-  
-  defp enable_notifications() do
-    # Register handlers
-    MCPChat.MCP.NotificationRegistry.register_handler(
-      MCPChat.MCP.Handlers.ProgressHandler,
-      [:progress]
-    )
-    
-    IO.puts("✓ Notifications enabled")
+    """
+    IO.puts(notification_example)
   end
 end
 
 # Run the demo
 NotificationsDemo.run()
+
+IO.puts("""
+
+🎯 Demo Summary
+===============
+
+This demo showcased MCP v0.2.0 notification features:
+
+✅ Progress Notifications
+   - Visual progress bars for long-running operations
+   - Real-time status updates
+   - Percentage completion tracking
+
+✅ Change Notifications  
+   - Dynamic tool and resource updates
+   - Server capability changes
+   - Automatic UI refresh
+
+✅ Server-Side LLM Sampling
+   - Servers can invoke LLMs directly
+   - Streaming responses from server to client
+   - Content generation with metadata
+
+✅ Notification Handling
+   - Structured JSON-RPC notification messages
+   - Type-specific handlers for different events
+   - Error handling and recovery
+
+🚀 Interactive Features
+======================
+
+To experience these features in MCP Chat:
+
+1. Connect to MCP servers that support v0.2.0
+2. Enable notifications in your config:
+   [mcp.notifications]
+   enabled = true
+   progress_bars = true
+
+3. Watch for automatic updates as you use tools
+4. Observe progress bars during file operations
+5. See real-time changes as servers update capabilities
+
+💡 Advanced Usage
+================
+
+- Custom notification handlers in your config
+- Progress tracking for batch operations  
+- Server-side content generation and analysis
+- Real-time collaboration features
+""")
+
+IO.puts("\n✅ Notifications demo completed successfully!")

@@ -9,7 +9,7 @@ defmodule MCPChat.CLI.AgentCommandBridge do
   use GenServer
   require Logger
 
-  alias MCPChat.Agents.{AgentPool, SessionManager}
+  alias MCPChat.Agents.{AgentPool, SessionManager, AgentRegistry, AgentCoordinator}
   alias MCPChat.Events.AgentEvents
   alias MCPChat.CLI.Renderer
 
@@ -221,5 +221,64 @@ defmodule MCPChat.CLI.AgentCommandBridge do
 
   def handle_info(_event, state) do
     {:noreply, state}
+  end
+
+  # Multi-Agent Orchestration System Integration
+
+  @doc """
+  Delegate a task to the multi-agent system from the CLI.
+  """
+  def delegate_task(task_spec, options \\ []) do
+    AgentCoordinator.delegate_task(task_spec, options)
+  end
+
+  @doc """
+  Execute a workflow from the CLI.
+  """
+  def execute_workflow(workflow_spec, context \\ %{}) do
+    AgentCoordinator.execute_workflow(workflow_spec, context)
+  end
+
+  @doc """
+  Get agent system status for CLI display.
+  """
+  def get_system_status do
+    registry_stats = AgentRegistry.get_registry_stats()
+    workflow_status = AgentCoordinator.get_workflows_status()
+
+    %{
+      registry: registry_stats,
+      workflows: workflow_status,
+      bridge_status: :active
+    }
+  end
+
+  @doc """
+  List all agents for CLI display.
+  """
+  def list_agents do
+    AgentRegistry.list_all_agents()
+  end
+
+  @doc """
+  Get detailed agent information for CLI display.
+  """
+  def get_agent_info(agent_id) do
+    AgentRegistry.get_agent_info(agent_id)
+  end
+
+  @doc """
+  Create collaboration between agents from CLI.
+  """
+  def create_collaboration(agent_ids, collaboration_spec) do
+    AgentCoordinator.create_collaboration(agent_ids, collaboration_spec)
+  end
+
+  @doc """
+  Check if the agent system is available.
+  """
+  def agent_system_available? do
+    Process.whereis(AgentRegistry) != nil and
+      Process.whereis(AgentCoordinator) != nil
   end
 end

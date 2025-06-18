@@ -68,10 +68,20 @@ defmodule McpChat.MixProject do
       # PubSub for real-time events
       {:phoenix_pubsub, "~> 2.1"},
 
+      # Web UI dependencies
+      {:phoenix, "~> 1.7.0"},
+      {:phoenix_live_view, "~> 0.20.0"},
+      {:phoenix_html, "~> 4.0"},
+      {:plug_cowboy, "~> 2.5"},
+      {:bandit, "~> 1.0"},
+      {:jason, "~> 1.2"},
+      {:gettext, "~> 0.20"},
+
       # Development dependencies
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:meck, "~> 0.9", only: :test}
+      {:meck, "~> 0.9", only: :test},
+      {:phoenix_live_reload, "~> 1.2", only: :dev}
     ]
   end
 end
