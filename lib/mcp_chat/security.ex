@@ -38,8 +38,7 @@ defmodule MCPChat.Security do
   """
 
   # Forward declaration to avoid circular dependency
-  alias MCPChat.Security.SecurityKernel
-  alias MCPChat.Security.AuditLogger
+  alias MCPChat.Security.{SecurityKernel, AuditLogger, TokenIssuer, TokenValidator}
 
   @type principal_id :: String.t()
   @type resource_type :: :filesystem | :mcp_tool | :network | :process | :database
@@ -62,11 +61,38 @@ defmodule MCPChat.Security do
   - `{:ok, capability}` on success
   - `{:error, reason}` on failure
   """
-  @spec request_capability(resource_type(), constraints(), principal_id()) ::
+  @spec request_capability(resource_type(), constraints(), principal_id(), Keyword.t()) ::
           {:ok, struct()} | {:error, atom()}
-  def request_capability(resource_type, constraints, principal_id \\ nil) do
+  def request_capability(resource_type, constraints, principal_id \\ nil, opts \\ []) do
     principal_id = principal_id || get_current_principal()
-    SecurityKernel.request_capability(resource_type, constraints, principal_id)
+
+    # Check if token mode is enabled
+    if Keyword.get(opts, :use_tokens, use_token_mode?()) do
+      # Phase 2: Issue JWT token
+      operations = Map.get(constraints, :operations, [:read, :write, :execute])
+      resource = Map.get(constraints, :resource, "*")
+
+      case TokenIssuer.issue_token(resource_type, operations, resource, principal_id, constraints) do
+        {:ok, token, jti} ->
+          # Return a token-based capability struct
+          {:ok,
+           %{
+             __struct__: MCPChat.Security.Capability,
+             id: jti,
+             token: token,
+             resource_type: resource_type,
+             principal_id: principal_id,
+             constraints: constraints,
+             is_token: true
+           }}
+
+        error ->
+          error
+      end
+    else
+      # Phase 1: Use SecurityKernel
+      SecurityKernel.request_capability(resource_type, constraints, principal_id)
+    end
   end
 
   @doc """
@@ -83,7 +109,18 @@ defmodule MCPChat.Security do
   """
   @spec validate_capability(struct(), operation(), String.t()) :: security_result()
   def validate_capability(capability, operation, resource) do
-    SecurityKernel.validate_capability(capability, operation, resource)
+    # Check if this is a token-based capability
+    if Map.get(capability, :is_token, false) && Map.get(capability, :token) do
+      # Phase 2: Validate JWT token locally
+      TokenValidator.validate_token(capability.token, operation, resource)
+      |> case do
+        {:ok, _claims} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      # Phase 1: Use SecurityKernel
+      SecurityKernel.validate_capability(capability, operation, resource)
+    end
   end
 
   @doc """
@@ -104,7 +141,54 @@ defmodule MCPChat.Security do
   @spec delegate_capability(struct(), principal_id(), constraints()) ::
           {:ok, struct()} | {:error, atom()}
   def delegate_capability(capability, target_principal, additional_constraints \\ %{}) do
-    SecurityKernel.delegate_capability(capability, target_principal, additional_constraints)
+    # Check if this is a token-based capability
+    if Map.get(capability, :is_token, false) && Map.get(capability, :token) do
+      # Phase 2: Issue delegated token
+      case TokenIssuer.issue_delegated_token(capability.token, target_principal, additional_constraints) do
+        {:ok, token, jti} ->
+          # Return a new token-based capability struct
+          {:ok,
+           %{
+             __struct__: MCPChat.Security.Capability,
+             id: jti,
+             token: token,
+             resource_type: capability.resource_type,
+             principal_id: target_principal,
+             constraints: merge_constraints(capability.constraints, additional_constraints),
+             is_token: true,
+             parent_id: capability.id
+           }}
+
+        error ->
+          error
+      end
+    else
+      # Phase 1: Use SecurityKernel
+      SecurityKernel.delegate_capability(capability, target_principal, additional_constraints)
+    end
+  end
+
+  defp merge_constraints(parent_constraints, child_constraints) do
+    Map.merge(parent_constraints, child_constraints, fn key, parent_val, child_val ->
+      case key do
+        # Special handling for paths - child paths must be subpaths of parent paths
+        :paths when is_list(parent_val) and is_list(child_val) ->
+          # Child paths should be kept if they are subpaths of any parent path
+          Enum.filter(child_val, fn child_path ->
+            Enum.any?(parent_val, fn parent_path ->
+              String.starts_with?(to_string(child_path), to_string(parent_path))
+            end)
+          end)
+
+        # For other lists, take intersection
+        _ when is_list(parent_val) and is_list(child_val) ->
+          Enum.filter(child_val, &(&1 in parent_val))
+
+        # For other values, take the more restrictive (child)
+        _ ->
+          child_val
+      end
+    end)
   end
 
   @doc """
@@ -122,7 +206,14 @@ defmodule MCPChat.Security do
   """
   @spec revoke_capability(struct(), String.t()) :: security_result()
   def revoke_capability(capability, reason \\ "manual_revocation") do
-    SecurityKernel.revoke_capability(capability, reason)
+    # Check if this is a token-based capability
+    if Map.get(capability, :is_token, false) do
+      # Phase 2: Revoke token via RevocationCache
+      TokenIssuer.revoke_token(capability.id)
+    else
+      # Phase 1: Use SecurityKernel
+      SecurityKernel.revoke_capability(capability, reason)
+    end
   end
 
   @doc """
@@ -177,13 +268,47 @@ defmodule MCPChat.Security do
   """
   @spec request_temporary_capability(resource_type(), constraints(), non_neg_integer(), principal_id()) ::
           {:ok, struct()} | {:error, atom()}
-  def request_temporary_capability(resource_type, constraints, duration_seconds, principal_id \\ nil) do
+  def request_temporary_capability(resource_type, constraints, duration_seconds, principal_id \\ nil, opts \\ []) do
     principal_id = principal_id || get_current_principal()
 
     expires_at = DateTime.add(DateTime.utc_now(), duration_seconds, :second)
     constraints_with_expiry = Map.put(constraints, :expires_at, expires_at)
 
-    request_capability(resource_type, constraints_with_expiry, principal_id)
+    # For token mode, we need to pass a custom TTL to the token issuer
+    if Keyword.get(opts, :use_tokens, use_token_mode?()) do
+      operations = Map.get(constraints, :operations, [:read, :write, :execute])
+      resource = Map.get(constraints, :resource, "*")
+
+      # Issue token with custom expiration
+      case TokenIssuer.issue_token_with_ttl(
+             resource_type,
+             operations,
+             resource,
+             principal_id,
+             constraints,
+             duration_seconds
+           ) do
+        {:ok, token, jti} ->
+          # Return a token-based capability struct
+          {:ok,
+           %{
+             __struct__: MCPChat.Security.Capability,
+             id: jti,
+             token: token,
+             resource_type: resource_type,
+             principal_id: principal_id,
+             constraints: constraints_with_expiry,
+             is_token: true,
+             expires_at: expires_at
+           }}
+
+        error ->
+          error
+      end
+    else
+      # Phase 1: Use SecurityKernel with expires_at constraint
+      request_capability(resource_type, constraints_with_expiry, principal_id)
+    end
   end
 
   ## Security Event Logging
@@ -275,5 +400,61 @@ defmodule MCPChat.Security do
   @spec get_current_capabilities() :: [struct()]
   def get_current_capabilities do
     Process.get(:security_capabilities, [])
+  end
+
+  ## Phase 2 Token Support
+
+  @doc """
+  Checks if token mode is enabled for the security system.
+
+  Token mode uses JWT tokens for distributed validation instead of 
+  centralized SecurityKernel checks.
+  """
+  @spec use_token_mode?() :: boolean()
+  def use_token_mode? do
+    Application.get_env(:mcp_chat, :security_token_mode, false)
+  end
+
+  @doc """
+  Enables or disables token mode at runtime.
+
+  ## Parameters
+  - `enabled`: Whether to enable token mode
+
+  ## Returns
+  - `:ok`
+  """
+  @spec set_token_mode(boolean()) :: :ok
+  def set_token_mode(enabled) when is_boolean(enabled) do
+    Application.put_env(:mcp_chat, :security_token_mode, enabled)
+    :ok
+  end
+
+  @doc """
+  Revokes all capabilities for a principal.
+
+  ## Parameters
+  - `principal_id`: The principal whose capabilities to revoke
+  - `reason`: Optional reason for revocation
+
+  ## Returns
+  - `:ok` on success
+  - `{:error, reason}` on failure
+  """
+  @spec revoke_all_for_principal(principal_id(), String.t()) :: security_result()
+  def revoke_all_for_principal(principal_id, reason \\ "principal_cleanup") do
+    SecurityKernel.revoke_all_for_principal(principal_id, reason)
+  end
+
+  @doc """
+  Gets audit statistics for the security system.
+
+  ## Returns
+  - `{:ok, stats}` with audit statistics
+  - `{:error, reason}` on failure
+  """
+  @spec get_audit_stats() :: {:ok, map()} | {:error, atom()}
+  def get_audit_stats do
+    AuditLogger.get_stats()
   end
 end

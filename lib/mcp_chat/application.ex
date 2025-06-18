@@ -38,6 +38,12 @@ defmodule MCPChat.Application do
         # Security system for capability-based access control
         MCPChat.Security.AuditLogger,
         MCPChat.Security.SecurityKernel,
+        # Phase 2 security components
+        MCPChat.Security.KeyManager,
+        MCPChat.Security.TokenIssuer,
+        MCPChat.Security.RevocationCache,
+        MCPChat.Security.TokenValidator.Cache,
+        MCPChat.Security.ViolationMonitor,
         # MCP Health monitoring
         HealthMonitor,
         # ExLLM circuit breaker is auto-initialized

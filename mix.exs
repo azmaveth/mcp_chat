@@ -77,6 +77,9 @@ defmodule McpChat.MixProject do
       {:jason, "~> 1.2"},
       {:gettext, "~> 0.20"},
 
+      # Security dependencies
+      {:joken, "~> 2.6"},
+
       # Development dependencies
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
