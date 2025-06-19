@@ -1,99 +1,97 @@
-# MCP Chat Documentation
+# Arbor Documentation
 
-Welcome to the MCP Chat documentation! This directory contains comprehensive guides and references for using and developing with MCP Chat.
+Welcome to the Arbor documentation! Arbor is a production-ready, distributed AI agent orchestration system built on Elixir/OTP principles.
 
-## Documentation Structure
+## 📚 Documentation Structure
 
-### Getting Started
-- **[QUICK_START.md](QUICK_START.md)** - Get up and running in 5 minutes
-- **[INSTALLATION.md](INSTALLATION.md)** - Detailed installation instructions for all platforms
-- **[USER_GUIDE.md](USER_GUIDE.md)** - Comprehensive guide to using MCP Chat
+### 🚀 Getting Started
 
-### Advanced Topics
-- **[MCP_SERVERS.md](MCP_SERVERS.md)** - Guide to using and creating MCP servers
-- **[NOTIFICATIONS.md](NOTIFICATIONS.md)** - Progress tracking and real-time notifications
-- **[API_REFERENCE.md](API_REFERENCE.md)** - Developer API documentation (coming soon)
-- **[CONFIGURATION.md](CONFIGURATION.md)** - Advanced configuration options (coming soon)
+- **[Arbor Overview](./arbor/01-overview/README.md)** - Start here for high-level understanding
+- **[Quick Start Guide](./arbor/07-implementation/getting-started.md)** - Get Arbor running quickly
+- **[Architecture Overview](./arbor/01-overview/architecture-overview.md)** - System architecture and components
 
-### Development
-- **[CONTRIBUTING.md](../CONTRIBUTING.md)** - Guidelines for contributing to MCP Chat
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture overview (coming soon)
-- **[TESTING.md](TESTING.md)** - Testing guide (coming soon)
+### 📖 Core Documentation
 
-## Quick Links
+The Arbor documentation is organized into numbered sections for easy navigation:
 
-### For Users
-1. New to MCP Chat? Start with the **[Quick Start Guide](QUICK_START.md)**
-2. Need detailed setup help? See **[Installation Guide](INSTALLATION.md)**
-3. Want to master all features? Read the **[User Guide](USER_GUIDE.md)**
-4. Interested in MCP servers? Check out **[MCP Servers Guide](MCP_SERVERS.md)**
+1. **[Overview](./arbor/01-overview/README.md)** - High-level introduction and system overview
+2. **[Philosophy](./arbor/02-philosophy/README.md)** - Design philosophy and BEAM principles
+3. **[Contracts](./arbor/03-contracts/README.md)** - Contract specifications and validation
+4. **[Components](./arbor/04-components/README.md)** - Core component specifications
+5. **[Architecture](./arbor/05-architecture/README.md)** - Architecture patterns and decisions
+6. **[Infrastructure](./arbor/06-infrastructure/README.md)** - Production infrastructure and tooling
+7. **[Implementation](./arbor/07-implementation/README.md)** - Implementation guides and setup
+8. **[Reference](./arbor/08-reference/README.md)** - API reference and technical details
+
+### 🔄 Migration
+
+- **[Migrating from MCP Chat](./migration/mcp-chat-to-arbor.md)** - Guide for migrating existing MCP Chat installations
+
+### 📦 Legacy Documentation
+
+- **[Legacy MCP Chat Docs](./legacy/README.md)** - Original MCP Chat documentation (preserved for reference)
+
+## 🎯 Quick Links
+
+### For New Users
+1. [Architecture Overview](./arbor/01-overview/architecture-overview.md)
+2. [Getting Started](./arbor/07-implementation/getting-started.md)
+3. [Core Concepts](./arbor/08-reference/glossary.md)
 
 ### For Developers
-1. Want to contribute? Read **[Contributing Guidelines](../CONTRIBUTING.md)**
-2. Building an MCP server? See **[MCP Servers Guide](MCP_SERVERS.md#creating-custom-mcp-servers)**
-3. Working on core features? Review **[Architecture](ARCHITECTURE.md)** (coming soon)
+1. [Development Setup](./arbor/07-implementation/development-setup.md)
+2. [Contract Specifications](./arbor/03-contracts/core-contracts.md)
+3. [Testing Strategy](./arbor/07-implementation/testing-strategy.md)
 
-## Documentation Versions
+### For Operations
+1. [Observability Strategy](./arbor/06-infrastructure/observability.md)
+2. [Deployment Guide](./arbor/06-infrastructure/deployment.md)
+3. [Configuration Reference](./arbor/08-reference/configuration.md)
 
-This documentation is for MCP Chat version 0.2.3 (June 2025).
+## 🗺️ Documentation Map
 
-- **Latest stable**: v0.2.3
-- **Development**: main branch
-- **New in v0.2.3**: MCP server health monitoring with auto-disable, comprehensive health metrics
-- **New in v0.2.2**: Background server connections, enhanced status tracking
-- **New in v0.2.0**: Progress tracking, notifications, server-side LLM
-
-## Getting Help
-
-If you can't find what you need in the documentation:
-
-1. **Search existing issues**: [GitHub Issues](https://github.com/azmaveth/mcp_chat/issues)
-2. **Ask questions**: [Discussions](https://github.com/azmaveth/mcp_chat/discussions)
-3. **Report bugs**: [Issue Tracker](https://github.com/azmaveth/mcp_chat/issues/new)
-4. **Chat with us**: Join our community (coming soon)
-
-## Contributing to Documentation
-
-We welcome documentation improvements! 
-
-### How to Contribute
-
-1. **Fix typos/errors**: Submit a PR directly
-2. **Add examples**: Include practical, tested examples
-3. **Improve clarity**: Make complex topics easier to understand
-4. **Add translations**: Help make docs accessible globally
-
-### Documentation Standards
-
-- Use clear, concise language
-- Include code examples where helpful
-- Test all commands and code snippets
-- Follow Markdown best practices
-- Keep formatting consistent
-
-### Building Documentation
-
-To build and preview documentation locally:
-
-```bash
-# Install documentation tools (if needed)
-mix docs
-
-# View generated documentation
-open doc/index.html
+```
+📁 arbor/
+├── 📂 01-overview/        → Start here for system overview
+├── 📂 02-philosophy/      → Understand design principles
+├── 📂 03-contracts/       → Learn about data contracts
+├── 📂 04-components/      → Dive into core components
+├── 📂 05-architecture/    → Explore architecture patterns
+├── 📂 06-infrastructure/  → Production deployment guides
+├── 📂 07-implementation/  → Development and setup guides
+└── 📂 08-reference/       → API and configuration reference
 ```
 
-## Feedback
+## 🔍 Finding Information
 
-Help us improve the documentation:
+### By Topic
 
-- **Was this helpful?** Let us know what works
-- **Something missing?** Tell us what to add
-- **Found an error?** Please report it
-- **Have suggestions?** We'd love to hear them
+- **Security**: See [Security Specification](./arbor/04-components/arbor-security/specification.md) and [Capability Model](./arbor/04-components/arbor-security/capability-model.md)
+- **Agents**: See [Agent Architecture](./arbor/05-architecture/agent-architecture.md) and [Agent Runtime](./arbor/04-components/arbor-core/agent-runtime.md)
+- **Persistence**: See [State Persistence](./arbor/04-components/arbor-persistence/state-persistence.md)
+- **Monitoring**: See [Observability Strategy](./arbor/06-infrastructure/observability.md)
 
-Create an issue with the `documentation` label or submit a PR.
+### By Role
+
+- **Architects**: Start with [Philosophy](./arbor/02-philosophy/README.md) and [Architecture](./arbor/05-architecture/README.md)
+- **Developers**: Focus on [Contracts](./arbor/03-contracts/README.md) and [Components](./arbor/04-components/README.md)
+- **DevOps**: See [Infrastructure](./arbor/06-infrastructure/README.md) and [Implementation](./arbor/07-implementation/README.md)
+
+## 📝 Contributing
+
+When adding new documentation:
+1. Place it in the appropriate numbered section
+2. Update the section's README.md with a link
+3. Follow the established naming conventions (lowercase, hyphens)
+4. Include cross-references to related documents
+
+## 🔄 Recent Updates
+
+- Reorganized documentation structure for clarity (2025-06-19)
+- Added comprehensive observability strategy
+- Completed tooling and library analysis
+- Unified architecture documentation
 
 ---
 
-Thank you for using MCP Chat! We hope this documentation helps you get the most out of your chat experience. 🚀
+*For questions or improvements to the documentation, please open an issue in the repository.*

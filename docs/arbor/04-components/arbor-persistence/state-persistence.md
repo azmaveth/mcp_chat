@@ -1,9 +1,9 @@
-# MCP Chat State Persistence Design
+# Arbor State Persistence Design
 ## Bulletproof State Protection with Minimal Performance Impact
 
 ### Executive Summary
 
-This document outlines a pragmatic multi-tiered persistence strategy for MCP Chat that provides near-100% state protection while maintaining chat responsiveness. The design uses a hybrid approach combining ETS hot storage, selective event journaling, and periodic snapshots.
+This document outlines a pragmatic multi-tiered persistence strategy for Arbor that provides near-100% state protection while maintaining chat responsiveness. The design uses a hybrid approach combining ETS hot storage, selective event journaling, and periodic snapshots.
 
 **Key Requirements Met:**
 - ✅ Near 100% state protection (survives crashes, restarts, power failures)
@@ -129,7 +129,7 @@ Critical Events (Must Survive):     Recoverable Events (Can Regenerate):
 ### 3.1 Critical Events (Must Journal)
 
 ```elixir
-defmodule MCPChat.Events.Critical do
+defmodule Arbor.Events.Critical do
   # User interactions
   defstruct UserMessageSent, [:session_id, :message_id, :content, :timestamp]
   defstruct CommandExecuted, [:session_id, :command, :result, :timestamp]
@@ -150,7 +150,7 @@ end
 ### 3.2 Recoverable Events (ETS Only)
 
 ```elixir
-defmodule MCPChat.Events.Recoverable do
+defmodule Arbor.Events.Recoverable do
   # Streaming events (regenerated on recovery)
   defstruct LLMChunkReceived, [:session_id, :message_id, :chunk, :index]
   defstruct StreamStarted, [:session_id, :message_id, :provider]
@@ -168,7 +168,7 @@ end
 
 **Async Journal Writer Pattern:**
 ```elixir
-defmodule MCPChat.Journal.Writer do
+defmodule Arbor.Journal.Writer do
   use GenServer
   
   # Buffer critical events and write in batches
@@ -219,7 +219,7 @@ end
 4. **No journal replay needed** - state is current
 
 ```elixir
-defmodule MCPChat.Session do
+defmodule Arbor.Session do
   def init([session_id: session_id] = args) do
     case load_from_hot_storage(session_id) do
       {:ok, state} ->
@@ -257,7 +257,7 @@ end
    - Let UI show interruption notice
 
 ```elixir
-defmodule MCPChat.Recovery.NodeRestart do
+defmodule Arbor.Recovery.NodeRestart do
   def recover_all_sessions(session_data_dir) do
     session_data_dir
     |> File.ls!()
@@ -326,11 +326,11 @@ end
 **Solution:** Separate streaming chunks from final messages.
 
 ```elixir
-defmodule MCPChat.Session do
+defmodule Arbor.Session do
   def handle_cast({:send_message, content}, state) do
     # 1. Journal the user message immediately (critical event)
     user_message = create_user_message(content)
-    :ok = MCPChat.Journal.write_critical_event(state.session_id, {:user_message, user_message})
+    :ok = Arbor.Journal.write_critical_event(state.session_id, {:user_message, user_message})
     
     # 2. Update ETS with new state
     new_state = add_message_to_state(state, user_message)
@@ -351,7 +351,7 @@ defmodule MCPChat.Session do
   def handle_info({:llm_complete, final_content, stats}, state) do
     # Journal the FINAL assistant response (critical event)
     assistant_message = create_assistant_message(final_content, stats)
-    :ok = MCPChat.Journal.write_critical_event(state.session_id, {:assistant_response, assistant_message})
+    :ok = Arbor.Journal.write_critical_event(state.session_id, {:assistant_response, assistant_message})
     
     # Update state with final message
     new_state = %{state | 
@@ -443,7 +443,7 @@ compressed_state = :erlang.term_to_binary(state, [:compressed])
 **2. Journal Write Optimization:**
 ```elixir
 # Batch writes to reduce I/O
-defmodule MCPChat.Journal.BatchWriter do
+defmodule Arbor.Journal.BatchWriter do
   @batch_size 10
   @flush_interval 1000  # 1 second
   
@@ -490,7 +490,7 @@ end
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                MCPChat.Application                          │
+│                Arbor.Application                          │
 │                                                             │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌────────────┐ │
 │  │  ETS Tables      │  │  PersistentEts   │  │  Journal   │ │
@@ -513,9 +513,9 @@ end
 
 ### 7.2 Core Components
 
-**MCPChat.Persistence.Manager**
+**Arbor.Persistence.Manager**
 ```elixir
-defmodule MCPChat.Persistence.Manager do
+defmodule Arbor.Persistence.Manager do
   use GenServer
   
   # Public API
@@ -530,9 +530,9 @@ defmodule MCPChat.Persistence.Manager do
 end
 ```
 
-**MCPChat.Persistence.EventJournal**
+**Arbor.Persistence.EventJournal**
 ```elixir
-defmodule MCPChat.Persistence.EventJournal do
+defmodule Arbor.Persistence.EventJournal do
   # Critical event journaling
   def write_critical_event(session_id, event)
   def read_journal_since(session_id, timestamp)
@@ -544,9 +544,9 @@ defmodule MCPChat.Persistence.EventJournal do
 end
 ```
 
-**MCPChat.Persistence.HotStorage**
+**Arbor.Persistence.HotStorage**
 ```elixir
-defmodule MCPChat.Persistence.HotStorage do
+defmodule Arbor.Persistence.HotStorage do
   # ETS operations
   def store_session(session_id, state)
   def retrieve_session(session_id)
@@ -566,11 +566,11 @@ end
 
 ```elixir
 # config/config.exs
-config :mcp_chat, MCPChat.Persistence,
+config :arbor, Arbor.Persistence,
   # Storage paths
-  data_dir: System.get_env("MCP_DATA_DIR", "./data"),
-  journal_dir: System.get_env("MCP_JOURNAL_DIR", "./data/journals"),
-  snapshot_dir: System.get_env("MCP_SNAPSHOT_DIR", "./data/snapshots"),
+  data_dir: System.get_env("ARBOR_DATA_DIR", "./data"),
+  journal_dir: System.get_env("ARBOR_JOURNAL_DIR", "./data/journals"),
+  snapshot_dir: System.get_env("ARBOR_SNAPSHOT_DIR", "./data/snapshots"),
   
   # Performance tuning
   journal_batch_size: 10,
@@ -592,7 +592,7 @@ config :mcp_chat, MCPChat.Persistence,
 ### 8.2 Monitoring and Alerting
 
 ```elixir
-defmodule MCPChat.Persistence.Telemetry do
+defmodule Arbor.Persistence.Telemetry do
   # Performance metrics
   def emit_journal_write(duration, batch_size)
   def emit_snapshot_created(session_id, size, duration)
@@ -616,7 +616,7 @@ end
     [:mcp_chat, :persistence, :recovery_completed],
     [:mcp_chat, :persistence, :error]
   ],
-  &MCPChat.Monitoring.handle_persistence_event/4,
+  &Arbor.Monitoring.handle_persistence_event/4,
   %{}
 )
 ```
@@ -624,7 +624,7 @@ end
 ### 8.3 Health Checks
 
 ```elixir
-defmodule MCPChat.Persistence.HealthCheck do
+defmodule Arbor.Persistence.HealthCheck do
   def check_persistence_health() do
     %{
       hot_storage: check_ets_health(),
@@ -667,7 +667,7 @@ end
 
 **Tasks:**
 - [ ] Create ETS tables for hot storage
-- [ ] Implement MCPChat.Persistence.Manager
+- [ ] Implement Arbor.Persistence.Manager
 - [ ] Add configuration options
 - [ ] Create telemetry integration
 - [ ] Add health check endpoints
@@ -730,15 +730,15 @@ end
 ### 10.1 Crash Testing
 
 ```elixir
-defmodule MCPChat.PersistenceTest do
+defmodule Arbor.PersistenceTest do
   use ExUnit.Case
   
   test "session survives process crash" do
     # Start session with some state
-    {:ok, session_pid} = MCPChat.Session.start_link(session_id: "test-123")
+    {:ok, session_pid} = Arbor.Session.start_link(session_id: "test-123")
     
     # Add some messages
-    MCPChat.Gateway.send_message("test-123", "Hello")
+    Arbor.Gateway.send_message("test-123", "Hello")
     
     # Kill the process
     Process.exit(session_pid, :kill)
@@ -747,7 +747,7 @@ defmodule MCPChat.PersistenceTest do
     :timer.sleep(100)
     
     # Verify state recovered
-    state = MCPChat.Gateway.get_session_state("test-123")
+    state = Arbor.Gateway.get_session_state("test-123")
     assert length(state.messages) == 1
   end
   
@@ -760,7 +760,7 @@ defmodule MCPChat.PersistenceTest do
     :ets.delete_all_objects(:session_hot_storage)
     
     # Trigger recovery
-    {:ok, recovered_state} = MCPChat.Recovery.recover_session(session_id)
+    {:ok, recovered_state} = Arbor.Recovery.recover_session(session_id)
     
     # Verify all messages recovered
     assert length(recovered_state.messages) == 10
@@ -771,7 +771,7 @@ end
 ### 10.2 Performance Testing
 
 ```elixir
-defmodule MCPChat.PersistencePerformanceTest do
+defmodule Arbor.PersistencePerformanceTest do
   use ExUnit.Case
   
   test "ETS operations under load" do
@@ -781,7 +781,7 @@ defmodule MCPChat.PersistencePerformanceTest do
     {time_us, :ok} = :timer.tc(fn ->
       Enum.each(session_ids, fn session_id ->
         state = create_dummy_session_state(session_id)
-        MCPChat.Persistence.HotStorage.store_session(session_id, state)
+        Arbor.Persistence.HotStorage.store_session(session_id, state)
       end)
     end)
     
@@ -794,7 +794,7 @@ defmodule MCPChat.PersistencePerformanceTest do
     
     {time_us, :ok} = :timer.tc(fn ->
       Enum.each(events, fn event ->
-        MCPChat.Persistence.EventJournal.write_critical_event("perf-test", event)
+        Arbor.Persistence.EventJournal.write_critical_event("perf-test", event)
       end)
     end)
     
@@ -830,4 +830,4 @@ This multi-tiered persistence design provides the bulletproof state protection y
 - Configurable performance tuning
 - Health checks and operational visibility
 
-The design strikes the optimal balance between reliability and performance, ensuring your MCP Chat agent can maintain near-100% uptime while providing users with a responsive chat experience.
+The design strikes the optimal balance between reliability and performance, ensuring your Arbor agent can maintain near-100% uptime while providing users with a responsive chat experience.
