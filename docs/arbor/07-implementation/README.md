@@ -1,151 +1,68 @@
-# Section 07: Implementation
+# Arbor Implementation Guide
 
-This section provides practical guides for developing with and deploying Arbor.
+## Overview
 
-## Documents in this Section
+This directory contains step-by-step implementation guides for building Arbor, a production-ready distributed AI agent orchestration system built on Elixir/OTP principles.
 
-### [Getting Started](./getting-started.md) *(Coming Soon)*
-Quick start guide to get Arbor running:
-- Prerequisites and requirements
-- Installation steps
-- Running your first agent
-- Basic configuration
+## Implementation Phases
 
-### [Development Setup](./development-setup.md) *(Coming Soon)*
-Complete development environment setup:
-- Tool installation
-- IDE configuration
-- Local observability stack
-- Development workflow
+### Phase 1: Minimum Viable Product (MVP)
+- **[Phase 1 MVP Implementation Plan](./phase-1-mvp.md)** - Complete setup guide with AI-friendly prompts
+  - Project initialization and structure
+  - Development environment setup
+  - Git hooks and quality tools
+  - CI/CD pipeline foundation
+  - Core Gateway pattern implementation
 
-### [Testing Strategy](./testing-strategy.md) *(Coming Soon)*
-Comprehensive testing approach:
-- Unit testing with ExUnit
-- Property-based testing
-- Integration testing
-- Performance testing
+### Phase 2: Core Features (Coming Soon)
+- Agent registration and discovery
+- Message routing and protocol implementation
+- Basic persistence layer
+- Session management
 
-## Implementation Guides
+### Phase 3: Advanced Features (Coming Soon)
+- Distributed deployment
+- Advanced security capabilities
+- Performance optimization
+- Monitoring and observability
 
-### Quick Start Example
+## Quick Start
 
-```elixir
-# 1. Clone the repository
-git clone https://github.com/your-org/arbor
-cd arbor
+To begin implementing Arbor, start with the [Phase 1 MVP Implementation Plan](./phase-1-mvp.md). This guide includes:
 
-# 2. Install dependencies
-mix deps.get
+- Detailed commands for each step
+- AI-friendly prompts for code generation
+- Clear prerequisites and postrequisites
+- Workflow diagrams
 
-# 3. Set up the database
-mix ecto.setup
+## Implementation Approach
 
-# 4. Start the application
-iex -S mix
+Each implementation guide follows a consistent structure:
 
-# 5. Create your first agent
-{:ok, agent_id} = Arbor.Core.spawn_agent(:hello_world, %{})
-```
+1. **Prerequisites** - What must be in place before starting
+2. **Commands** - Exact commands to execute
+3. **AI Prompts** - Detailed prompts for AI-assisted implementation
+4. **Postrequisites** - Expected state after completion
 
-### Development Workflow
+This approach ensures:
+- Reproducible results
+- Clear progress tracking
+- AI-tool compatibility
+- Minimal ambiguity
 
-1. **Create a new feature branch**
-   ```bash
-   git checkout -b feature/my-new-agent
-   ```
+## Contributing
 
-2. **Implement contracts first**
-   ```elixir
-   # apps/arbor_contracts/lib/arbor/contracts/my_agent.ex
-   defmodule Arbor.Contracts.MyAgent do
-     use TypedStruct
-     # Define contract...
-   end
-   ```
+When adding new implementation guides:
 
-3. **Write tests**
-   ```elixir
-   # apps/arbor_core/test/my_agent_test.exs
-   defmodule Arbor.Core.MyAgentTest do
-     use ExUnit.Case
-     # Test implementation...
-   end
-   ```
+1. Follow the existing format structure
+2. Include complete, working examples
+3. Test all commands and code samples
+4. Provide clear AI prompts with context
+5. Document both success and error scenarios
 
-4. **Implement the feature**
-   ```elixir
-   # apps/arbor_core/lib/arbor/core/agents/my_agent.ex
-   defmodule Arbor.Core.Agents.MyAgent do
-     use Arbor.Agent
-     # Implementation...
-   end
-   ```
+## Support
 
-### Common Tasks
-
-#### Adding a New Agent Type
-
-1. Define the agent contract in `arbor_contracts`
-2. Implement the agent behavior in `arbor_core`
-3. Add capability definitions if needed
-4. Write comprehensive tests
-5. Update documentation
-
-#### Extending the Security Model
-
-1. Define new capability types
-2. Update the SecurityKernel validation
-3. Add audit events
-4. Test permission scenarios
-
-#### Adding Observability
-
-1. Define telemetry events
-2. Add structured logging
-3. Instrument with OpenTelemetry spans
-4. Create Grafana dashboards
-
-## Best Practices
-
-### Code Organization
-- Keep contracts separate from implementation
-- Use consistent naming conventions
-- Follow the supervision tree hierarchy
-- Document public APIs thoroughly
-
-### Testing
-- Test contracts independently
-- Use property-based testing for contracts
-- Mock external dependencies
-- Test distributed scenarios
-
-### Performance
-- Profile before optimizing
-- Use native BEAM communication when possible
-- Batch operations where appropriate
-- Monitor resource usage
-
-## Troubleshooting
-
-### Common Issues
-
-**Agent not spawning**
-- Check capability permissions
-- Verify supervisor configuration
-- Review logs for validation errors
-
-**Message routing failures**
-- Ensure agents are registered
-- Check network connectivity
-- Verify message contracts
-
-**State persistence issues**
-- Check database connectivity
-- Review event journal
-- Verify snapshot configuration
-
-## Next Steps
-
-- [Reference](../08-reference/README.md) - API documentation
-- [Components](../04-components/README.md) - Understand internals
-- [Infrastructure](../06-infrastructure/README.md) - Deploy to production
+For questions about implementation:
+- Review the architecture documentation in [../05-architecture](../05-architecture)
+- Check component specifications in [../04-components](../04-components)
+- Refer to the philosophy guide in [../02-philosophy](../02-philosophy)
