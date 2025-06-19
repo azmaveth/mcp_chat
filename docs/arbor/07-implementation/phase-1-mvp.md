@@ -9,10 +9,10 @@ This plan provides a complete roadmap for setting up Arbor as a production-ready
 ```text
 arbor/
 ├── apps/
-│   ├── arbor_core/         # Core business logic & gateway
-│   ├── arbor_persistence/  # State management & event sourcing
+│   ├── arbor_contracts/    # Zero-dependency contracts & behaviours
 │   ├── arbor_security/     # Capability-based security
-│   └── arbor_telemetry/    # Observability & monitoring
+│   ├── arbor_persistence/  # State management & event sourcing
+│   └── arbor_core/         # Core business logic & gateway
 ├── config/                 # Shared configuration
 ├── scripts/                # Development & deployment scripts
 ├── .github/                # CI/CD workflows
@@ -24,7 +24,12 @@ arbor/
 ### Step 1: Project Initialization
 
 **AI Implementation Prompt:**
-"Create an Elixir umbrella project structure for Arbor, a distributed AI agent orchestration system. Initialize the project with four core applications: arbor_core (main business logic), arbor_persistence (state management), arbor_security (capability-based security), and arbor_telemetry (observability). Each app should have supervision trees. Create a comprehensive .gitignore file for Elixir projects."
+"Create an Elixir umbrella project structure for Arbor as defined in `docs/arbor/01-overview/umbrella-structure.md`. Start by creating the zero-dependency `arbor_contracts` application first, followed by `arbor_security`, `arbor_persistence`, and `arbor_core`, ensuring the dependency flow described in the documentation is respected. Each app should have supervision trees. Create a comprehensive .gitignore file for Elixir projects. The structure must follow the Contracts-First design principle outlined in `docs/arbor/03-contracts/README.md`."
+
+**Reference Documentation:**
+- [Umbrella Structure](../01-overview/umbrella-structure.md) - Detailed project structure
+- [Architecture Overview](../01-overview/architecture-overview.md) - System architecture principles
+- [Contracts README](../03-contracts/README.md) - Contracts-First design approach
 
 **Prerequisites:**
 
@@ -41,12 +46,12 @@ mkdir arbor && cd arbor
 # Initialize umbrella project
 mix new . --umbrella --module Arbor
 
-# Create initial app structure
+# Create initial app structure following dependency order
 cd apps
-mix new arbor_core --module Arbor.Core --sup
-mix new arbor_persistence --module Arbor.Persistence --sup
+mix new arbor_contracts --module Arbor.Contracts --sup
 mix new arbor_security --module Arbor.Security --sup
-mix new arbor_telemetry --module Arbor.Telemetry --sup
+mix new arbor_persistence --module Arbor.Persistence --sup
+mix new arbor_core --module Arbor.Core --sup
 cd ..
 
 # Initialize git repository
@@ -57,7 +62,8 @@ git commit -m "chore: initialize Arbor umbrella project"
 
 **Postrequisites:**
 
-- Umbrella project created with 4 supervised applications
+- Umbrella project created with 4 supervised applications in correct dependency order
+- arbor_contracts as zero-dependency foundation application
 - Git repository initialized with initial commit
 - .gitignore properly configured for Elixir/Erlang
 
@@ -66,7 +72,10 @@ git commit -m "chore: initialize Arbor umbrella project"
 ### Step 2: Development Environment and Git Hooks Setup
 
 **AI Implementation Prompt:**
-"Set up comprehensive git hooks for the Arbor project including pre-commit checks for code formatting (mix format), static analysis (credo), type checking (dialyzer), and test execution. Create a commit message template following conventional commits. Also create a .tool-versions file for asdf version management with Elixir 1.15.7 and Erlang 26.1."
+"Set up git pre-commit hooks to enforce the project's quality standards. The hooks should automate the validation of code formatting, static analysis (credo), and type safety (dialyzer), reflecting the 'defensive architecture' principles outlined in `docs/arbor/02-philosophy/beam-philosophy.md`. Also, create a `.tool-versions` file for asdf version management with Elixir 1.15.7 and Erlang 26.1, and a conventional commit message template as specified."
+
+**Reference Documentation:**
+- [BEAM Philosophy](../02-philosophy/beam-philosophy.md) - Defensive architecture principles
 
 **Prerequisites:**
 
@@ -146,7 +155,11 @@ git config commit.template .gitmessage
 ### Step 3: Development Dependencies and Quality Tools
 
 **AI Implementation Prompt:**
-"Configure development dependencies for the Arbor umbrella project. Add credo for static analysis, dialyxir for type checking, ex_doc for documentation, excoveralls for test coverage, mock and ex_machina for testing, observer_cli for runtime inspection, and benchee for performance testing. Create helpful mix aliases for common tasks like setup, comprehensive testing, CI testing, documentation generation, and code quality checks. Configure excoveralls to generate coverage reports in HTML and JSON formats."
+"Configure the development dependencies for the Arbor umbrella project, selecting the tools recommended in `docs/arbor/06-infrastructure/tooling-analysis.md`. Ensure `credo` and `dialyxir` are included to support the project's 'defensive architecture' principles as described in `docs/arbor/02-philosophy/beam-philosophy.md`. Add ex_doc for documentation, excoveralls for test coverage, mock and ex_machina for testing, observer_cli for runtime inspection, and benchee for performance testing. Create the mix aliases as specified in the implementation plan. Configure excoveralls to generate coverage reports in HTML and JSON formats."
+
+**Reference Documentation:**
+- [Tooling Analysis](../06-infrastructure/tooling-analysis.md) - Recommended development tools
+- [BEAM Philosophy](../02-philosophy/beam-philosophy.md) - Defensive architecture principles
 
 **Prerequisites:**
 
@@ -271,7 +284,10 @@ chmod +x scripts/*.sh
 ### Step 5: CI/CD Pipeline Foundation
 
 **AI Implementation Prompt:**
-"Set up a comprehensive CI/CD pipeline using GitHub Actions for the Arbor project. Create workflows for: 1) CI testing on push/PR (format check, credo, tests, coverage), 2) Nightly builds with dialyzer and security scanning, 3) Release workflow for tagged versions. Include dependency caching, matrix testing for multiple Elixir/OTP versions, and integration with codecov for coverage reports. Also create a Dockerfile for containerized deployments."
+"Set up a GitHub Actions CI/CD pipeline for the Arbor project. The pipeline must run the `test.ci` mix alias and upload coverage reports, supporting the project's observability goals mentioned in `docs/arbor/06-infrastructure/observability.md`. Create workflows for: 1) CI testing on push/PR (format check, credo, tests, coverage), 2) Nightly builds with dialyzer and security scanning, 3) Release workflow for tagged versions. Include dependency caching, matrix testing for multiple Elixir/OTP versions, and integration with codecov for coverage reports. Also create a Dockerfile for containerized deployments."
+
+**Reference Documentation:**
+- [Observability](../06-infrastructure/observability.md) - Production monitoring and telemetry requirements
 
 **Prerequisites:**
 
@@ -348,7 +364,10 @@ jobs:
 ### Step 6: Documentation and README Setup
 
 **AI Implementation Prompt:**
-"Create comprehensive documentation for the Arbor project including: 1) Main README.md with project overview, features, quick start, and structure, 2) CONTRIBUTING.md with contribution guidelines, code of conduct, and PR process, 3) docs/development.md with detailed development setup, 4) docs/architecture.md explaining the system design, 5) LICENSE file (MIT), and 6) .editorconfig for consistent code style across editors."
+"Create the initial documentation files for the Arbor project. The overall structure of the `docs/` directory should mirror the table of contents in `docs/arbor/README.md`. Create: 1) Main README.md with project overview, features, quick start, and structure, 2) CONTRIBUTING.md with contribution guidelines, code of conduct, and PR process, 3) docs/development.md with detailed development setup, 4) docs/architecture.md explaining the system design, 5) LICENSE file (MIT), and 6) .editorconfig for consistent code style across editors."
+
+**Reference Documentation:**
+- [Arbor Documentation Structure](../README.md) - Overall documentation organization
 
 **Prerequisites:**
 
@@ -424,7 +443,12 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 ### Step 7: Initial Core Implementation - Gateway Pattern
 
 **AI Implementation Prompt:**
-"Implement the initial core module structure for arbor_core following the Gateway pattern. Create: 1) Arbor.Core.Gateway as the main entry point, 2) Arbor.Core.Session for session management, 3) Arbor.Core.Agent behaviour for defining agent contracts, 4) Arbor.Core.Supervisor to manage the supervision tree. Include proper error handling, telemetry events, and structured logging. The Gateway should handle session creation, message routing, and agent coordination."
+"Implement the initial `arbor_core` modules based on the architecture defined in `docs/arbor/04-components/arbor-core/specification.md`. Your implementation must follow the **Gateway Pattern** and **Event-Driven Updates** flow detailed in `docs/arbor/04-components/arbor-core/gateway-patterns.md`. Create: 1) Arbor.Core.Gateway as the single entry point for client interactions, 2) Arbor.Core.Session for session management, 3) Arbor.Core.Supervisor to manage the supervision tree. The `Arbor.Agent` behaviour should be defined within the `arbor_contracts` application, as specified in `docs/arbor/03-contracts/core-contracts.md`. Include proper error handling, telemetry events, and structured logging."
+
+**Reference Documentation:**
+- [Arbor Core Specification](../04-components/arbor-core/specification.md) - Core component architecture
+- [Gateway Patterns](../04-components/arbor-core/gateway-patterns.md) - Gateway pattern implementation details
+- [Core Contracts](../03-contracts/core-contracts.md) - Agent behaviour and contract definitions
 
 **Prerequisites:**
 
@@ -476,10 +500,10 @@ end
 
 **Postrequisites:**
 
-- Gateway pattern implemented
-- Basic session management
-- Agent behaviour defined
-- Supervision tree structured
+- Gateway pattern implemented following documented architecture
+- Agent behaviour defined in arbor_contracts application
+- Session management with event-driven updates
+- Supervision tree structured according to specifications
 
 ---
 
