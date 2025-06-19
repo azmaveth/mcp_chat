@@ -108,7 +108,13 @@ defmodule MCPChat.MCP.ExMCPAdapter do
   @impl true
   def handle_call(:list_tools, _from, state) do
     case ExMCP.Client.list_tools(state.ex_mcp_client) do
-      {:ok, tools} ->
+      {:ok, %{tools: tools, nextCursor: _cursor}} ->
+        # Extract tools from new format, ignore cursor for now
+        new_state = %{state | tools: tools}
+        {:reply, {:ok, tools}, new_state}
+
+      {:ok, %{tools: tools}} ->
+        # Handle case without cursor
         new_state = %{state | tools: tools}
         {:reply, {:ok, tools}, new_state}
 
@@ -129,7 +135,13 @@ defmodule MCPChat.MCP.ExMCPAdapter do
 
   def handle_call(:list_resources, _from, state) do
     case ExMCP.Client.list_resources(state.ex_mcp_client) do
-      {:ok, resources} ->
+      {:ok, %{resources: resources, nextCursor: _cursor}} ->
+        # Extract resources from new format, ignore cursor for now
+        new_state = %{state | resources: resources}
+        {:reply, {:ok, resources}, new_state}
+
+      {:ok, %{resources: resources}} ->
+        # Handle case without cursor
         new_state = %{state | resources: resources}
         {:reply, {:ok, resources}, new_state}
 
@@ -150,7 +162,13 @@ defmodule MCPChat.MCP.ExMCPAdapter do
 
   def handle_call(:list_prompts, _from, state) do
     case ExMCP.Client.list_prompts(state.ex_mcp_client) do
-      {:ok, prompts} ->
+      {:ok, %{prompts: prompts, nextCursor: _cursor}} ->
+        # Extract prompts from new format, ignore cursor for now
+        new_state = %{state | prompts: prompts}
+        {:reply, {:ok, prompts}, new_state}
+
+      {:ok, %{prompts: prompts}} ->
+        # Handle case without cursor
         new_state = %{state | prompts: prompts}
         {:reply, {:ok, prompts}, new_state}
 
@@ -188,7 +206,11 @@ defmodule MCPChat.MCP.ExMCPAdapter do
   def handle_call(:get_tools, _from, state) do
     result =
       if state.ex_mcp_client do
-        ExMCP.Client.list_tools(state.ex_mcp_client)
+        case ExMCP.Client.list_tools(state.ex_mcp_client) do
+          {:ok, %{tools: tools}} -> {:ok, tools}
+          {:ok, %{tools: tools, nextCursor: _}} -> {:ok, tools}
+          error -> error
+        end
       else
         {:error, :not_connected}
       end
@@ -200,6 +222,9 @@ defmodule MCPChat.MCP.ExMCPAdapter do
     result =
       if state.ex_mcp_client do
         case ExMCP.Client.list_resources(state.ex_mcp_client) do
+          {:ok, %{resources: resources}} -> {:ok, resources}
+          {:ok, %{resources: resources, nextCursor: _}} -> {:ok, resources}
+          # Legacy format support
           {:ok, {"resources", resources}} -> {:ok, resources}
           {:ok, resources} when is_list(resources) -> {:ok, resources}
           error -> error
@@ -215,6 +240,9 @@ defmodule MCPChat.MCP.ExMCPAdapter do
     result =
       if state.ex_mcp_client do
         case ExMCP.Client.list_prompts(state.ex_mcp_client) do
+          {:ok, %{prompts: prompts}} -> {:ok, prompts}
+          {:ok, %{prompts: prompts, nextCursor: _}} -> {:ok, prompts}
+          # Legacy format support
           {:ok, {"prompts", prompts}} -> {:ok, prompts}
           {:ok, prompts} when is_list(prompts) -> {:ok, prompts}
           error -> error
@@ -304,8 +332,9 @@ defmodule MCPChat.MCP.ExMCPAdapter do
       {:sse, sse_config} ->
         build_sse_config(sse_config)
 
-      {:beam, beam_config} ->
-        build_beam_config(beam_config)
+      {:beam, _beam_config} ->
+        # BEAM transport has been removed in favor of ExMCP.Native
+        {:error, :beam_transport_deprecated}
 
       {:error, reason} ->
         {:error, reason}
@@ -325,17 +354,15 @@ defmodule MCPChat.MCP.ExMCPAdapter do
 
   defp build_sse_config(sse_config) do
     [
-      transport: ExMCP.Transport.SSE,
+      transport: ExMCP.Transport.HTTP,
       url: sse_config.url,
       headers: Map.to_list(sse_config.headers || %{})
     ]
   end
 
-  defp build_beam_config(beam_config) do
-    [
-      transport: ExMCP.Transport.Beam,
-      target: beam_config.target
-    ]
+  # BEAM transport has been removed - use ExMCP.Native instead
+  defp build_beam_config(_beam_config) do
+    {:error, :beam_transport_deprecated}
   end
 
   defp determine_transport(config) do
@@ -403,7 +430,9 @@ defmodule MCPChat.MCP.ExMCPAdapter do
     case transport do
       :stdio -> build_stdio_transport_config(config)
       :sse -> build_sse_transport_config(config)
-      :beam -> build_beam_transport_config(config)
+      # HTTP is the new name for SSE
+      :http -> build_sse_transport_config(config)
+      :beam -> {:beam, %{target: Map.get(config, :target) || Map.get(config, "target")}}
       _ -> {:error, :unknown_transport}
     end
   end
@@ -446,8 +475,9 @@ defmodule MCPChat.MCP.ExMCPAdapter do
      }}
   end
 
-  defp build_beam_transport_config(config) do
-    {:beam, %{target: Map.get(config, :target) || Map.get(config, "target")}}
+  # BEAM transport has been removed - use ExMCP.Native instead
+  defp build_beam_transport_config(_config) do
+    {:error, :beam_transport_deprecated}
   end
 
   defp build_stdio_command_config(config) do

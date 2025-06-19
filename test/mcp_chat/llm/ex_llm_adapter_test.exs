@@ -1,8 +1,6 @@
 defmodule ExLLMAdapterTest do
   use ExUnit.Case
-  alias ExLLMAdapter
-
-  alias ExLLMAdapterTest
+  alias MCPChat.LLM.ExLLMAdapter
 
   describe "chat/2" do
     test "converts messages and calls ExLLM with correct provider" do

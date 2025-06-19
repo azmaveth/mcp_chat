@@ -469,7 +469,7 @@ defmodule MCPChat.SecurityIntegrationTest do
 
       # Verify cleanup occurred
       {:ok, active_capabilities} = Security.list_capabilities(principal_id)
-      assert length(active_capabilities) == 0
+      assert active_capabilities == []
     end
 
     test "performance under load" do

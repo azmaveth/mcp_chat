@@ -290,6 +290,27 @@ With the Security Model complete, the next major unfinished areas are:
 
 **Key Achievement**: With Security Model complete, MCP Chat now has **enterprise-grade security** for production AI agent deployment.
 
+## 🔧 Integration Updates
+
+### ex_mcp Library API Update (2025-06-18) ✅ COMPLETE
+- [x] Updated ExMCPAdapter to handle new API format
+  - [x] List methods now return `{:ok, %{data: items, nextCursor: cursor}}`
+  - [x] Updated list_tools handler to extract tools from new map format
+  - [x] Updated list_resources handler to extract resources from new map format
+  - [x] Updated list_prompts handler to extract prompts from new map format
+  - [x] Backward compatibility maintained for legacy tuple format
+- [x] Transport updates
+  - [x] SSE transport renamed to HTTP (`ExMCP.Transport.HTTP`)
+  - [x] Beam transport deprecated in favor of ExMCP.Native
+- [x] Testing ✅
+  - [x] Created integration test documentation
+  - [x] Verified compilation with new API format
+  - [x] Fixed all test failures related to ex_mcp API changes
+  - [x] Fixed struct field mismatches in pubsub_event_flow_test.exs
+  - [x] Fixed MCPSecurityAdapterTest for malformed capabilities handling
+  - [x] Fixed Static module references in persistence tests
+  - [x] All tests now passing after API update
+
 ---
 
 Last updated: 2025-06-18

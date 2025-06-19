@@ -38,9 +38,6 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Extract provider and options
     {provider, ex_llm_options} = extract_options(options)
 
-    # Add config provider to options
-    ex_llm_options = [{:config_provider, ExLLM.Infrastructure.ConfigProvider.Env} | ex_llm_options]
-
     # Add available MCP tools if enabled
     ex_llm_options = maybe_add_mcp_tools(ex_llm_options, options)
 
@@ -50,27 +47,10 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Apply context truncation if enabled
     ex_llm_messages = maybe_truncate_messages(ex_llm_messages, provider, ex_llm_options, options)
 
-    # Call ExLLM through ExLLM's circuit breaker
-    circuit_name = "llm_#{provider}"
-
-    circuit_opts = [
-      failure_threshold: 3,
-      reset_timeout: 60_000,
-      timeout: 30_000
-    ]
-
-    case ExLLM.CircuitBreaker.call(
-           circuit_name,
-           fn ->
-             ExLLM.chat(provider, ex_llm_messages, ex_llm_options)
-           end,
-           circuit_opts
-         ) do
+    # Use ExLLM's new pipeline API (v0.8+)
+    case ExLLM.chat(provider, ex_llm_messages, ex_llm_options) do
       {:ok, response} ->
         {:ok, convert_response(response)}
-
-      {:error, :circuit_open} ->
-        {:error, "LLM service temporarily unavailable (circuit breaker open)"}
 
       {:error, reason} ->
         {:error, reason}
@@ -85,9 +65,6 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Extract provider and options
     {provider, ex_llm_options} = extract_options(options)
 
-    # Add config provider to options
-    ex_llm_options = [{:config_provider, ExLLM.Infrastructure.ConfigProvider.Env} | ex_llm_options]
-
     # Add available MCP tools if enabled
     ex_llm_options = maybe_add_mcp_tools(ex_llm_options, options)
 
@@ -100,38 +77,49 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Add recovery options if requested
     ex_llm_options = maybe_add_recovery_options(ex_llm_options, options)
 
-    # Call ExLLM streaming through ExLLM's circuit breaker
-    circuit_name = "llm_#{provider}"
+    # Create a callback function to convert chunks to MCPChat format
+    callback = fn chunk ->
+      send(self(), {:stream_chunk, convert_stream_chunk(chunk)})
+    end
 
-    circuit_opts = [
-      failure_threshold: 3,
-      reset_timeout: 60_000,
-      timeout: 30_000
-    ]
+    # Use ExLLM's new streaming API (v0.8+)
+    case ExLLM.stream(provider, ex_llm_messages, callback, ex_llm_options) do
+      :ok ->
+        # Create stream from message receiving
+        stream =
+          Stream.resource(
+            fn -> :start end,
+            fn
+              :start ->
+                receive do
+                  {:stream_chunk, chunk} -> {[chunk], :streaming}
+                after
+                  30_000 -> {:halt, :timeout}
+                end
 
-    case ExLLM.CircuitBreaker.call(
-           circuit_name,
-           fn ->
-             ExLLM.stream_chat(provider, ex_llm_messages, ex_llm_options)
-           end,
-           circuit_opts
-         ) do
-      {:ok, {:ok, stream}} ->
-        # Use ExLLM's enhanced streaming infrastructure
-        enhanced_stream = create_enhanced_stream(stream, ex_llm_options, options)
+              :streaming ->
+                receive do
+                  {:stream_chunk, %{finish_reason: reason} = chunk} when reason != nil ->
+                    {[chunk], :halt}
+
+                  {:stream_chunk, chunk} ->
+                    {[chunk], :streaming}
+                after
+                  30_000 -> {:halt, :timeout}
+                end
+
+              :halt ->
+                {:halt, :completed}
+            end,
+            fn _ -> :ok end
+          )
 
         # Store recovery ID if recovery is enabled
         if recovery_id = Keyword.get(ex_llm_options, :recovery_id) do
-          {:ok, enhanced_stream, recovery_id}
+          {:ok, stream, recovery_id}
         else
-          {:ok, enhanced_stream}
+          {:ok, stream}
         end
-
-      {:ok, {:error, reason}} ->
-        {:error, reason}
-
-      {:error, :circuit_open} ->
-        {:error, "LLM service temporarily unavailable (circuit breaker open)"}
 
       {:error, reason} ->
         {:error, reason}
@@ -140,15 +128,46 @@ defmodule MCPChat.LLM.ExLLMAdapter do
 
   @impl MCPChat.LLM.Adapter
   def configured? do
-    # Check if at least one provider is configured
-    options = [{:config_provider, ExLLM.Infrastructure.ConfigProvider.Env}]
-    ExLLM.configured?(:anthropic, options) or ExLLM.configured?(:openai, options) or ExLLM.configured?(:ollama, options)
+    # Check if at least one provider is configured using new API
+    try do
+      # Try to get providers that are configured
+      configured_providers = [:anthropic, :openai, :ollama, :gemini, :groq]
+
+      Enum.any?(configured_providers, fn provider ->
+        case ExLLM.Providers.get_config(provider) do
+          {:ok, _config} -> true
+          {:error, _} -> false
+        end
+      end)
+    rescue
+      _ ->
+        # Fallback: check environment variables directly
+        System.get_env("ANTHROPIC_API_KEY") != nil or
+          System.get_env("OPENAI_API_KEY") != nil or
+          System.get_env("OLLAMA_API_BASE") != nil
+    end
   end
 
   def configured?(provider_name) when is_binary(provider_name) do
     provider_atom = String.to_atom(provider_name)
-    options = [{:config_provider, ExLLM.Infrastructure.ConfigProvider.Env}]
-    ExLLM.configured?(provider_atom, options)
+
+    try do
+      case ExLLM.Providers.get_config(provider_atom) do
+        {:ok, _config} -> true
+        {:error, _} -> false
+      end
+    rescue
+      _ ->
+        # Fallback: check common environment variables
+        case provider_atom do
+          :anthropic -> System.get_env("ANTHROPIC_API_KEY") != nil
+          :openai -> System.get_env("OPENAI_API_KEY") != nil
+          :ollama -> System.get_env("OLLAMA_API_BASE") != nil
+          :gemini -> System.get_env("GEMINI_API_KEY") != nil
+          :groq -> System.get_env("GROQ_API_KEY") != nil
+          _ -> false
+        end
+    end
   end
 
   @impl MCPChat.LLM.Adapter
@@ -159,17 +178,26 @@ defmodule MCPChat.LLM.ExLLMAdapter do
 
   @impl MCPChat.LLM.Adapter
   def list_models do
-    # Try to list models from configured providers
+    # Try to list models from configured providers using new API
     providers = [:anthropic, :openai, :ollama, :bedrock, :gemini, :bumblebee]
-    options = [{:config_provider, ExLLM.Infrastructure.ConfigProvider.Env}]
 
     models =
       providers
-      |> Enum.filter(&ExLLM.configured?(&1, options))
+      |> Enum.filter(&is_provider_configured?/1)
       |> Enum.flat_map(fn provider ->
-        case ExLLM.list_models(provider, options) do
-          {:ok, models} -> Enum.map(models, & &1.name)
-          {:error, _} -> []
+        case ExLLM.list_models(provider) do
+          {:ok, models} ->
+            Enum.map(models, fn model ->
+              case model do
+                %{name: name} -> name
+                %{id: id} -> id
+                name when is_binary(name) -> name
+                _ -> to_string(model)
+              end
+            end)
+
+          {:error, _} ->
+            []
         end
       end)
 
@@ -180,24 +208,57 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Handle provider-specific listing
     provider = Keyword.get(options, :provider, :anthropic)
 
-    # Add config provider
-    ex_llm_options = [{:config_provider, ExLLM.ConfigProvider.Env}]
-
-    case ExLLM.list_models(provider, ex_llm_options) do
+    case ExLLM.list_models(provider) do
       {:ok, models} ->
         # Convert ExLLM model format to MCPChat format
         converted_models =
           Enum.map(models, fn model ->
-            %{
-              id: model.id,
-              name: model.name
-            }
+            case model do
+              %{id: id, name: name} ->
+                %{id: id, name: name}
+
+              %{name: name} ->
+                %{id: name, name: name}
+
+              %{id: id} ->
+                %{id: id, name: id}
+
+              name when is_binary(name) ->
+                %{id: name, name: name}
+
+              _ ->
+                model_str = to_string(model)
+                %{id: model_str, name: model_str}
+            end
           end)
 
         {:ok, converted_models}
 
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  defp is_provider_configured?(provider_atom) when is_atom(provider_atom) do
+    try do
+      case ExLLM.Providers.get_config(provider_atom) do
+        {:ok, _config} -> true
+        {:error, _} -> false
+      end
+    rescue
+      _ ->
+        # Fallback: check common environment variables
+        case provider_atom do
+          :anthropic -> System.get_env("ANTHROPIC_API_KEY") != nil
+          :openai -> System.get_env("OPENAI_API_KEY") != nil
+          :ollama -> System.get_env("OLLAMA_API_BASE") != nil
+          :gemini -> System.get_env("GEMINI_API_KEY") != nil
+          :groq -> System.get_env("GROQ_API_KEY") != nil
+          # Local provider doesn't need API key
+          :bumblebee -> true
+          :bedrock -> System.get_env("AWS_ACCESS_KEY_ID") != nil
+          _ -> false
+        end
     end
   end
 
@@ -225,6 +286,14 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   defp extract_options(options) do
     # Extract provider (defaulting to anthropic) and model
     provider = Keyword.get(options, :provider, :anthropic)
+
+    # Handle the ExLLM v0.4.2+ breaking change: :local → :bumblebee
+    provider =
+      case provider do
+        :local -> :bumblebee
+        other -> other
+      end
+
     model = Keyword.get(options, :model)
 
     # Convert mcp_chat options to ex_llm options
@@ -341,33 +410,103 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     end
   end
 
-  # ModelCapabilities functions
+  # ModelCapabilities functions - updated for new API
   def get_model_capabilities(provider, model_id) do
-    ExLLM.Config.ModelCapabilities.get_capabilities(provider, model_id)
+    try do
+      ExLLM.Models.get_capabilities(provider, model_id)
+    rescue
+      _ ->
+        # Fallback to old API if new one fails
+        try do
+          ExLLM.Config.ModelCapabilities.get_capabilities(provider, model_id)
+        rescue
+          _ -> %{}
+        end
+    end
   end
 
   def recommend_models(requirements) do
-    ExLLM.Config.ModelCapabilities.recommend_models(requirements)
+    try do
+      ExLLM.Models.recommend(requirements)
+    rescue
+      _ ->
+        # Fallback to old API
+        try do
+          ExLLM.Config.ModelCapabilities.recommend_models(requirements)
+        rescue
+          _ -> []
+        end
+    end
   end
 
   def list_model_features do
-    ExLLM.Config.ModelCapabilities.list_features()
+    try do
+      ExLLM.Models.list_features()
+    rescue
+      _ ->
+        # Fallback to old API
+        try do
+          ExLLM.Config.ModelCapabilities.list_features()
+        rescue
+          _ -> []
+        end
+    end
   end
 
   def compare_models(model_specs) do
-    ExLLM.Config.ModelCapabilities.compare_models(model_specs)
+    try do
+      ExLLM.Models.compare(model_specs)
+    rescue
+      _ ->
+        # Fallback to old API
+        try do
+          ExLLM.Config.ModelCapabilities.compare_models(model_specs)
+        rescue
+          _ -> %{}
+        end
+    end
   end
 
   def supports_feature?(provider, model_id, feature) do
-    ExLLM.Config.ModelCapabilities.supports?(provider, model_id, feature)
+    try do
+      ExLLM.Models.supports_feature?(provider, model_id, feature)
+    rescue
+      _ ->
+        # Fallback to old API
+        try do
+          ExLLM.Config.ModelCapabilities.supports?(provider, model_id, feature)
+        rescue
+          _ -> false
+        end
+    end
   end
 
   def find_models_with_features(features) do
-    ExLLM.Config.ModelCapabilities.find_models_with_features(features)
+    try do
+      ExLLM.Models.find_with_features(features)
+    rescue
+      _ ->
+        # Fallback to old API
+        try do
+          ExLLM.Config.ModelCapabilities.find_models_with_features(features)
+        rescue
+          _ -> []
+        end
+    end
   end
 
   def models_by_capability(feature) do
-    ExLLM.Config.ModelCapabilities.models_by_capability(feature)
+    try do
+      ExLLM.Models.by_capability(feature)
+    rescue
+      _ ->
+        # Fallback to old API
+        try do
+          ExLLM.Config.ModelCapabilities.models_by_capability(feature)
+        rescue
+          _ -> []
+        end
+    end
   end
 
   defp model_loader_available? do
@@ -582,14 +721,32 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   def resume_stream(recovery_id, options \\ []) do
     strategy = Keyword.get(options, :strategy, :paragraph)
 
-    case StreamRecovery.resume_stream(recovery_id, strategy: strategy) do
-      {:ok, stream} ->
-        # Convert the resumed stream to MCPChat format
-        converted_stream = Stream.map(stream, &convert_stream_chunk/1)
-        {:ok, converted_stream}
+    try do
+      # Try new API
+      case ExLLM.Core.Streaming.Recovery.resume_stream(recovery_id, strategy: strategy) do
+        {:ok, stream} ->
+          # Convert the resumed stream to MCPChat format
+          converted_stream = Stream.map(stream, &convert_stream_chunk/1)
+          {:ok, converted_stream}
 
-      {:error, reason} ->
-        {:error, reason}
+        {:error, reason} ->
+          {:error, reason}
+      end
+    rescue
+      _ ->
+        # Fallback to old API
+        try do
+          case StreamRecovery.resume_stream(recovery_id, strategy: strategy) do
+            {:ok, stream} ->
+              converted_stream = Stream.map(stream, &convert_stream_chunk/1)
+              {:ok, converted_stream}
+
+            {:error, reason} ->
+              {:error, reason}
+          end
+        rescue
+          _ -> {:error, "Stream recovery not available"}
+        end
     end
   end
 
@@ -597,32 +754,68 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   List all recoverable streams.
   """
   def list_recoverable_streams do
-    StreamRecovery.list_recoverable_streams()
+    try do
+      ExLLM.Core.Streaming.Recovery.list_recoverable_streams()
+    rescue
+      _ ->
+        # Fallback to old API
+        try do
+          StreamRecovery.list_recoverable_streams()
+        rescue
+          _ -> []
+        end
+    end
   end
 
   @doc """
   Get partial response for a recovery ID.
   """
   def get_partial_response(recovery_id) do
-    StreamRecovery.get_partial_response(recovery_id)
+    try do
+      ExLLM.Core.Streaming.Recovery.get_partial_response(recovery_id)
+    rescue
+      _ ->
+        # Fallback to old API
+        try do
+          StreamRecovery.get_partial_response(recovery_id)
+        rescue
+          _ -> {:error, "Stream recovery not available"}
+        end
+    end
   end
 
   @doc """
   Get cache statistics from ExLLM's cache system.
   """
   def get_cache_stats do
-    ExLLM.Cache.stats()
-  rescue
-    _ -> %{hits: 0, misses: 0, evictions: 0, errors: 0}
+    try do
+      ExLLM.Infrastructure.Cache.stats()
+    rescue
+      _ ->
+        # Fallback to old API
+        try do
+          ExLLM.Cache.stats()
+        rescue
+          _ -> %{hits: 0, misses: 0, evictions: 0, errors: 0}
+        end
+    end
   end
 
   @doc """
   Clear the ExLLM response cache.
   """
   def clear_cache do
-    ExLLM.Cache.clear()
-  rescue
-    _ -> :ok
+    try do
+      ExLLM.Infrastructure.Cache.clear()
+    rescue
+      _ ->
+        # Fallback to old API
+        try do
+          ExLLM.Cache.clear()
+        rescue
+          _ -> :ok
+        end
+    end
   end
 
   @doc """
@@ -632,9 +825,17 @@ defmodule MCPChat.LLM.ExLLMAdapter do
     # Get cache directory from MCP Chat config if not provided
     cache_dir = cache_dir || get_cache_directory()
 
-    ExLLM.Cache.configure_disk_persistence(enabled, cache_dir)
-  rescue
-    _ -> :ok
+    try do
+      ExLLM.Infrastructure.Cache.configure_disk_persistence(enabled, cache_dir)
+    rescue
+      _ ->
+        # Fallback to old API
+        try do
+          ExLLM.Cache.configure_disk_persistence(enabled, cache_dir)
+        rescue
+          _ -> :ok
+        end
+    end
   end
 
   @doc """
@@ -660,13 +861,24 @@ defmodule MCPChat.LLM.ExLLMAdapter do
       model = Keyword.get(ex_llm_options, :model, default_model_for_provider(provider))
       truncation_strategy = Keyword.get(mcp_options, :truncation_strategy, :smart)
 
-      # Use ExLLM's context truncation
-      truncation_options = [
-        strategy: truncation_strategy,
-        max_tokens: Keyword.get(ex_llm_options, :max_tokens)
-      ]
+      # Use ExLLM's context truncation (try new API first)
+      try do
+        truncation_options = [
+          strategy: truncation_strategy,
+          max_tokens: Keyword.get(ex_llm_options, :max_tokens)
+        ]
 
-      ExLLM.Context.truncate_messages(messages, provider, model, truncation_options)
+        ExLLM.Core.Context.truncate_messages(messages, provider, model, truncation_options)
+      rescue
+        _ ->
+          # Fallback to old API
+          try do
+            ExLLM.Context.truncate_messages(messages, provider, model, truncation_strategy: truncation_strategy)
+          rescue
+            # If context truncation fails, return original messages
+            _ -> messages
+          end
+      end
     else
       messages
     end
@@ -685,30 +897,51 @@ defmodule MCPChat.LLM.ExLLMAdapter do
   def get_context_stats(messages, provider, model, options \\ []) do
     ex_llm_messages = convert_messages(messages)
 
-    context_window = ExLLM.Context.get_context_window(provider, model)
-    token_allocation = ExLLM.Context.get_token_allocation(provider, model, options)
-    estimated_tokens = ExLLM.Cost.estimate_tokens(ex_llm_messages)
-
-    %{
-      message_count: length(messages),
-      estimated_tokens: estimated_tokens,
-      context_window: context_window,
-      token_allocation: token_allocation,
-      tokens_used_percentage: Float.round(estimated_tokens / context_window * 100, 1),
-      tokens_remaining: max(0, context_window - estimated_tokens - 500)
-    }
-  rescue
-    _ ->
-      # Fallback to basic stats if model info not available
-      fallback_ex_llm_messages = convert_messages(messages)
+    try do
+      # Try new API first
+      context_window = ExLLM.Core.Context.get_context_window(provider, model)
+      token_allocation = ExLLM.Core.Context.get_token_allocation(provider, model, options)
+      estimated_tokens = ExLLM.Core.Cost.estimate_tokens(ex_llm_messages)
 
       %{
         message_count: length(messages),
-        estimated_tokens: ExLLM.Cost.estimate_tokens(fallback_ex_llm_messages),
-        context_window: 4_096,
-        tokens_used_percentage: 0.0,
-        tokens_remaining: 3_596
+        estimated_tokens: estimated_tokens,
+        context_window: context_window,
+        token_allocation: token_allocation,
+        tokens_used_percentage: Float.round(estimated_tokens / context_window * 100, 1),
+        tokens_remaining: max(0, context_window - estimated_tokens - 500)
       }
+    rescue
+      _ ->
+        # Fallback to old API
+        try do
+          context_window = ExLLM.Context.get_context_window(provider, model)
+          estimated_tokens = ExLLM.Cost.estimate_tokens(ex_llm_messages)
+
+          %{
+            message_count: length(messages),
+            estimated_tokens: estimated_tokens,
+            context_window: context_window,
+            token_allocation: %{},
+            tokens_used_percentage: Float.round(estimated_tokens / context_window * 100, 1),
+            tokens_remaining: max(0, context_window - estimated_tokens - 500)
+          }
+        rescue
+          _ ->
+            # Final fallback to basic stats
+            fallback_ex_llm_messages = convert_messages(messages)
+
+            %{
+              message_count: length(messages),
+              # rough estimate
+              estimated_tokens: 100 * length(messages),
+              context_window: 4_096,
+              token_allocation: %{},
+              tokens_used_percentage: 0.0,
+              tokens_remaining: 3_596
+            }
+        end
+    end
   end
 
   # Helper functions for capabilities

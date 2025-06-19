@@ -50,7 +50,8 @@ defmodule MCPChat.Security.MCPSecurityAdapter do
   @spec call_tool_secure(mcp_session(), tool_name(), tool_args(), Capability.t()) ::
           {:ok, any()} | {:error, atom()}
   def call_tool_secure(session, tool_name, args, capability) do
-    with :ok <- validate_tool_permission(capability, tool_name, args),
+    with :ok <- validate_inputs(session, tool_name, args),
+         :ok <- validate_tool_permission(capability, tool_name, args),
          {:ok, result} <- execute_mcp_tool(session, tool_name, args) do
       # Log successful execution
       Security.log_security_event(:mcp_tool_executed, %{
@@ -213,6 +214,15 @@ defmodule MCPChat.Security.MCPSecurityAdapter do
 
   ## Private Functions
 
+  defp validate_inputs(session, tool_name, args) do
+    cond do
+      is_nil(session) -> {:error, :invalid_session}
+      is_nil(tool_name) or tool_name == "" -> {:error, :invalid_tool_name}
+      not is_map(args) -> {:error, :invalid_args}
+      true -> :ok
+    end
+  end
+
   defp validate_tool_permission(capability, tool_name, args) do
     # Check if the capability allows MCP tool execution
     case capability.resource_type do
@@ -253,20 +263,25 @@ defmodule MCPChat.Security.MCPSecurityAdapter do
   end
 
   defp check_tool_allowed(capability, tool_name) do
-    case Map.get(capability.constraints, :allowed_tools) do
-      # No tool restrictions
-      nil ->
-        :ok
-
-      allowed_tools when is_list(allowed_tools) ->
-        if tool_name in allowed_tools do
+    # Ensure constraints is a map
+    if is_map(capability.constraints) do
+      case Map.get(capability.constraints, :allowed_tools) do
+        # No tool restrictions
+        nil ->
           :ok
-        else
-          {:error, :tool_not_allowed}
-        end
 
-      _ ->
-        {:error, :invalid_tool_constraint}
+        allowed_tools when is_list(allowed_tools) ->
+          if tool_name in allowed_tools do
+            :ok
+          else
+            {:error, :tool_not_allowed}
+          end
+
+        _ ->
+          {:error, :invalid_tool_constraint}
+      end
+    else
+      {:error, :invalid_constraints}
     end
   end
 

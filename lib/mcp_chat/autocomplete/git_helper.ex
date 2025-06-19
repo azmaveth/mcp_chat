@@ -420,7 +420,7 @@ defmodule MCPChat.Autocomplete.GitHelper do
         lines = String.split(output, "\n", trim: true)
 
         %{
-          clean: length(lines) == 0,
+          clean: lines == [],
           modified_count: count_status_files(lines, ["M", " M"]),
           added_count: count_status_files(lines, ["A", " A"]),
           deleted_count: count_status_files(lines, ["D", " D"]),

@@ -367,7 +367,7 @@ defmodule MCPChat.Terminal.DisplayOverlay do
 
     suggestions_to_show = Enum.take(state.suggestions, state.display_settings.max_suggestions)
 
-    if length(suggestions_to_show) == 0 do
+    if suggestions_to_show == [] do
       ""
     else
       # Calculate box dimensions

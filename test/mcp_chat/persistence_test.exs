@@ -23,7 +23,7 @@ defmodule MCPChat.PersistenceTest do
 
     # Start a Static path provider with the temp directory
     {:ok, path_provider} =
-      Static.start_link(%{
+      MCPChat.PathProvider.Static.start_link(%{
         config_dir: temp_dir,
         sessions_dir: sessions_dir
       })
@@ -153,7 +153,7 @@ defmodule MCPChat.PersistenceTest do
   describe "export_session/3" do
     test "exports session as JSON", %{path_provider: path_provider} do
       # Use temp directory for export
-      temp_dir = Static.config_dir(path_provider)
+      temp_dir = MCPChat.PathProvider.Static.config_dir(path_provider)
       File.mkdir_p!(temp_dir)
       path = Path.join(temp_dir, "test_export.json")
 
@@ -170,7 +170,7 @@ defmodule MCPChat.PersistenceTest do
 
     test "exports session as markdown", %{path_provider: path_provider} do
       # Use temp directory for export
-      temp_dir = Static.config_dir(path_provider)
+      temp_dir = MCPChat.PathProvider.Static.config_dir(path_provider)
       File.mkdir_p!(temp_dir)
       path = Path.join(temp_dir, "test_export.md")
 

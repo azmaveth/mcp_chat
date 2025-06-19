@@ -306,7 +306,7 @@ defmodule MCPChat.CostTracking.CostDisplay do
     limit = Keyword.get(opts, :limit, 3)
     show_details = Keyword.get(opts, :details, false)
 
-    if length(recommendations) == 0 do
+    if recommendations == [] do
       "✅ No optimization recommendations at this time"
     else
       header = "💡 Cost Optimization Recommendations:"

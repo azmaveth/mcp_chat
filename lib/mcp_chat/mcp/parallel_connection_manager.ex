@@ -187,7 +187,10 @@ defmodule MCPChat.MCP.ParallelConnectionManager do
       # Attempt connection with retries
       result =
         with_retries(opts[:retry_attempts], fn ->
-          case ServerManager.Core.start_server(name, config) do
+          # Create server config with name
+          server_config = Map.put(config, :name, name)
+
+          case ServerManager.start_server(server_config) do
             {:ok, pid} ->
               # Wait for connection to be established
               wait_for_connection(pid, name, opts[:connection_timeout])

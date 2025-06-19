@@ -7,18 +7,14 @@ defmodule MCPChat.CLI.ConcurrentToolsTest do
   @moduletag :unit
 
   describe "commands/0" do
-    test "returns list of available commands" do
+    test "returns map of available commands" do
       commands = ConcurrentTools.commands()
 
-      assert is_list(commands)
-      assert length(commands) == 1
+      assert is_map(commands)
+      assert Map.size(commands) == 1
 
-      concurrent_cmd = hd(commands)
-      assert concurrent_cmd.name == "concurrent"
-      assert concurrent_cmd.description =~ "Execute tools concurrently"
-      assert concurrent_cmd.usage =~ "/concurrent"
-      assert is_list(concurrent_cmd.subcommands)
-      assert length(concurrent_cmd.subcommands) == 5
+      assert Map.has_key?(commands, "concurrent")
+      assert commands["concurrent"] =~ "Execute tools concurrently"
     end
   end
 
@@ -26,7 +22,7 @@ defmodule MCPChat.CLI.ConcurrentToolsTest do
     test "shows help for empty args" do
       output =
         capture_io(fn ->
-          ConcurrentTools.handle_command(["concurrent"])
+          ConcurrentTools.handle_command("concurrent", [])
         end)
 
       assert output =~ "Concurrent Tool Execution Commands"
@@ -37,7 +33,7 @@ defmodule MCPChat.CLI.ConcurrentToolsTest do
     test "shows help for help subcommand" do
       output =
         capture_io(fn ->
-          ConcurrentTools.handle_command(["concurrent", "help"])
+          ConcurrentTools.handle_command("concurrent", ["help"])
         end)
 
       assert output =~ "Concurrent Tool Execution Commands"
@@ -47,7 +43,7 @@ defmodule MCPChat.CLI.ConcurrentToolsTest do
     test "shows error for unknown subcommand" do
       output =
         capture_io(fn ->
-          ConcurrentTools.handle_command(["concurrent", "unknown"])
+          ConcurrentTools.handle_command("concurrent", ["unknown"])
         end)
 
       assert output =~ "Unknown concurrent command"
@@ -57,7 +53,7 @@ defmodule MCPChat.CLI.ConcurrentToolsTest do
 
   describe "handle_command/1 for non-concurrent commands" do
     test "returns :not_handled for non-concurrent commands" do
-      assert ConcurrentTools.handle_command(["other", "command"]) == :not_handled
+      assert ConcurrentTools.handle_command("other", ["command"]) == :not_handled
       assert ConcurrentTools.handle_command(["help"]) == :not_handled
       assert ConcurrentTools.handle_command([]) == :not_handled
     end
@@ -74,7 +70,7 @@ defmodule MCPChat.CLI.ConcurrentToolsTest do
 
       output =
         capture_io(fn ->
-          ConcurrentTools.handle_command(["concurrent", "test"])
+          ConcurrentTools.handle_command("concurrent", ["test"])
         end)
 
       assert output =~ "No connected MCP servers available for testing"
@@ -94,7 +90,7 @@ defmodule MCPChat.CLI.ConcurrentToolsTest do
 
       output =
         capture_io(fn ->
-          ConcurrentTools.handle_command(["concurrent", "test"])
+          ConcurrentTools.handle_command("concurrent", ["test"])
         end)
 
       assert output =~ "No suitable tools found for concurrent execution test"
@@ -107,7 +103,7 @@ defmodule MCPChat.CLI.ConcurrentToolsTest do
     test "shows error for empty tool specifications" do
       output =
         capture_io(fn ->
-          ConcurrentTools.handle_command(["concurrent", "execute"])
+          ConcurrentTools.handle_command("concurrent", ["execute"])
         end)
 
       assert output =~ "No tool specifications provided"
@@ -116,7 +112,7 @@ defmodule MCPChat.CLI.ConcurrentToolsTest do
     test "shows error for invalid tool specification format" do
       output =
         capture_io(fn ->
-          ConcurrentTools.handle_command(["concurrent", "execute", "invalid_format"])
+          ConcurrentTools.handle_command("concurrent", ["execute", "invalid_format"])
         end)
 
       assert output =~ "Invalid tool specification"
@@ -128,7 +124,7 @@ defmodule MCPChat.CLI.ConcurrentToolsTest do
     test "reports safe tools" do
       output =
         capture_io(fn ->
-          ConcurrentTools.handle_command(["concurrent", "safety", "read_file"])
+          ConcurrentTools.handle_command("concurrent", ["safety", "read_file"])
         end)
 
       assert output =~ "Tool 'read_file' is SAFE for concurrent execution"
@@ -137,7 +133,7 @@ defmodule MCPChat.CLI.ConcurrentToolsTest do
     test "reports unsafe tools" do
       output =
         capture_io(fn ->
-          ConcurrentTools.handle_command(["concurrent", "safety", "write_file"])
+          ConcurrentTools.handle_command("concurrent", ["safety", "write_file"])
         end)
 
       assert output =~ "Tool 'write_file' is UNSAFE for concurrent execution"
@@ -159,7 +155,7 @@ defmodule MCPChat.CLI.ConcurrentToolsTest do
 
       output =
         capture_io(fn ->
-          ConcurrentTools.handle_command(["concurrent", "stats"])
+          ConcurrentTools.handle_command("concurrent", ["stats"])
         end)
 
       assert output =~ "Concurrent Tool Execution Statistics"

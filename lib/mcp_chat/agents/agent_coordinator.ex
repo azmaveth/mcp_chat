@@ -297,7 +297,7 @@ defmodule MCPChat.Agents.AgentCoordinator do
       not Map.has_key?(workflow_spec, :steps) ->
         {:error, :missing_steps}
 
-      length(workflow_spec.steps) == 0 ->
+      workflow_spec.steps == [] ->
         {:error, :empty_workflow}
 
       true ->

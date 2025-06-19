@@ -234,7 +234,7 @@ defmodule MCPChat.Terminal.AutocompleteIntegration do
   defp process_key_input(key, _modifiers, state) do
     cond do
       # No suggestions active
-      length(state.active_suggestions) == 0 ->
+      state.active_suggestions == [] ->
         case key do
           @tab_key -> trigger_completion(state)
           @ctrl_space -> trigger_completion(state)

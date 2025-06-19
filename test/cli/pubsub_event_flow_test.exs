@@ -99,7 +99,7 @@ defmodule MCPChat.CLI.PubSubEventFlowTest do
           execution_id: exec_id,
           tool_name: tool_name,
           progress: 50,
-          message: "Analyzing...",
+          stage: :processing,
           timestamp: DateTime.utc_now()
         },
         %AgentEvents.ToolExecutionCompleted{
@@ -136,31 +136,24 @@ defmodule MCPChat.CLI.PubSubEventFlowTest do
           session_id: session_id,
           export_id: export_id,
           format: "pdf",
-          options: %{"include_metadata" => true},
-          timestamp: DateTime.utc_now()
+          started_at: DateTime.utc_now()
         },
         %AgentEvents.ExportProgress{
           session_id: session_id,
           export_id: export_id,
-          progress: 33,
-          stage: "Collecting data",
-          timestamp: DateTime.utc_now()
+          progress: 33
         },
         %AgentEvents.ExportProgress{
           session_id: session_id,
           export_id: export_id,
-          progress: 66,
-          stage: "Generating PDF",
-          timestamp: DateTime.utc_now()
+          progress: 66
         },
         %AgentEvents.ExportCompleted{
           session_id: session_id,
           export_id: export_id,
-          format: "pdf",
-          file_path: "/tmp/export.pdf",
-          size_bytes: 2048,
-          duration_ms: 2500,
-          timestamp: DateTime.utc_now()
+          download_url: "/tmp/export.pdf",
+          file_size: 2048,
+          duration_ms: 2500
         }
       ]
 
@@ -170,9 +163,9 @@ defmodule MCPChat.CLI.PubSubEventFlowTest do
       assert_receive {:pubsub, %AgentEvents.ExportStarted{format: "pdf"}}, 100
       assert_receive {:pubsub, %AgentEvents.ExportProgress{progress: 33}}, 100
       assert_receive {:pubsub, %AgentEvents.ExportProgress{progress: 66}}, 100
-      assert_receive {:pubsub, %AgentEvents.ExportCompleted{file_path: path}}, 100
+      assert_receive {:pubsub, %AgentEvents.ExportCompleted{download_url: url}}, 100
 
-      assert path == "/tmp/export.pdf"
+      assert url == "/tmp/export.pdf"
     end
 
     test "Agent pool events flow correctly", %{session_id: session_id} do
@@ -181,26 +174,30 @@ defmodule MCPChat.CLI.PubSubEventFlowTest do
       # Pool events are broadcast to system topic
       events = [
         %AgentEvents.AgentPoolWorkerStarted{
-          worker_id: "worker_1",
-          task_id: "task_1",
-          timestamp: DateTime.utc_now()
+          worker_pid: self(),
+          session_id: session_id,
+          tool_name: "analyze",
+          queue_time_ms: 100
         },
         %AgentEvents.AgentPoolQueueFull{
           queue_length: 5,
           max_queue_size: 10,
+          rejected_request: %{tool: "analyze", session_id: session_id},
           timestamp: DateTime.utc_now()
         },
         %AgentEvents.AgentPoolWorkerCompleted{
-          worker_id: "worker_1",
-          task_id: "task_1",
+          worker_pid: self(),
+          session_id: session_id,
+          tool_name: "analyze",
           duration_ms: 1000,
-          timestamp: DateTime.utc_now()
+          success: true
         }
       ]
 
       Enum.each(events, &PubSub.broadcast(@pubsub, "system:agents", {:pubsub, &1}))
 
-      assert_receive {:pubsub, %AgentEvents.AgentPoolWorkerStarted{worker_id: "worker_1"}}, 100
+      assert_receive {:pubsub, %AgentEvents.AgentPoolWorkerStarted{worker_pid: pid}}, 100
+      assert pid == self()
       assert_receive {:pubsub, %AgentEvents.AgentPoolQueueFull{queue_length: 5}}, 100
       assert_receive {:pubsub, %AgentEvents.AgentPoolWorkerCompleted{duration_ms: 1000}}, 100
     end
@@ -245,15 +242,14 @@ defmodule MCPChat.CLI.PubSubEventFlowTest do
 
       # Broadcast system event
       system_event = %AgentEvents.MaintenanceStarted{
-        task_type: :cleanup,
-        scheduled_at: DateTime.utc_now(),
-        timestamp: DateTime.utc_now()
+        maintenance_type: :cleanup,
+        started_at: DateTime.utc_now()
       }
 
       PubSub.broadcast(@pubsub, "system:agents", {:pubsub, system_event})
 
       # Should receive on system subscription
-      assert_receive {:pubsub, %AgentEvents.MaintenanceStarted{task_type: :cleanup}}, 100
+      assert_receive {:pubsub, %AgentEvents.MaintenanceStarted{maintenance_type: :cleanup}}, 100
     end
   end
 
@@ -308,7 +304,7 @@ defmodule MCPChat.CLI.PubSubEventFlowTest do
           execution_id: "timing_test",
           tool_name: "sequencer",
           progress: i * 10,
-          message: "Step #{i}",
+          stage: "Step #{i}",
           timestamp: DateTime.utc_now()
         }
 
