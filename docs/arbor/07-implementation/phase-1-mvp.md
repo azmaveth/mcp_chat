@@ -446,7 +446,7 @@ Arbor is a production-ready, distributed AI agent orchestration system built on 
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/arbor.git
+git clone https://github.com/azmaveth/arbor.git
 cd arbor
 
 # Run setup
